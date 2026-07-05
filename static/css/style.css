@@ -66,6 +66,20 @@ main.wrap {
   font-size: 0.85rem;
 }
 
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--bg-raised); }
+
 .stat-block {
   border-collapse: collapse;
   margin: 1rem 0;
