@@ -1,13 +1,18 @@
 {{ define "main" }}
   {{ $campaigns := where site.Pages "Layout" "hub" }}
-  <h1>{{ .Site.Title }}</h1>
-  <p class="subtitle">{{ .Site.Params.subtitle }}</p>
+  <div class="home-hero" style="background-image: url('{{ "images/home-banner.jpg" | relURL }}');">
+    <div class="wrap home-hero-content">
+      <h1>{{ .Site.Title }}</h1>
+      <p class="subtitle">{{ .Site.Params.subtitle }}</p>
 
-  <label for="campaign-picker">Choose a campaign</label>
-  <select id="campaign-picker" onchange="if (this.value) { window.location.href = this.value; }">
-    <option value="">— Select —</option>
-    {{ range $campaigns.ByTitle }}
-      <option value="{{ .RelPermalink }}">{{ .Title }}</option>
-    {{ end }}
-  </select>
+      <div class="campaign-picker">
+        <select id="campaign-picker" aria-label="Choose a campaign" onchange="if (this.value) { window.location.href = this.value; }">
+          <option value="">— Select —</option>
+          {{ range $campaigns.ByTitle }}
+            <option value="{{ .RelPermalink }}">{{ .Title }}</option>
+          {{ end }}
+        </select>
+      </div>
+    </div>
+  </div>
 {{ end }}

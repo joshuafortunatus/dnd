@@ -16,6 +16,7 @@ select, input, button, textarea {
 
 body {
   margin: 0;
+  overflow-x: hidden;
   background-color: var(--bg);
   background-size: cover;
   background-position: center;
@@ -35,34 +36,14 @@ body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-.site-header,
-main.wrap,
-.site-footer {
+main.wrap {
   background: rgba(20, 17, 15, 0.6);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+  min-height: 60vh;
 }
-
-.site-header {
-  border-bottom: 1px solid var(--border);
-  padding: 1.25rem 0;
-}
-.site-header .wrap {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-.site-title {
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: var(--text);
-}
-.site-header nav a { margin-left: 1rem; }
-.site-header nav a:first-child { margin-left: 0; }
-
-main.wrap { padding-top: 2rem; padding-bottom: 3rem; min-height: 60vh; }
 
 .subtitle { color: var(--text-dim); margin-top: -0.5rem; }
 
@@ -96,9 +77,42 @@ main.wrap { padding-top: 2rem; padding-bottom: 3rem; min-height: 60vh; }
 }
 .stat-block th { background: var(--bg-raised); }
 
-.site-footer {
-  border-top: 1px solid var(--border);
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  padding: 1.25rem 0;
+body.is-home {
+  overflow: hidden;
+}
+
+.home-hero {
+  position: relative;
+  left: 50%;
+  width: 100vw;
+  height: 100vh;
+  transform: translateX(-50%);
+  margin-top: -2rem;
+  margin-bottom: -3rem;
+  background-color: var(--bg);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.home-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(20, 17, 15, 0.8) 0%, rgba(20, 17, 15, 0.45) 45%, rgba(20, 17, 15, 0.15) 100%);
+}
+.home-hero-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+.home-hero-content h1 { font-size: 4rem; margin-bottom: 0.75rem; }
+.home-hero-content .subtitle { font-size: 1.4rem; margin-bottom: 2rem; }
+.home-hero-content label { font-size: 1.2rem; }
+.home-hero-content select {
+  font-size: 1.2rem;
+  padding: 0.4rem 0.7rem;
 }

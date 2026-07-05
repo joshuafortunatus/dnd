@@ -1,6 +1,6 @@
 baseURL = "https://joshuafortunatus.github.io/dnd/"
 languageCode = "en-us"
-title = "Campaign Archive"
+title = "Campaigns"
 
 [params]
   subtitle = "Notes, sessions, and characters from our D&D campaigns"
