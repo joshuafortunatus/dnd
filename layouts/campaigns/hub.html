@@ -12,19 +12,28 @@
 
   {{ $related := where site.RegularPages "Params.campaigns_tag" "intersect" (slice $slug) }}
   {{ $sessions := where $related "Section" "sessions" }}
+  {{ $quests := where $related "Section" "quests" }}
+  {{ $lore := where $related "Section" "lore" }}
   {{ $characters := where $related "Section" "characters" }}
   {{ $npcs := where $related "Section" "npcs" }}
   {{ $locations := where $related "Section" "locations" }}
+  {{ $images := where $related "Section" "images" }}
 
   <div class="hub-tabs">
     <input type="radio" name="hub-tab" id="tab-sessions" class="hub-tab-radio" checked>
     <label for="tab-sessions" class="hub-tab-label">Sessions</label>
+    <input type="radio" name="hub-tab" id="tab-quests" class="hub-tab-radio">
+    <label for="tab-quests" class="hub-tab-label">Quests</label>
+    <input type="radio" name="hub-tab" id="tab-lore" class="hub-tab-radio">
+    <label for="tab-lore" class="hub-tab-label">Lore</label>
     <input type="radio" name="hub-tab" id="tab-characters" class="hub-tab-radio">
     <label for="tab-characters" class="hub-tab-label">Characters</label>
     <input type="radio" name="hub-tab" id="tab-npcs" class="hub-tab-radio">
     <label for="tab-npcs" class="hub-tab-label">NPCs</label>
     <input type="radio" name="hub-tab" id="tab-locations" class="hub-tab-radio">
     <label for="tab-locations" class="hub-tab-label">Locations</label>
+    <input type="radio" name="hub-tab" id="tab-images" class="hub-tab-radio">
+    <label for="tab-images" class="hub-tab-label">Images</label>
 
     <div class="hub-panel" id="panel-sessions">
       {{ range $sessions.ByTitle }}
@@ -34,6 +43,28 @@
         </article>
       {{ else }}
         <p class="entry-date">No sessions yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-quests">
+      {{ range $quests.ByTitle }}
+        <article class="hub-entry">
+          <h3>{{ .Title }}</h3>
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">No quests yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-lore">
+      {{ range $lore.ByTitle }}
+        <article class="hub-entry">
+          <h3>{{ .Title }}</h3>
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">No lore yet.</p>
       {{ end }}
     </div>
 
@@ -67,6 +98,21 @@
         </article>
       {{ else }}
         <p class="entry-date">No locations yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-images">
+      {{ with $images.ByTitle }}
+        <div class="hub-gallery">
+          {{ range . }}
+            <figure class="hub-gallery-item">
+              <img src="{{ .Params.image }}" alt="{{ .Title }}">
+              <figcaption>{{ .Title }}</figcaption>
+            </figure>
+          {{ end }}
+        </div>
+      {{ else }}
+        <p class="entry-date">No images yet.</p>
       {{ end }}
     </div>
   </div>

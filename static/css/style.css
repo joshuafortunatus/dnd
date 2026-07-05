@@ -160,9 +160,12 @@ body.is-home {
   border-top: 1px solid var(--border);
 }
 #tab-sessions:checked ~ #panel-sessions,
+#tab-quests:checked ~ #panel-quests,
+#tab-lore:checked ~ #panel-lore,
 #tab-characters:checked ~ #panel-characters,
 #tab-npcs:checked ~ #panel-npcs,
-#tab-locations:checked ~ #panel-locations {
+#tab-locations:checked ~ #panel-locations,
+#tab-images:checked ~ #panel-images {
   display: block;
 }
 
@@ -174,4 +177,25 @@ body.is-home {
   height: auto;
   border-radius: 4px;
   margin: 0.5rem 0;
+}
+
+.hub-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+.hub-gallery-item {
+  margin: 0;
+}
+.hub-gallery-item img {
+  display: block;
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.hub-gallery-item figcaption {
+  margin-top: 0.4rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
 }
