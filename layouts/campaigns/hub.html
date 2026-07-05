@@ -1,6 +1,6 @@
 {{ define "main" }}
   {{ $slug := .File.ContentBaseName }}
-  <div class="page-hero hub-hero" style="background-image: url('{{ "images/phandelver-below-cover-art.jpg" | relURL }}');">
+  <div class="page-hero hub-hero" style="background-image: url('{{ .Params.hero_image | relURL }}');">
     <div class="wrap page-hero-content">
       <a class="hub-hero-back" href="{{ "/" | relURL }}">&larr; All campaigns</a>
       <h1>{{ .Title }}</h1>
@@ -36,9 +36,9 @@
     <label for="tab-images" class="hub-tab-label">Images</label>
 
     <div class="hub-panel" id="panel-sessions">
-      {{ range $sessions.ByTitle }}
+      {{ range $sessions.ByDate }}
         <article class="hub-entry">
-          <h3>{{ .Title }}</h3>
+          <h3>{{ .Title }}{{ if not .Date.IsZero }}<span class="entry-date">{{ .Date.Format "Jan 2, 2006" }}</span>{{ end }}</h3>
           {{ .Content }}
         </article>
       {{ else }}

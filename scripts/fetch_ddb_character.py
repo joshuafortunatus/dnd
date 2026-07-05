@@ -67,7 +67,7 @@ def render_markdown(character: dict, slug: str, character_id: int) -> str:
         "ability_scores": ability_scores,
         "ddb_url": f"https://www.dndbeyond.com/characters/{character_id}",
     }
-    return "---\n" + yaml.safe_dump(front_matter, sort_keys=False) + "---\n"
+    return "---\n" + yaml.safe_dump(front_matter, sort_keys=False, allow_unicode=True) + "---\n"
 
 
 def character_output_path(campaign_slug: str, slug: str) -> Path:

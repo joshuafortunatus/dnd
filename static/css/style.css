@@ -55,6 +55,7 @@ main.wrap {
   justify-content: space-between;
 }
 .entry-date, .tags { color: var(--text-dim); font-size: 0.9rem; }
+h3 .entry-date { margin-left: 0.75rem; font-weight: normal; }
 
 .tag {
   display: inline-block;
