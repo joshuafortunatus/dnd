@@ -147,15 +147,15 @@ body.is-home {
 }
 .hub-hero .page-hero-content { text-align: left; width: 100%; }
 .hub-hero-topline {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
   padding: 0.75rem 1.25rem;
-  background: rgba(80, 80, 80, 0.35);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(60, 60, 60, 0.7);
   border-radius: 6px;
 }
 .hub-hero-topline h1 { margin: 0; }
