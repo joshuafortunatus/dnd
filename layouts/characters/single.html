@@ -1,4 +1,9 @@
 {{ define "main" }}
+  {{ with .Params.campaigns_tag }}
+    {{ with site.GetPage (printf "/campaigns/%s" (index . 0)) }}
+      <p><a href="{{ .RelPermalink }}">&larr; Back to {{ .Title }}</a></p>
+    {{ end }}
+  {{ end }}
   <article class="character-sheet">
     <h1>{{ .Title }}</h1>
     <p class="character-meta">

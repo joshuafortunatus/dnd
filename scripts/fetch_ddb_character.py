@@ -22,7 +22,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ALLOWLIST_PATH = REPO_ROOT / "data" / "public_characters.yaml"
-CHARACTERS_DIR = REPO_ROOT / "content" / "characters"
+CAMPAIGNS_DIR = REPO_ROOT / "content" / "campaigns"
 
 CHARACTER_ENDPOINT = "https://character-service.dndbeyond.com/character/v5/character/{id}"
 
@@ -41,7 +41,7 @@ def fetch_character(character_id: int) -> dict:
     return payload["data"]
 
 
-def render_markdown(character: dict, slug: str) -> str:
+def render_markdown(character: dict, slug: str, character_id: int) -> str:
     stats = {s["id"]: s["value"] for s in character.get("stats", [])}
     # D&D Beyond ability score stat ids: 1 str, 2 dex, 3 con, 4 int, 5 wis, 6 cha
     ability_scores = {
@@ -55,17 +55,25 @@ def render_markdown(character: dict, slug: str) -> str:
     classes = character.get("classes", [])
     class_name = classes[0]["definition"]["name"] if classes else "Unknown"
     level = sum(c.get("level", 0) for c in classes) or 1
-    race_name = (character.get("race") or {}).get("fullName", "Unknown")
+    species_name = (character.get("race") or {}).get("fullName", "Unknown")
     name = character.get("name", slug)
 
     front_matter = {
         "title": name,
-        "race": race_name,
+        "type": "characters",
+        "species": species_name,
         "class": class_name,
         "level": level,
         "ability_scores": ability_scores,
+        "ddb_url": f"https://www.dndbeyond.com/characters/{character_id}",
     }
-    return "---\n" + yaml.safe_dump(front_matter, sort_keys=False) + "---\n"
+    return "---\n" + yaml.safe_dump(front_matter, sort_keys=False, allow_unicode=True) + "---\n"
+
+
+def character_output_path(campaign_slug: str, slug: str) -> Path:
+    out_dir = CAMPAIGNS_DIR / campaign_slug / "characters"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir / f"{slug}.md"
 
 
 def main() -> None:
@@ -74,15 +82,15 @@ def main() -> None:
         print("no characters in data/public_characters.yaml — nothing to fetch")
         return
 
-    CHARACTERS_DIR.mkdir(parents=True, exist_ok=True)
     failures = 0
     for entry in allowlist:
         character_id = entry["id"]
         slug = entry["slug"]
         try:
+            campaign_slug = entry["campaign"]
             character = fetch_character(character_id)
-            markdown = render_markdown(character, slug)
-            (CHARACTERS_DIR / f"{slug}.md").write_text(markdown)
+            markdown = render_markdown(character, slug, character_id)
+            character_output_path(campaign_slug, slug).write_text(markdown)
             print(f"fetched: {slug} (id={character_id})")
         except Exception as exc:
             failures += 1

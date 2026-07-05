@@ -1,0 +1,142 @@
+{{ define "main" }}
+  {{ $slug := .File.ContentBaseName }}
+  <div class="hub-topline">
+    <h1>{{ .Title }}</h1>
+    <a class="hub-hero-back" href="{{ .Site.Home.RelPermalink }}">&larr; All campaigns</a>
+  </div>
+
+  {{ with .Content }}<div class="hub-summary">{{ . }}</div>{{ end }}
+
+  {{ $related := .RegularPagesRecursive }}
+  {{ $sessions := where $related "Type" "sessions" }}
+  {{ $quests := where $related "Type" "quests" }}
+  {{ $lore := where $related "Type" "lore" }}
+  {{ $characters := where $related "Type" "characters" }}
+  {{ $npcs := where $related "Type" "npcs" }}
+  {{ $locations := where $related "Type" "locations" }}
+  {{ $images := where $related "Type" "images" }}
+  {{ $misc := where $related "Type" "misc" }}
+
+  <div class="hub-tabs">
+    <input type="radio" name="hub-tab" id="tab-sessions" class="hub-tab-radio" checked>
+    <label for="tab-sessions" class="hub-tab-label">Sessions</label>
+    <input type="radio" name="hub-tab" id="tab-quests" class="hub-tab-radio">
+    <label for="tab-quests" class="hub-tab-label">Quests</label>
+    <input type="radio" name="hub-tab" id="tab-lore" class="hub-tab-radio">
+    <label for="tab-lore" class="hub-tab-label">Lore</label>
+    <input type="radio" name="hub-tab" id="tab-characters" class="hub-tab-radio">
+    <label for="tab-characters" class="hub-tab-label">Characters</label>
+    <input type="radio" name="hub-tab" id="tab-locations" class="hub-tab-radio">
+    <label for="tab-locations" class="hub-tab-label">Locations</label>
+    <input type="radio" name="hub-tab" id="tab-images" class="hub-tab-radio">
+    <label for="tab-images" class="hub-tab-label">Images</label>
+    <input type="radio" name="hub-tab" id="tab-misc" class="hub-tab-radio">
+    <label for="tab-misc" class="hub-tab-label">Misc.</label>
+
+    <div class="hub-panel" id="panel-sessions">
+      {{ range $sessions.ByDate }}
+        <article class="hub-entry">
+          <h3>{{ .Title }}{{ if not .Date.IsZero }}<span class="entry-date">{{ .Date.Format "Jan 2, 2006" }}</span>{{ end }}</h3>
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">No sessions yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-quests">
+      {{ range $quests.ByTitle }}
+        <article class="hub-entry">
+          {{ if ne .Title "Quest Log" }}<h3>{{ .Title }}</h3>{{ end }}
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">No quests yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-lore">
+      {{ range $lore.ByTitle }}
+        <article class="hub-entry">
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">No lore yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-characters">
+      <h2>Playable Characters</h2>
+      {{ range $characters.ByTitle }}
+        <article class="hub-entry">
+          <h3>{{ .Title }}</h3>
+          <p class="entry-date">
+            {{ with .Params.species }}{{ . }} {{ end }}{{ with .Params.class }}{{ . }}{{ end }}{{ with .Params.level }} &middot; Level {{ . }}{{ end }}
+          </p>
+          {{ with .Params.ddb_url }}<p><a href="{{ . }}" target="_blank" rel="noopener">View on D&amp;D Beyond &rarr;</a></p>{{ end }}
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">No characters yet.</p>
+      {{ end }}
+
+      <h2>NPCs</h2>
+      {{ range $npcs.ByTitle }}
+        <article class="hub-entry">
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">No NPCs yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-locations">
+      {{ range $locations.ByTitle }}
+        <article class="hub-entry">
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">No locations yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-images">
+      {{ with $images.ByTitle }}
+        <div class="hub-gallery">
+          {{ range . }}
+            <figure class="hub-gallery-item">
+              <a href="#{{ printf "lightbox-%s" .File.ContentBaseName }}">
+                <img src="{{ .Params.image }}" alt="{{ .Title }}">
+              </a>
+              <figcaption>{{ .Title }}</figcaption>
+            </figure>
+          {{ end }}
+        </div>
+      {{ else }}
+        <p class="entry-date">No images yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-misc">
+      {{ range $misc.ByTitle }}
+        <article class="hub-entry">
+          <h3>{{ .Title }}</h3>
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">Nothing here yet.</p>
+      {{ end }}
+    </div>
+  </div>
+{{ end }}
+
+{{ define "overlays" }}
+  {{ $images := where .RegularPagesRecursive "Type" "images" }}
+  {{ range $images.ByTitle }}
+    <div class="lightbox" id="{{ printf "lightbox-%s" .File.ContentBaseName }}">
+      <a href="#" class="lightbox-backdrop" aria-label="Close"></a>
+      <img src="{{ .Params.image }}" alt="{{ .Title }}">
+      <a href="#" class="lightbox-close" aria-label="Close">&times;</a>
+    </div>
+  {{ end }}
+{{ end }}
