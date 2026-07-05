@@ -13,4 +13,7 @@
 #   - id: 123456789
 #     slug: my-character
 #     campaign: thats-fair
-characters: []
+characters:
+  - id: 149228927
+    slug: tink
+    campaign: thats-fair
