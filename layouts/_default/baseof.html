@@ -8,13 +8,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
-  {{ with .Site.Params.background_image }}
+  {{ with .Params.hero_image }}
+    <style>
+      body { background-image: url('{{ . | relURL }}'); }
+    </style>
+  {{ else with .Site.Params.background_image }}
     <style>
       body { background-image: url('{{ . | relURL }}'); }
     </style>
   {{ end }}
 </head>
-<body{{ if .IsHome }} class="is-home"{{ else if eq .Layout "hub" }} class="is-hub"{{ end }}>
+<body{{ if .IsHome }} class="is-home"{{ end }}>
   <main class="wrap">
     {{ block "main" . }}{{ end }}
   </main>

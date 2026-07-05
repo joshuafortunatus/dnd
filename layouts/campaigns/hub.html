@@ -1,12 +1,8 @@
 {{ define "main" }}
   {{ $slug := .File.ContentBaseName }}
-  <div class="page-hero hub-hero" style="background-image: url('{{ .Params.hero_image | relURL }}');">
-    <div class="wrap page-hero-content">
-      <div class="hub-hero-topline">
-        <h1>{{ .Title }}</h1>
-        <a class="hub-hero-back" href="{{ .Site.Home.RelPermalink }}">&larr; All campaigns</a>
-      </div>
-    </div>
+  <div class="hub-topline">
+    <h1>{{ .Title }}</h1>
+    <a class="hub-hero-back" href="{{ .Site.Home.RelPermalink }}">&larr; All campaigns</a>
   </div>
 
   {{ with .Content }}<div class="hub-summary">{{ . }}</div>{{ end }}
@@ -22,24 +18,21 @@
   {{ $misc := where $related "Type" "misc" }}
 
   <div class="hub-tabs">
-    <div class="hub-tab-bar">
-      <input type="radio" name="hub-tab" id="tab-sessions" class="hub-tab-radio" checked>
-      <label for="tab-sessions" class="hub-tab-label">Sessions</label>
-      <input type="radio" name="hub-tab" id="tab-quests" class="hub-tab-radio">
-      <label for="tab-quests" class="hub-tab-label">Quests</label>
-      <input type="radio" name="hub-tab" id="tab-lore" class="hub-tab-radio">
-      <label for="tab-lore" class="hub-tab-label">Lore</label>
-      <input type="radio" name="hub-tab" id="tab-characters" class="hub-tab-radio">
-      <label for="tab-characters" class="hub-tab-label">Characters</label>
-      <input type="radio" name="hub-tab" id="tab-locations" class="hub-tab-radio">
-      <label for="tab-locations" class="hub-tab-label">Locations</label>
-      <input type="radio" name="hub-tab" id="tab-images" class="hub-tab-radio">
-      <label for="tab-images" class="hub-tab-label">Images</label>
-      <input type="radio" name="hub-tab" id="tab-misc" class="hub-tab-radio">
-      <label for="tab-misc" class="hub-tab-label">Misc.</label>
-    </div>
+    <input type="radio" name="hub-tab" id="tab-sessions" class="hub-tab-radio" checked>
+    <label for="tab-sessions" class="hub-tab-label">Sessions</label>
+    <input type="radio" name="hub-tab" id="tab-quests" class="hub-tab-radio">
+    <label for="tab-quests" class="hub-tab-label">Quests</label>
+    <input type="radio" name="hub-tab" id="tab-lore" class="hub-tab-radio">
+    <label for="tab-lore" class="hub-tab-label">Lore</label>
+    <input type="radio" name="hub-tab" id="tab-characters" class="hub-tab-radio">
+    <label for="tab-characters" class="hub-tab-label">Characters</label>
+    <input type="radio" name="hub-tab" id="tab-locations" class="hub-tab-radio">
+    <label for="tab-locations" class="hub-tab-label">Locations</label>
+    <input type="radio" name="hub-tab" id="tab-images" class="hub-tab-radio">
+    <label for="tab-images" class="hub-tab-label">Images</label>
+    <input type="radio" name="hub-tab" id="tab-misc" class="hub-tab-radio">
+    <label for="tab-misc" class="hub-tab-label">Misc.</label>
 
-  <div class="hub-scroll">
     <div class="hub-panel" id="panel-sessions">
       {{ range $sessions.ByDate }}
         <article class="hub-entry">
@@ -134,7 +127,6 @@
         <p class="entry-date">Nothing here yet.</p>
       {{ end }}
     </div>
-  </div>
   </div>
 {{ end }}
 
