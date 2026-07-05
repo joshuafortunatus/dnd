@@ -1,0 +1,88 @@
+:root {
+  color-scheme: dark;
+  --bg: #14110f;
+  --bg-raised: #1d1a17;
+  --text: #e8e2d8;
+  --text-dim: #a89f92;
+  --accent: #c9a227;
+  --border: #34302a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Iowan Old Style", Charter, Georgia, serif;
+  line-height: 1.6;
+}
+
+.wrap {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.site-header {
+  border-bottom: 1px solid var(--border);
+  padding: 1.25rem 0;
+}
+.site-header .wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.site-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: var(--text);
+}
+.site-header nav a { margin-left: 1rem; }
+.site-header nav a:first-child { margin-left: 0; }
+
+main.wrap { padding-top: 2rem; padding-bottom: 3rem; min-height: 60vh; }
+
+.subtitle { color: var(--text-dim); margin-top: -0.5rem; }
+
+.entry-list { list-style: none; padding: 0; }
+.entry-list li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+.entry-date, .tags { color: var(--text-dim); font-size: 0.9rem; }
+
+.tag {
+  display: inline-block;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
+  margin-right: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.stat-block {
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+.stat-block th, .stat-block td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.8rem;
+  text-align: center;
+}
+.stat-block th { background: var(--bg-raised); }
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 1.25rem 0;
+}

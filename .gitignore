@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Hugo
+public/
+resources/
+hugo_stats.json
+.hugo_build.lock

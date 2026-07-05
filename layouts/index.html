@@ -1,0 +1,10 @@
+{{ define "main" }}
+  <h1>{{ .Site.Title }}</h1>
+  <p class="subtitle">{{ .Site.Params.subtitle }}</p>
+  {{ .Content }}
+  <ul class="entry-list">
+    {{ range .Site.Menus.main }}
+      <li><a href="{{ .URL | relURL }}">{{ .Name }}</a></li>
+    {{ end }}
+  </ul>
+{{ end }}
