@@ -22,7 +22,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ALLOWLIST_PATH = REPO_ROOT / "data" / "public_characters.yaml"
-CHARACTERS_DIR = REPO_ROOT / "content" / "characters"
+CAMPAIGNS_DIR = REPO_ROOT / "content" / "campaigns"
 
 CHARACTER_ENDPOINT = "https://character-service.dndbeyond.com/character/v5/character/{id}"
 
@@ -60,6 +60,7 @@ def render_markdown(character: dict, slug: str) -> str:
 
     front_matter = {
         "title": name,
+        "type": "characters",
         "race": race_name,
         "class": class_name,
         "level": level,
@@ -68,21 +69,27 @@ def render_markdown(character: dict, slug: str) -> str:
     return "---\n" + yaml.safe_dump(front_matter, sort_keys=False) + "---\n"
 
 
+def character_output_path(campaign_slug: str, slug: str) -> Path:
+    out_dir = CAMPAIGNS_DIR / campaign_slug / "characters"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir / f"{slug}.md"
+
+
 def main() -> None:
     allowlist = load_allowlist()
     if not allowlist:
         print("no characters in data/public_characters.yaml — nothing to fetch")
         return
 
-    CHARACTERS_DIR.mkdir(parents=True, exist_ok=True)
     failures = 0
     for entry in allowlist:
         character_id = entry["id"]
         slug = entry["slug"]
         try:
+            campaign_slug = entry["campaign"]
             character = fetch_character(character_id)
             markdown = render_markdown(character, slug)
-            (CHARACTERS_DIR / f"{slug}.md").write_text(markdown)
+            character_output_path(campaign_slug, slug).write_text(markdown)
             print(f"fetched: {slug} (id={character_id})")
         except Exception as exc:
             failures += 1

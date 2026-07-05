@@ -6,13 +6,21 @@ service account must be shared as a viewer on the target Drive folder.
 
 Config: DRIVE_FOLDER_ID env var (or --folder-id) points at the root folder to
 sync. Within that folder:
-  - Google Docs directly in the root default to content/sessions/. To route
-    docs elsewhere, put them in a Drive subfolder named "Sessions", "Quests",
-    or "Lore" (case-insensitive) — nested subfolders inherit their parent's
-    section unless they're themselves named one of those three.
+  - Google Docs directly in the root default to
+    content/campaigns/<slug>/sessions/. To route docs elsewhere, put them in
+    a Drive subfolder named "Sessions", "Quests", or "Lore" (case-insensitive)
+    — nested subfolders inherit their parent's section unless they're
+    themselves named one of those three.
   - Every image is downloaded into static/images/ AND gets a small content
-    stub written under content/images/, so the site's Images tab can list
-    all of a campaign's images regardless of which Drive subfolder they're in.
+    stub written under content/campaigns/<slug>/images/, so the site's Images
+    tab can list all of a campaign's images regardless of which Drive
+    subfolder they're in.
+
+All content lives under content/campaigns/<slug>/ so campaigns stay
+independent as more of them get added — a page's kind (session, quest,
+image, ...) is tracked via an explicit `type` front matter field rather
+than its directory, since Hugo's Section is always the top-level
+content/ directory name ("campaigns") for everything nested this way.
 
 Re-running only rewrites a file if Drive's modifiedTime is newer than the
 last synced copy (tracked in data/.drive_sync_state.json).
@@ -39,9 +47,8 @@ from googleapiclient.http import MediaIoBaseDownload
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = REPO_ROOT / "data" / ".drive_sync_state.json"
-CONTENT_DIR = REPO_ROOT / "content"
+CAMPAIGNS_DIR = REPO_ROOT / "content" / "campaigns"
 IMAGES_DIR = REPO_ROOT / "static" / "images"
-IMAGES_CONTENT_DIR = REPO_ROOT / "content" / "images"
 
 GOOGLE_DOC_MIME = "application/vnd.google-apps.document"
 GOOGLE_FOLDER_MIME = "application/vnd.google-apps.folder"
@@ -179,11 +186,11 @@ def sync_folder(
             if content_mime == GOOGLE_DOC_MIME:
                 body = export_doc_markdown(service, content_id)
                 body = extract_inline_images(body, slug)
-                out_dir = CONTENT_DIR / section / campaign_slug
+                out_dir = CAMPAIGNS_DIR / campaign_slug / section
                 out_dir.mkdir(parents=True, exist_ok=True)
                 front_matter = {
                     "title": entry["name"],
-                    "campaigns_tag": [campaign_slug],
+                    "type": section,
                 }
                 out_path = out_dir / f"{slug}.md"
                 out_path.write_text(
@@ -207,12 +214,12 @@ def sync_folder(
 
 def write_image_stub(campaign_slug: str, name: str, slug: str, image_path: Path) -> None:
     """Write a lightweight content page for a synced image so the site's Images tab
-    can list it via the same Section-based lookup used for sessions/quests/etc."""
-    out_dir = IMAGES_CONTENT_DIR / campaign_slug
+    can list it via the same type-based lookup used for sessions/quests/etc."""
+    out_dir = CAMPAIGNS_DIR / campaign_slug / "images"
     out_dir.mkdir(parents=True, exist_ok=True)
     front_matter = {
         "title": name,
-        "campaigns_tag": [campaign_slug],
+        "type": "images",
         "image": f"{site_base_path()}/images/{image_path.name}",
     }
     (out_dir / f"{slug}.md").write_text("---\n" + yaml.safe_dump(front_matter, sort_keys=False) + "---\n")

@@ -1,6 +1,5 @@
 ---
 title: Phandalin.jpeg
-campaigns_tag:
-- thats-fair
+type: images
 image: /dnd/images/phandalin-jpeg.jpeg
 ---

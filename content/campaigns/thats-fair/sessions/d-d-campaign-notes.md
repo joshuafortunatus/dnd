@@ -1,7 +1,6 @@
 ---
 title: D&D Campaign Notes
-campaigns_tag:
-- thats-fair
+type: sessions
 ---
 
 # Summary

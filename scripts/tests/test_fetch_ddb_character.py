@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fetch_ddb_character import load_allowlist, render_markdown
+from fetch_ddb_character import character_output_path, load_allowlist, render_markdown
 
 SAMPLE_CHARACTER = {
     "name": "Thalia Nightshade",
@@ -25,6 +25,7 @@ def test_render_markdown_includes_front_matter_fields():
 
     assert markdown.startswith("---\n")
     assert "title: Thalia Nightshade" in markdown
+    assert "type: characters" in markdown
     assert "race: Half-Elf" in markdown
     assert "class: Wizard" in markdown
     assert "level: 5" in markdown
@@ -39,12 +40,21 @@ def test_render_markdown_falls_back_when_fields_missing():
     assert "level: 1" in markdown
 
 
+def test_character_output_path_nests_under_campaign(tmp_path, monkeypatch):
+    monkeypatch.setattr("fetch_ddb_character.CAMPAIGNS_DIR", tmp_path)
+
+    path = character_output_path("thats-fair", "thalia")
+
+    assert path == tmp_path / "thats-fair" / "characters" / "thalia.md"
+    assert path.parent.is_dir()
+
+
 def test_load_allowlist_reads_characters_list(tmp_path, monkeypatch):
     allowlist_path = tmp_path / "public_characters.yaml"
-    allowlist_path.write_text("characters:\n  - id: 123\n    slug: thalia\n")
+    allowlist_path.write_text("characters:\n  - id: 123\n    slug: thalia\n    campaign: thats-fair\n")
     monkeypatch.setattr("fetch_ddb_character.ALLOWLIST_PATH", allowlist_path)
 
-    assert load_allowlist() == [{"id": 123, "slug": "thalia"}]
+    assert load_allowlist() == [{"id": 123, "slug": "thalia", "campaign": "thats-fair"}]
 
 
 def test_load_allowlist_empty_file_returns_empty_list(tmp_path, monkeypatch):

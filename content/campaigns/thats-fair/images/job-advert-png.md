@@ -1,6 +1,5 @@
 ---
 title: Job advert.png
-campaigns_tag:
-- thats-fair
+type: images
 image: /dnd/images/job-advert-png.png
 ---

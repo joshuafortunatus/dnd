@@ -10,14 +10,14 @@
 
   {{ with .Content }}<div class="hub-summary">{{ . }}</div>{{ end }}
 
-  {{ $related := where site.RegularPages "Params.campaigns_tag" "intersect" (slice $slug) }}
-  {{ $sessions := where $related "Section" "sessions" }}
-  {{ $quests := where $related "Section" "quests" }}
-  {{ $lore := where $related "Section" "lore" }}
-  {{ $characters := where $related "Section" "characters" }}
-  {{ $npcs := where $related "Section" "npcs" }}
-  {{ $locations := where $related "Section" "locations" }}
-  {{ $images := where $related "Section" "images" }}
+  {{ $related := .RegularPagesRecursive }}
+  {{ $sessions := where $related "Type" "sessions" }}
+  {{ $quests := where $related "Type" "quests" }}
+  {{ $lore := where $related "Type" "lore" }}
+  {{ $characters := where $related "Type" "characters" }}
+  {{ $npcs := where $related "Type" "npcs" }}
+  {{ $locations := where $related "Type" "locations" }}
+  {{ $images := where $related "Type" "images" }}
 
   <div class="hub-tabs">
     <input type="radio" name="hub-tab" id="tab-sessions" class="hub-tab-radio" checked>
@@ -27,7 +27,7 @@
     <input type="radio" name="hub-tab" id="tab-lore" class="hub-tab-radio">
     <label for="tab-lore" class="hub-tab-label">Lore</label>
     <input type="radio" name="hub-tab" id="tab-characters" class="hub-tab-radio">
-    <label for="tab-characters" class="hub-tab-label">Characters</label>
+    <label for="tab-characters" class="hub-tab-label">Playable Characters</label>
     <input type="radio" name="hub-tab" id="tab-npcs" class="hub-tab-radio">
     <label for="tab-npcs" class="hub-tab-label">NPCs</label>
     <input type="radio" name="hub-tab" id="tab-locations" class="hub-tab-radio">

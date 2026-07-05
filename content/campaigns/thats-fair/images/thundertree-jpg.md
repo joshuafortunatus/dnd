@@ -1,6 +1,5 @@
 ---
 title: Thundertree.jpg
-campaigns_tag:
-- thats-fair
+type: images
 image: /dnd/images/thundertree-jpg.jpg
 ---
