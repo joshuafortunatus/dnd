@@ -3,8 +3,6 @@ title: "Locations"
 type: locations
 ---
 
-Locations
-
 | Name | Type | Characteristics | Locale |
 | :---- | :---- | :---- | :---- |
 | Compton’s Crossing | Town / City | Metropolis, Industrious, Educated | Great Northern River |
@@ -22,5 +20,3 @@ Locations
 | Sleeping Giant | Business | Tavern | Phandalin |
 | Tresendar Manor | Former home/hideout | Hideout of the Red Brands Glasstaff in the west chambers Eyemonster underneath | Phandalin |
 | Wave Echo Cave | Coastal Cave |  | East of Phandalin |
-
-![Campaign Map](/dnd/images/campaigns/thats-fair/d-d-campaign-notes-inline-1.png)

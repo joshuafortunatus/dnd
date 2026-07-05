@@ -74,6 +74,15 @@ def test_split_doc_sections_separates_known_type_headings():
     assert sections["npcs"].strip() == "NPC table text."
 
 
+def test_split_doc_sections_strips_duplicate_label_line():
+    body = "# Locations\n\nLocations\n\n| Name |\n| :---- |\n| Phandalin |\n"
+
+    sections = dict(split_doc_sections(body))
+
+    assert "Locations\n\n" not in sections["locations"]
+    assert sections["locations"].startswith("| Name |")
+
+
 def test_split_doc_sections_no_headings_returns_single_default_bucket():
     body = "Just a plain doc with no headings at all."
 

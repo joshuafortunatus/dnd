@@ -3,8 +3,6 @@ title: "Quest Log"
 type: quests
 ---
 
-Quests
-
 - Deliver mining supplies to Phandalin ✔  
 - Find out what happened to Gundren and Sildar ✔  
   - Sildar was taken by goblins and held in a cave, rescued ✔  

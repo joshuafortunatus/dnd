@@ -1,6 +1,6 @@
 ---
 title: Hook For 8/16
-type: quests
+type: misc
 ---
 
 Upon achieving your honorific at the Grand Mechanicum, you are eager to get out into the world to test your theories on the nature of magic. However, you have not quite found the correct opportunity to do so yet. So you take a position working in the auxiliary workshop at the school. One morning as you are tinkering about in the shop, a letter arrives addressed to you.

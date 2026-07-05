@@ -24,7 +24,7 @@ body {
   background-attachment: fixed;
   color: var(--text);
   font-family: "Alegreya", "Iowan Old Style", Charter, Georgia, serif;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   line-height: 1.6;
 }
 
@@ -72,15 +72,22 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin: 1.5rem 0;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
 }
 th, td {
-  border: 1px solid var(--border);
-  padding: 0.5rem 0.75rem;
+  padding: 0.65rem 0.9rem;
   text-align: left;
   vertical-align: top;
 }
-th { background: var(--bg-raised); }
+thead th {
+  background: var(--bg-raised);
+  color: var(--accent);
+  font-weight: bold;
+  border-bottom: 2px solid var(--accent);
+}
+tbody td { border-bottom: 1px solid var(--border); }
+tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.03); }
+tbody tr:hover { background: rgba(201, 162, 39, 0.1); }
 
 .stat-block {
   border-collapse: collapse;
@@ -182,7 +189,8 @@ body.is-home {
 #tab-characters:checked ~ #panel-characters,
 #tab-npcs:checked ~ #panel-npcs,
 #tab-locations:checked ~ #panel-locations,
-#tab-images:checked ~ #panel-images {
+#tab-images:checked ~ #panel-images,
+#tab-misc:checked ~ #panel-misc {
   display: block;
 }
 

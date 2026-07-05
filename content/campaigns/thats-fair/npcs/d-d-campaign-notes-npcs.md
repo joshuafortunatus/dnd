@@ -3,8 +3,6 @@ title: "NPCs"
 type: npcs
 ---
 
-NPCs
-
 | Name | Profession | Characteristics | Locale | Current Villain Status |
 | :---- | :---- | :---- | :---- | :---- |
 | Gundren Rockseeker | CEO/Owner | Owns Frontier Mining Co. | Phandalin | Not suspicious |

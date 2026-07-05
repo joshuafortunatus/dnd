@@ -18,6 +18,7 @@
   {{ $npcs := where $related "Type" "npcs" }}
   {{ $locations := where $related "Type" "locations" }}
   {{ $images := where $related "Type" "images" }}
+  {{ $misc := where $related "Type" "misc" }}
 
   <div class="hub-tabs">
     <input type="radio" name="hub-tab" id="tab-sessions" class="hub-tab-radio" checked>
@@ -34,6 +35,8 @@
     <label for="tab-locations" class="hub-tab-label">Locations</label>
     <input type="radio" name="hub-tab" id="tab-images" class="hub-tab-radio">
     <label for="tab-images" class="hub-tab-label">Images</label>
+    <input type="radio" name="hub-tab" id="tab-misc" class="hub-tab-radio">
+    <label for="tab-misc" class="hub-tab-label">Misc.</label>
 
     <div class="hub-panel" id="panel-sessions">
       {{ range $sessions.ByDate }}
@@ -119,6 +122,17 @@
         </div>
       {{ else }}
         <p class="entry-date">No images yet.</p>
+      {{ end }}
+    </div>
+
+    <div class="hub-panel" id="panel-misc">
+      {{ range $misc.ByTitle }}
+        <article class="hub-entry">
+          <h3>{{ .Title }}</h3>
+          {{ .Content }}
+        </article>
+      {{ else }}
+        <p class="entry-date">Nothing here yet.</p>
       {{ end }}
     </div>
   </div>

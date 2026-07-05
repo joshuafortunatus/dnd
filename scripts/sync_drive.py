@@ -60,7 +60,7 @@ GOOGLE_SHORTCUT_MIME = "application/vnd.google-apps.shortcut"
 
 # Every kind of page a campaign can have. Used both for Drive-subfolder-name
 # routing and for splitting a single doc's own top-level ("# Heading") sections.
-KNOWN_TYPES = {"sessions", "quests", "lore", "npcs", "locations", "characters"}
+KNOWN_TYPES = {"sessions", "quests", "lore", "npcs", "locations", "characters", "misc"}
 DEFAULT_DOC_SECTION = "sessions"
 TYPE_TITLES = {
     "sessions": "Sessions",
@@ -68,6 +68,7 @@ TYPE_TITLES = {
     "lore": "Lore",
     "npcs": "NPCs",
     "locations": "Locations",
+    "misc": "Misc.",
     "characters": "Playable Characters",
 }
 
@@ -105,6 +106,18 @@ def extract_inline_images(body: str, slug: str, campaign_slug: str) -> str:
     return INLINE_IMAGE_RE.sub(replace, body)
 
 
+def _strip_duplicate_label(header_text: str, content: str) -> str:
+    """Docs sometimes repeat the heading as a plain-text line right below it
+    (e.g. "# Locations" followed by a bare "Locations" line before the real
+    content) — drop that redundant echo since the page's own title already
+    shows it."""
+    lines = content.lstrip("\n").split("\n", 1)
+    first_line = lines[0].strip()
+    if first_line.lower() == header_text.lower() and len(lines) > 1:
+        return lines[1]
+    return content
+
+
 def split_doc_sections(body: str) -> list[tuple[str | None, str]]:
     """Split a doc on its own top-level "# Heading" markers. A heading whose text
     (case-insensitive) matches a known type becomes its own section; everything else
@@ -128,7 +141,7 @@ def split_doc_sections(body: str) -> list[tuple[str | None, str]]:
         content = parts[i + 1] if i + 1 < len(parts) else ""
         key = header_text.lower()
         if key in KNOWN_TYPES:
-            add(key, content)
+            add(key, _strip_duplicate_label(header_text, content))
         else:
             add(None, f"# {header_text}\n{content}")
 
