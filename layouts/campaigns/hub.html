@@ -115,7 +115,9 @@
               <figcaption>{{ .Title }}</figcaption>
             </figure>
             <div class="lightbox" id="{{ $lightboxID }}">
-              <a class="lightbox-close" href="#"><img src="{{ .Params.image }}" alt="{{ .Title }}"></a>
+              <a href="#" class="lightbox-backdrop" aria-label="Close"></a>
+              <img src="{{ .Params.image }}" alt="{{ .Title }}">
+              <a href="#" class="lightbox-close" aria-label="Close">&times;</a>
             </div>
           {{ end }}
         </div>
