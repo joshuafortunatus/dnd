@@ -246,7 +246,7 @@ def sync_folder(
                         file_slug, title = slug, entry["name"]
                     else:
                         file_slug = f"{slug}-{effective_type}"
-                        title = f"{entry['name']} — {TYPE_TITLES.get(effective_type, effective_type.title())}"
+                        title = TYPE_TITLES.get(effective_type, effective_type.title())
                     front_matter = {"title": title, "type": effective_type}
                     out_path = out_dir / f"{file_slug}.md"
                     out_path.write_text(
@@ -268,13 +268,18 @@ def sync_folder(
     return changed
 
 
+def image_title(name: str) -> str:
+    """Turn a raw Drive filename like "job advert.png" into a display title like "Job Advert"."""
+    return Path(name).stem.title()
+
+
 def write_image_stub(campaign_slug: str, name: str, slug: str, image_path: Path) -> None:
     """Write a lightweight content page for a synced image so the site's Images tab
     can list it via the same type-based lookup used for sessions/quests/etc."""
     out_dir = CAMPAIGNS_DIR / campaign_slug / "images"
     out_dir.mkdir(parents=True, exist_ok=True)
     front_matter = {
-        "title": name,
+        "title": image_title(name),
         "type": "images",
         "image": f"{site_base_path()}/images/campaigns/{campaign_slug}/{image_path.name}",
     }

@@ -4,8 +4,6 @@ type: sessions
 date: '2026-02-21'
 ---
 
-Story:
-
 - Sildar binds Glasstaff and takes him back to Compton’s Crossing  
 - The Red Brands took map off of Gundren, providing details about Wave Echo Cave  
 - Tink takes Glasstaff’s glass staff \- the Staff of Defense  

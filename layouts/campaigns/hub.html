@@ -110,7 +110,9 @@
         <div class="hub-gallery">
           {{ range . }}
             <figure class="hub-gallery-item">
-              <img src="{{ .Params.image }}" alt="{{ .Title }}">
+              <a href="{{ .Params.image }}" target="_blank" rel="noopener">
+                <img src="{{ .Params.image }}" alt="{{ .Title }}">
+              </a>
               <figcaption>{{ .Title }}</figcaption>
             </figure>
           {{ end }}

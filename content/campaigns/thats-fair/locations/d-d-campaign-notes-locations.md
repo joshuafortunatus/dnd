@@ -1,5 +1,5 @@
 ---
-title: "D&D Campaign Notes — Locations"
+title: "Locations"
 type: locations
 ---
 

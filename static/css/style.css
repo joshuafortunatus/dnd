@@ -24,6 +24,7 @@ body {
   background-attachment: fixed;
   color: var(--text);
   font-family: "Alegreya", "Iowan Old Style", Charter, Georgia, serif;
+  font-size: 1.15rem;
   line-height: 1.6;
 }
 
@@ -71,7 +72,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin: 1.5rem 0;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 th, td {
   border: 1px solid var(--border);
@@ -135,6 +136,7 @@ body.is-home {
 .hub-hero {
   height: 40vh;
   min-height: 260px;
+  margin-bottom: 2rem;
   background-position: center top;
 }
 .hub-hero .page-hero-content { text-align: left; }
@@ -208,7 +210,9 @@ body.is-home {
   height: 160px;
   object-fit: cover;
   border-radius: 4px;
+  transition: opacity 0.15s ease;
 }
+.hub-gallery-item a:hover img { opacity: 0.85; }
 .hub-gallery-item figcaption {
   margin-top: 0.4rem;
   color: var(--text-dim);

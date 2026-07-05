@@ -1,5 +1,5 @@
 ---
-title: "D&D Campaign Notes — NPCs"
+title: "NPCs"
 type: npcs
 ---
 

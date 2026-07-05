@@ -4,8 +4,6 @@ type: sessions
 date: '2025-10-26'
 ---
 
-Story:
-
 - After defeating the Red Brands’ ambush, they interrogate one of the gang members who gives up that Glasstaff, who heads the Red Brands, was hired by the Spider and is hiding at the manor.  
 - They stayed at Sister Garaele’s who gives them a sidequest to encounter a banshee.  
 - Townmaster Harbin Wester castigates the party for causing a raucous. The party becomes suspicious and asks Linene about Wester. She says to look for impropriety at his house.  

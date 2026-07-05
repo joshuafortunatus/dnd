@@ -1,5 +1,5 @@
 ---
-title: "D&D Campaign Notes — Lore"
+title: "Lore"
 type: lore
 ---
 

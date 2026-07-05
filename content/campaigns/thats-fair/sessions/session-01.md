@@ -4,8 +4,6 @@ type: sessions
 date: '2025-08-16'
 ---
 
-Story:
-
 - Arturo leaves the party in the middle of the night  
 - Nenkelde, Emen, and Thava see a [job advert](https://docs.google.com/document/d/1D1XyceBrsHIeZsy0i-FmmwdIcNPMIW8u4Js_Y0YvK7M/edit?tab=t.0) for adventuring from someone named Tink. They meet him at his workshop at the Grand Mechanicum to inquire about the job.  
 - Tink tells them they have to meet the benefactor \- a friend of Tink’s uncle named Gundren Rockseeker \- at the Driftwood Tavern, after 8receiving a [letter from Gundren](https://docs.google.com/document/d/1nKkRfmEmFIbc498It93h2Xg9fUTRJIMK5sZLK0l_PXo/edit?tab=t.0)  

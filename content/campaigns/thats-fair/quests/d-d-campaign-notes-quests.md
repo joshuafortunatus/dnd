@@ -1,5 +1,5 @@
 ---
-title: "D&D Campaign Notes — Quests"
+title: "Quest Log"
 type: quests
 ---
 
