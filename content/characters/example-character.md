@@ -5,7 +5,7 @@ player: "Player Name"
 race: "Human"
 class: "Fighter"
 level: 1
-campaigns_tag: ["example-campaign"]
+campaigns_tag: ["thats-fair"]
 ability_scores:
   str: 16
   dex: 12

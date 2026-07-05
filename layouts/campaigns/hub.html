@@ -1,0 +1,42 @@
+{{ define "main" }}
+  {{ $slug := .File.ContentBaseName }}
+  <p><a href="{{ "/" | relURL }}">&larr; All campaigns</a></p>
+
+  <h1>{{ .Title }}</h1>
+  {{ with .Params.system }}<p class="entry-date">{{ . }}</p>{{ end }}
+  {{ .Content }}
+
+  {{ $related := where site.RegularPages "Params.campaigns_tag" "intersect" (slice $slug) }}
+  {{ $sessions := where $related "Section" "sessions" }}
+  {{ $characters := where $related "Section" "characters" }}
+  {{ $npcs := where $related "Section" "npcs" }}
+  {{ $locations := where $related "Section" "locations" }}
+
+  {{ with $sessions }}
+    <h2>Sessions</h2>
+    <ul class="entry-list">
+      {{ range . }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ if not .Date.IsZero }}<span class="entry-date">{{ .Date.Format "Jan 2, 2006" }}</span>{{ end }}</li>{{ end }}
+    </ul>
+  {{ end }}
+
+  {{ with $characters }}
+    <h2>Characters</h2>
+    <ul class="entry-list">
+      {{ range . }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>{{ end }}
+    </ul>
+  {{ end }}
+
+  {{ with $npcs }}
+    <h2>NPCs</h2>
+    <ul class="entry-list">
+      {{ range . }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>{{ end }}
+    </ul>
+  {{ end }}
+
+  {{ with $locations }}
+    <h2>Locations</h2>
+    <ul class="entry-list">
+      {{ range . }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>{{ end }}
+    </ul>
+  {{ end }}
+{{ end }}

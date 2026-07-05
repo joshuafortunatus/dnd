@@ -1,7 +1,7 @@
 ---
 title: "Example NPC"
 date: 2026-07-05
-campaigns_tag: ["example-campaign"]
+campaigns_tag: ["thats-fair"]
 tags: ["npc"]
 ---
 

@@ -10,11 +10,19 @@
 
 * { box-sizing: border-box; }
 
+select, input, button, textarea {
+  font-family: inherit;
+}
+
 body {
   margin: 0;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--text);
-  font-family: "Iowan Old Style", Charter, Georgia, serif;
+  font-family: "Alegreya", "Iowan Old Style", Charter, Georgia, serif;
   line-height: 1.6;
 }
 
@@ -26,6 +34,14 @@ body {
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+.site-header,
+main.wrap,
+.site-footer {
+  background: rgba(20, 17, 15, 0.6);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
 
 .site-header {
   border-bottom: 1px solid var(--border);

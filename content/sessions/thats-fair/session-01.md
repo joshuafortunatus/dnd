@@ -1,7 +1,7 @@
 ---
 title: "Session 1: The Beginning"
 date: 2026-07-05
-campaigns_tag: ["example-campaign"]
+campaigns_tag: ["thats-fair"]
 tags: ["session-log"]
 ---
 

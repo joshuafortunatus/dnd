@@ -4,35 +4,10 @@ title = "Campaign Archive"
 
 [params]
   subtitle = "Notes, sessions, and characters from our D&D campaigns"
+  background_image = "images/backgrounds/site-bg.jpg"
 
 [taxonomies]
   tag = "tags"
-  campaign = "campaigns_tag"
-
-[[menu.main]]
-  name = "Campaigns"
-  url = "/campaigns/"
-  weight = 10
-
-[[menu.main]]
-  name = "Sessions"
-  url = "/sessions/"
-  weight = 20
-
-[[menu.main]]
-  name = "Characters"
-  url = "/characters/"
-  weight = 30
-
-[[menu.main]]
-  name = "NPCs"
-  url = "/npcs/"
-  weight = 40
-
-[[menu.main]]
-  name = "Locations"
-  url = "/locations/"
-  weight = 50
 
 [markup.goldmark.renderer]
   unsafe = true
