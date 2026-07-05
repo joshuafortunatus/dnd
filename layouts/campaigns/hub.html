@@ -107,18 +107,12 @@
       {{ with $images.ByTitle }}
         <div class="hub-gallery">
           {{ range . }}
-            {{ $lightboxID := printf "lightbox-%s" .File.ContentBaseName }}
             <figure class="hub-gallery-item">
-              <a href="#{{ $lightboxID }}">
+              <a href="#{{ printf "lightbox-%s" .File.ContentBaseName }}">
                 <img src="{{ .Params.image }}" alt="{{ .Title }}">
               </a>
               <figcaption>{{ .Title }}</figcaption>
             </figure>
-            <div class="lightbox" id="{{ $lightboxID }}">
-              <a href="#" class="lightbox-backdrop" aria-label="Close"></a>
-              <img src="{{ .Params.image }}" alt="{{ .Title }}">
-              <a href="#" class="lightbox-close" aria-label="Close">&times;</a>
-            </div>
           {{ end }}
         </div>
       {{ else }}
@@ -137,4 +131,15 @@
       {{ end }}
     </div>
   </div>
+{{ end }}
+
+{{ define "overlays" }}
+  {{ $images := where .RegularPagesRecursive "Type" "images" }}
+  {{ range $images.ByTitle }}
+    <div class="lightbox" id="{{ printf "lightbox-%s" .File.ContentBaseName }}">
+      <a href="#" class="lightbox-backdrop" aria-label="Close"></a>
+      <img src="{{ .Params.image }}" alt="{{ .Title }}">
+      <a href="#" class="lightbox-close" aria-label="Close">&times;</a>
+    </div>
+  {{ end }}
 {{ end }}
