@@ -165,7 +165,15 @@ body.is-home {
 
 .hub-summary { margin-top: 1.5rem; }
 
-.hub-tabs { margin-top: 2rem; }
+.hub-tabs {
+  position: relative;
+  z-index: 1;
+  margin-top: -4rem;
+  padding: 1.5rem 1.5rem 0;
+  background: var(--bg);
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -12px 24px rgba(0, 0, 0, 0.35);
+}
 .hub-tab-radio {
   position: absolute;
   opacity: 0;
@@ -190,14 +198,48 @@ body.is-home {
   margin-top: 0.5rem;
   border-top: 1px solid var(--border);
 }
-#tab-sessions:checked ~ #panel-sessions,
-#tab-quests:checked ~ #panel-quests,
-#tab-lore:checked ~ #panel-lore,
-#tab-characters:checked ~ #panel-characters,
-#tab-locations:checked ~ #panel-locations,
-#tab-images:checked ~ #panel-images,
-#tab-misc:checked ~ #panel-misc {
+.hub-tab-bar:has(#tab-sessions:checked) ~ .hub-scroll #panel-sessions,
+.hub-tab-bar:has(#tab-quests:checked) ~ .hub-scroll #panel-quests,
+.hub-tab-bar:has(#tab-lore:checked) ~ .hub-scroll #panel-lore,
+.hub-tab-bar:has(#tab-characters:checked) ~ .hub-scroll #panel-characters,
+.hub-tab-bar:has(#tab-locations:checked) ~ .hub-scroll #panel-locations,
+.hub-tab-bar:has(#tab-images:checked) ~ .hub-scroll #panel-images,
+.hub-tab-bar:has(#tab-misc:checked) ~ .hub-scroll #panel-misc {
   display: block;
+}
+
+/* Hub pages: hero + tab bar stay fixed on screen, only the active panel's
+   content scrolls — the outer page itself never scrolls. */
+body.is-hub { height: 100vh; overflow: hidden; }
+body.is-hub main.wrap {
+  height: 100vh;
+  padding-top: 0;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+body.is-hub .hub-hero {
+  flex: 0 0 auto;
+  height: 42vh;
+  min-height: 220px;
+  aspect-ratio: auto;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+body.is-hub .hub-tabs {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+body.is-hub .hub-tab-bar { flex: 0 0 auto; }
+body.is-hub .hub-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 2rem;
 }
 
 #panel-characters h2 {
