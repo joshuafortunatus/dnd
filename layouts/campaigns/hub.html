@@ -50,7 +50,7 @@
     <div class="hub-panel" id="panel-quests">
       {{ range $quests.ByTitle }}
         <article class="hub-entry">
-          <h3>{{ .Title }}</h3>
+          {{ if ne .Title "Quest Log" }}<h3>{{ .Title }}</h3>{{ end }}
           {{ .Content }}
         </article>
       {{ else }}
