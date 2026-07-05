@@ -25,10 +25,11 @@ jobs:
       - name: Sync Google Drive content
         env:
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
-          DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}
+          DRIVE_FOLDER_ID: ${{ secrets.THATS_FAIR_CAMPAIGN_DRIVE_ID }}
+          DRIVE_CAMPAIGN_SLUG: thats-fair
         run: |
           if [ -z "$DRIVE_FOLDER_ID" ]; then
-            echo "DRIVE_FOLDER_ID repo variable not set yet — skipping Drive sync."
+            echo "THATS_FAIR_CAMPAIGN_DRIVE_ID secret not set yet — skipping Drive sync."
           else
             python scripts/sync_drive.py
           fi

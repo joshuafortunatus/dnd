@@ -15,12 +15,15 @@ last synced copy (tracked in data/.drive_sync_state.json).
 
 from __future__ import annotations
 
+import base64
 import io
 import json
 import os
 import re
 import sys
+import tomllib
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 import yaml
@@ -36,6 +39,33 @@ IMAGES_DIR = REPO_ROOT / "static" / "images"
 
 GOOGLE_DOC_MIME = "application/vnd.google-apps.document"
 GOOGLE_FOLDER_MIME = "application/vnd.google-apps.folder"
+GOOGLE_SHORTCUT_MIME = "application/vnd.google-apps.shortcut"
+
+INLINE_IMAGE_RE = re.compile(r"data:image/(?P<ext>png|jpe?g|gif);base64,(?P<data>[A-Za-z0-9+/=]+)")
+
+
+def site_base_path() -> str:
+    """The baseURL's path segment (e.g. "/dnd"), so generated links work under GitHub Pages' repo subpath."""
+    config = tomllib.loads((REPO_ROOT / "hugo.toml").read_text())
+    return urlparse(config.get("baseURL", "")).path.rstrip("/")
+
+
+def extract_inline_images(body: str, slug: str) -> str:
+    """Google Docs export pasted screenshots as inline base64 data URIs, which bloats
+    the markdown file with megabytes of text. Pull each one out into a real file under
+    static/images/ and rewrite the reference to a normal path."""
+    base_path = site_base_path()
+    counter = 0
+
+    def replace(match: re.Match) -> str:
+        nonlocal counter
+        counter += 1
+        ext = "jpg" if match["ext"] == "jpeg" else match["ext"]
+        filename = f"{slug}-inline-{counter}.{ext}"
+        (IMAGES_DIR / filename).write_bytes(base64.b64decode(match["data"]))
+        return f"{base_path}/images/{filename}"
+
+    return INLINE_IMAGE_RE.sub(replace, body)
 
 
 def load_credentials() -> service_account.Credentials:
@@ -70,7 +100,7 @@ def list_children(service, folder_id: str) -> list[dict]:
             service.files()
             .list(
                 q=f"'{folder_id}' in parents and trashed = false",
-                fields="nextPageToken, files(id, name, mimeType, modifiedTime)",
+                fields="nextPageToken, files(id, name, mimeType, modifiedTime, shortcutDetails)",
                 pageToken=page_token,
             )
             .execute()
@@ -117,27 +147,41 @@ def sync_folder(service, folder_id: str, campaign_slug: str, state: dict) -> int
         if state.get(entry["id"]) == modified:
             continue  # unchanged since last sync
 
-        if entry["mimeType"] == GOOGLE_FOLDER_MIME:
-            changed += sync_folder(service, entry["id"], campaign_slug, state)
+        content_id, content_mime = entry["id"], entry["mimeType"]
+        if content_mime == GOOGLE_SHORTCUT_MIME:
+            target = entry.get("shortcutDetails") or {}
+            if not target.get("targetId"):
+                print(f"WARN: shortcut '{entry['name']}' has no target, skipping", file=sys.stderr)
+                continue
+            content_id, content_mime = target["targetId"], target.get("targetMimeType")
+
+        if content_mime == GOOGLE_FOLDER_MIME:
+            changed += sync_folder(service, content_id, campaign_slug, state)
+            state[entry["id"]] = modified
             continue
 
         slug = slugify(entry["name"])
-        if entry["mimeType"] == GOOGLE_DOC_MIME:
-            body = export_doc_markdown(service, entry["id"])
-            out_dir = SESSIONS_DIR / campaign_slug
-            out_dir.mkdir(parents=True, exist_ok=True)
-            front_matter = {
-                "title": entry["name"],
-                "campaigns_tag": [campaign_slug],
-            }
-            out_path = out_dir / f"{slug}.md"
-            out_path.write_text(
-                "---\n" + yaml.safe_dump(front_matter, sort_keys=False) + "---\n\n" + body
-            )
-        else:
-            ext = Path(entry["name"]).suffix or ""
-            out_path = IMAGES_DIR / f"{slug}{ext}"
-            download_binary(service, entry["id"], out_path)
+        try:
+            if content_mime == GOOGLE_DOC_MIME:
+                body = export_doc_markdown(service, content_id)
+                body = extract_inline_images(body, slug)
+                out_dir = SESSIONS_DIR / campaign_slug
+                out_dir.mkdir(parents=True, exist_ok=True)
+                front_matter = {
+                    "title": entry["name"],
+                    "campaigns_tag": [campaign_slug],
+                }
+                out_path = out_dir / f"{slug}.md"
+                out_path.write_text(
+                    "---\n" + yaml.safe_dump(front_matter, sort_keys=False) + "---\n\n" + body
+                )
+            else:
+                ext = Path(entry["name"]).suffix or ""
+                out_path = IMAGES_DIR / f"{slug}{ext}"
+                download_binary(service, content_id, out_path)
+        except Exception as exc:
+            print(f"WARN: failed to sync '{entry['name']}': {exc}", file=sys.stderr)
+            continue
 
         state[entry["id"]] = modified
         changed += 1

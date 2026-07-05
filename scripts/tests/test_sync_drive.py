@@ -1,9 +1,14 @@
+import base64
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sync_drive import load_state, save_state, slugify
+from sync_drive import extract_inline_images, load_state, save_state, slugify
+
+TINY_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
 
 
 def test_slugify_basic():
@@ -31,3 +36,23 @@ def test_load_state_missing_file_returns_empty_dict(tmp_path, monkeypatch):
     monkeypatch.setattr("sync_drive.STATE_PATH", tmp_path / "missing.json")
 
     assert load_state() == {}
+
+
+def test_extract_inline_images_writes_file_and_rewrites_reference(tmp_path, monkeypatch):
+    monkeypatch.setattr("sync_drive.IMAGES_DIR", tmp_path)
+    monkeypatch.setattr("sync_drive.site_base_path", lambda: "/dnd")
+    b64 = base64.b64encode(TINY_PNG).decode()
+    body = f"![][image1]\n\n[image1]: <data:image/png;base64,{b64}>\n"
+
+    result = extract_inline_images(body, slug="my-doc")
+
+    assert "data:image" not in result
+    assert "[image1]: </dnd/images/my-doc-inline-1.png>" in result
+    assert (tmp_path / "my-doc-inline-1.png").read_bytes() == TINY_PNG
+
+
+def test_extract_inline_images_leaves_body_unchanged_when_no_images(monkeypatch):
+    monkeypatch.setattr("sync_drive.site_base_path", lambda: "/dnd")
+    body = "Just some plain session notes, no images here."
+
+    assert extract_inline_images(body, slug="my-doc") == body
