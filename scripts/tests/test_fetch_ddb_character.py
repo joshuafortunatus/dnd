@@ -21,21 +21,22 @@ SAMPLE_CHARACTER = {
 
 
 def test_render_markdown_includes_front_matter_fields():
-    markdown = render_markdown(SAMPLE_CHARACTER, slug="thalia")
+    markdown = render_markdown(SAMPLE_CHARACTER, slug="thalia", character_id=123456789)
 
     assert markdown.startswith("---\n")
     assert "title: Thalia Nightshade" in markdown
     assert "type: characters" in markdown
-    assert "race: Half-Elf" in markdown
+    assert "species: Half-Elf" in markdown
     assert "class: Wizard" in markdown
     assert "level: 5" in markdown
+    assert "ddb_url: https://www.dndbeyond.com/characters/123456789" in markdown
 
 
 def test_render_markdown_falls_back_when_fields_missing():
-    markdown = render_markdown({}, slug="unnamed-npc")
+    markdown = render_markdown({}, slug="unnamed-npc", character_id=1)
 
     assert "title: unnamed-npc" in markdown
-    assert "race: Unknown" in markdown
+    assert "species: Unknown" in markdown
     assert "class: Unknown" in markdown
     assert "level: 1" in markdown
 

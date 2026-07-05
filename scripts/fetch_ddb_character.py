@@ -41,7 +41,7 @@ def fetch_character(character_id: int) -> dict:
     return payload["data"]
 
 
-def render_markdown(character: dict, slug: str) -> str:
+def render_markdown(character: dict, slug: str, character_id: int) -> str:
     stats = {s["id"]: s["value"] for s in character.get("stats", [])}
     # D&D Beyond ability score stat ids: 1 str, 2 dex, 3 con, 4 int, 5 wis, 6 cha
     ability_scores = {
@@ -55,16 +55,17 @@ def render_markdown(character: dict, slug: str) -> str:
     classes = character.get("classes", [])
     class_name = classes[0]["definition"]["name"] if classes else "Unknown"
     level = sum(c.get("level", 0) for c in classes) or 1
-    race_name = (character.get("race") or {}).get("fullName", "Unknown")
+    species_name = (character.get("race") or {}).get("fullName", "Unknown")
     name = character.get("name", slug)
 
     front_matter = {
         "title": name,
         "type": "characters",
-        "race": race_name,
+        "species": species_name,
         "class": class_name,
         "level": level,
         "ability_scores": ability_scores,
+        "ddb_url": f"https://www.dndbeyond.com/characters/{character_id}",
     }
     return "---\n" + yaml.safe_dump(front_matter, sort_keys=False) + "---\n"
 
@@ -88,7 +89,7 @@ def main() -> None:
         try:
             campaign_slug = entry["campaign"]
             character = fetch_character(character_id)
-            markdown = render_markdown(character, slug)
+            markdown = render_markdown(character, slug, character_id)
             character_output_path(campaign_slug, slug).write_text(markdown)
             print(f"fetched: {slug} (id={character_id})")
         except Exception as exc:

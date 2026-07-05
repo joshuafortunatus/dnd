@@ -72,6 +72,10 @@
       {{ range $characters.ByTitle }}
         <article class="hub-entry">
           <h3>{{ .Title }}</h3>
+          <p class="entry-date">
+            {{ with .Params.species }}{{ . }} {{ end }}{{ with .Params.class }}{{ . }}{{ end }}{{ with .Params.level }} &middot; Level {{ . }}{{ end }}
+          </p>
+          {{ with .Params.ddb_url }}<p><a href="{{ . }}" target="_blank" rel="noopener">View on D&amp;D Beyond &rarr;</a></p>{{ end }}
           {{ .Content }}
         </article>
       {{ else }}
