@@ -1,0 +1,5 @@
+google-api-python-client
+google-auth
+requests
+pyyaml
+html2text

@@ -1,0 +1,59 @@
+name: Sync content
+
+on:
+  schedule:
+    - cron: "0 12 * * *" # daily at noon UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Sync Google Drive content
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}
+        run: |
+          if [ -z "$DRIVE_FOLDER_ID" ]; then
+            echo "DRIVE_FOLDER_ID repo variable not set yet — skipping Drive sync."
+          else
+            python scripts/sync_drive.py
+          fi
+
+      - name: Fetch D&D Beyond characters
+        run: python scripts/fetch_ddb_character.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content/ static/images/ data/.drive_sync_state.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No content changes."
+            echo "changed=false" >> "$GITHUB_ENV"
+          else
+            git commit -m "sync: update campaign content"
+            git push
+            echo "changed=true" >> "$GITHUB_ENV"
+          fi
+
+      # Pushes made with the default GITHUB_TOKEN don't trigger other workflows,
+      # so explicitly kick off the deploy workflow when content actually changed.
+      - name: Trigger deploy
+        if: env.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml

@@ -1,0 +1,29 @@
+{{ define "main" }}
+  <article class="character-sheet">
+    <h1>{{ .Title }}</h1>
+    <p class="character-meta">
+      {{ with .Params.player }}Played by {{ . }} &middot; {{ end }}
+      {{ .Params.race }} {{ .Params.class }}, level {{ .Params.level }}
+    </p>
+
+    {{ with .Params.ability_scores }}
+      <table class="stat-block">
+        <thead>
+          <tr><th>STR</th><th>DEX</th><th>CON</th><th>INT</th><th>WIS</th><th>CHA</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ .str }}</td>
+            <td>{{ .dex }}</td>
+            <td>{{ .con }}</td>
+            <td>{{ .int }}</td>
+            <td>{{ .wis }}</td>
+            <td>{{ .cha }}</td>
+          </tr>
+        </tbody>
+      </table>
+    {{ end }}
+
+    {{ .Content }}
+  </article>
+{{ end }}
