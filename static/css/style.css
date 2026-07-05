@@ -187,12 +187,18 @@ body.is-home {
 #tab-quests:checked ~ #panel-quests,
 #tab-lore:checked ~ #panel-lore,
 #tab-characters:checked ~ #panel-characters,
-#tab-npcs:checked ~ #panel-npcs,
 #tab-locations:checked ~ #panel-locations,
 #tab-images:checked ~ #panel-images,
 #tab-misc:checked ~ #panel-misc {
   display: block;
 }
+
+#panel-characters h2 {
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+#panel-characters h2 + h2 { margin-top: 2.5rem; }
 
 .hub-entry { margin-bottom: 2.5rem; }
 .hub-entry:last-child { margin-bottom: 0; }
@@ -225,4 +231,22 @@ body.is-home {
   margin-top: 0.4rem;
   color: var(--text-dim);
   font-size: 0.85rem;
+}
+
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  background: rgba(0, 0, 0, 0.9);
+}
+.lightbox:target { display: flex; }
+.lightbox img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 4px;
 }

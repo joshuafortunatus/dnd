@@ -28,9 +28,7 @@
     <input type="radio" name="hub-tab" id="tab-lore" class="hub-tab-radio">
     <label for="tab-lore" class="hub-tab-label">Lore</label>
     <input type="radio" name="hub-tab" id="tab-characters" class="hub-tab-radio">
-    <label for="tab-characters" class="hub-tab-label">Playable Characters</label>
-    <input type="radio" name="hub-tab" id="tab-npcs" class="hub-tab-radio">
-    <label for="tab-npcs" class="hub-tab-label">NPCs</label>
+    <label for="tab-characters" class="hub-tab-label">Characters</label>
     <input type="radio" name="hub-tab" id="tab-locations" class="hub-tab-radio">
     <label for="tab-locations" class="hub-tab-label">Locations</label>
     <input type="radio" name="hub-tab" id="tab-images" class="hub-tab-radio">
@@ -63,7 +61,6 @@
     <div class="hub-panel" id="panel-lore">
       {{ range $lore.ByTitle }}
         <article class="hub-entry">
-          <h3>{{ .Title }}</h3>
           {{ .Content }}
         </article>
       {{ else }}
@@ -72,6 +69,7 @@
     </div>
 
     <div class="hub-panel" id="panel-characters">
+      <h2>Playable Characters</h2>
       {{ range $characters.ByTitle }}
         <article class="hub-entry">
           <h3>{{ .Title }}</h3>
@@ -84,12 +82,10 @@
       {{ else }}
         <p class="entry-date">No characters yet.</p>
       {{ end }}
-    </div>
 
-    <div class="hub-panel" id="panel-npcs">
+      <h2>NPCs</h2>
       {{ range $npcs.ByTitle }}
         <article class="hub-entry">
-          <h3>{{ .Title }}</h3>
           {{ .Content }}
         </article>
       {{ else }}
@@ -100,7 +96,6 @@
     <div class="hub-panel" id="panel-locations">
       {{ range $locations.ByTitle }}
         <article class="hub-entry">
-          <h3>{{ .Title }}</h3>
           {{ .Content }}
         </article>
       {{ else }}
@@ -112,12 +107,16 @@
       {{ with $images.ByTitle }}
         <div class="hub-gallery">
           {{ range . }}
+            {{ $lightboxID := printf "lightbox-%s" .File.ContentBaseName }}
             <figure class="hub-gallery-item">
-              <a href="{{ .Params.image }}" target="_blank" rel="noopener">
+              <a href="#{{ $lightboxID }}">
                 <img src="{{ .Params.image }}" alt="{{ .Title }}">
               </a>
               <figcaption>{{ .Title }}</figcaption>
             </figure>
+            <div class="lightbox" id="{{ $lightboxID }}">
+              <a class="lightbox-close" href="#"><img src="{{ .Params.image }}" alt="{{ .Title }}"></a>
+            </div>
           {{ end }}
         </div>
       {{ else }}
