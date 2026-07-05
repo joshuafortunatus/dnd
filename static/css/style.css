@@ -141,20 +141,27 @@ body.is-home {
 }
 
 .hub-hero {
-  height: 40vh;
-  min-height: 260px;
+  aspect-ratio: 1200 / 792;
+  height: auto;
   margin-bottom: 2rem;
-  background-position: center top;
 }
-.hub-hero .page-hero-content { text-align: left; }
-.hub-hero-back {
-  display: inline-block;
-  margin-bottom: 1rem;
-  color: var(--text-dim);
+.hub-hero .page-hero-content { text-align: left; width: 100%; }
+.hub-hero-topline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: rgba(80, 80, 80, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 6px;
 }
+.hub-hero-topline h1 { margin: 0; }
+.hub-hero-back { color: var(--text-dim); white-space: nowrap; }
 .hub-hero-back:hover { color: var(--accent); }
-.hub-hero h1 { font-size: 3rem; margin-bottom: 0.5rem; }
-.hub-hero .subtitle { font-size: 1.2rem; margin-bottom: 0; }
+.hub-hero h1 { font-size: 3rem; }
 
 .hub-summary { margin-top: 1.5rem; }
 

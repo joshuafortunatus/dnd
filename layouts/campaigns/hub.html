@@ -2,9 +2,10 @@
   {{ $slug := .File.ContentBaseName }}
   <div class="page-hero hub-hero" style="background-image: url('{{ .Params.hero_image | relURL }}');">
     <div class="wrap page-hero-content">
-      <a class="hub-hero-back" href="{{ "/" | relURL }}">&larr; All campaigns</a>
-      <h1>{{ .Title }}</h1>
-      {{ with .Params.system }}<p class="subtitle">{{ . }}</p>{{ end }}
+      <div class="hub-hero-topline">
+        <h1>{{ .Title }}</h1>
+        <a class="hub-hero-back" href="{{ "/" | relURL }}">&larr; All campaigns</a>
+      </div>
     </div>
   </div>
 
