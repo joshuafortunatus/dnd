@@ -67,18 +67,16 @@
 
     <div class="hub-panel" id="panel-characters">
       <h2>Playable Characters</h2>
-      {{ range $characters.ByTitle }}
-        <article class="hub-entry">
-          <h3>{{ .Title }}</h3>
-          <p class="entry-date">
-            {{ with .Params.species }}{{ . }} {{ end }}{{ with .Params.class }}{{ . }}{{ end }}{{ with .Params.level }} &middot; Level {{ . }}{{ end }}
-          </p>
-          {{ with .Params.ddb_url }}<p><a href="{{ . }}" target="_blank" rel="noopener">View on D&amp;D Beyond &rarr;</a></p>{{ end }}
-          {{ .Content }}
-        </article>
-      {{ else }}
-        <p class="entry-date">No characters yet.</p>
-      {{ end }}
+      <ul class="entry-list">
+        {{ range $characters.ByTitle }}
+          <li>
+            <span>{{ .Title }}</span>
+            {{ with .Params.ddb_url }}<a href="{{ . }}" target="_blank" rel="noopener">View on D&amp;D Beyond &rarr;</a>{{ end }}
+          </li>
+        {{ else }}
+          <li><span class="entry-date">No characters yet.</span></li>
+        {{ end }}
+      </ul>
 
       <h2>NPCs</h2>
       {{ range $npcs.ByTitle }}

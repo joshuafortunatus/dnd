@@ -39,7 +39,26 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
+      # The Pages backend occasionally fails the very first deployment
+      # attempt right after a push with a generic "try again later" error
+      # (observed consistently on push-triggered runs, not on manual
+      # workflow_dispatch reruns). Retry once in-job instead of requiring
+      # a manual re-run every time.
       - id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before retry
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 15
+
+      - id: deployment_retry
+        name: Retry deploy
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+
+      - name: Fail if both attempts failed
+        if: steps.deployment.outcome == 'failure' && steps.deployment_retry.outcome == 'failure'
+        run: exit 1
