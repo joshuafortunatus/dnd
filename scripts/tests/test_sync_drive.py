@@ -4,7 +4,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sync_drive import extract_inline_images, load_state, save_state, slugify, split_doc_sections
+from sync_drive import (
+    extract_inline_images,
+    load_campaigns,
+    load_state,
+    save_state,
+    slugify,
+    split_doc_sections,
+)
 
 TINY_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
@@ -91,3 +98,21 @@ def test_split_doc_sections_no_headings_returns_single_default_bucket():
     assert len(sections) == 1
     assert sections[0][0] is None
     assert sections[0][1].strip() == body
+
+
+def test_load_campaigns_reads_list(tmp_path, monkeypatch):
+    config_path = tmp_path / "campaigns.yaml"
+    config_path.write_text(
+        "campaigns:\n  - slug: thats-fair\n    drive_folder_id: \"abc123\"\n"
+    )
+    monkeypatch.setattr("sync_drive.CAMPAIGNS_CONFIG_PATH", config_path)
+
+    assert load_campaigns() == [{"slug": "thats-fair", "drive_folder_id": "abc123"}]
+
+
+def test_load_campaigns_empty_file_returns_empty_list(tmp_path, monkeypatch):
+    config_path = tmp_path / "campaigns.yaml"
+    config_path.write_text("")
+    monkeypatch.setattr("sync_drive.CAMPAIGNS_CONFIG_PATH", config_path)
+
+    assert load_campaigns() == []

@@ -4,8 +4,8 @@ Auth: expects a service-account JSON key in the GOOGLE_CREDENTIALS_JSON env var
 (same pattern used in this user's other repos, e.g. munibot/main.py). The
 service account must be shared as a viewer on the target Drive folder.
 
-Config: DRIVE_FOLDER_ID env var (or --folder-id) points at the root folder to
-sync. Within that folder:
+Config: data/campaigns.yaml lists every campaign to sync, each with its own
+Drive folder ID (see that file for how to add a new one). Within a folder:
   - Google Docs directly in the root default to
     content/campaigns/<slug>/sessions/. To route a whole doc elsewhere, put it
     in a Drive subfolder named after a known type (see KNOWN_TYPES below,
@@ -51,6 +51,7 @@ from googleapiclient.http import MediaIoBaseDownload
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = REPO_ROOT / "data" / ".drive_sync_state.json"
+CAMPAIGNS_CONFIG_PATH = REPO_ROOT / "data" / "campaigns.yaml"
 CAMPAIGNS_DIR = REPO_ROOT / "content" / "campaigns"
 STATIC_IMAGES_DIR = REPO_ROOT / "static" / "images"
 
@@ -154,6 +155,11 @@ def load_credentials() -> service_account.Credentials:
         raise SystemExit("GOOGLE_CREDENTIALS_JSON is not set — cannot authenticate to Drive.")
     info = json.loads(raw)
     return service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+
+
+def load_campaigns() -> list[dict]:
+    data = yaml.safe_load(CAMPAIGNS_CONFIG_PATH.read_text()) or {}
+    return data.get("campaigns") or []
 
 
 def load_state() -> dict:
@@ -300,18 +306,22 @@ def write_image_stub(campaign_slug: str, name: str, slug: str, image_path: Path)
 
 
 def main() -> None:
-    folder_id = os.environ.get("DRIVE_FOLDER_ID")
-    if not folder_id:
-        raise SystemExit("DRIVE_FOLDER_ID is not set — nothing to sync.")
-    campaign_slug = os.environ.get("DRIVE_CAMPAIGN_SLUG", "example-campaign")
+    campaigns = load_campaigns()
+    if not campaigns:
+        print("no campaigns configured in data/campaigns.yaml — nothing to sync")
+        return
 
     credentials = load_credentials()
     service = build("drive", "v3", credentials=credentials)
 
     state = load_state()
-    changed = sync_folder(service, folder_id, campaign_slug, state)
+    total_changed = 0
+    for campaign in campaigns:
+        changed = sync_folder(service, campaign["drive_folder_id"], campaign["slug"], state)
+        total_changed += changed
+        print(f"{campaign['slug']}: {changed} file(s) synced")
     save_state(state)
-    print(f"done: {changed} file(s) synced")
+    print(f"done: {total_changed} file(s) synced total")
 
 
 if __name__ == "__main__":
