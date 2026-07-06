@@ -16,9 +16,10 @@ Drive folder ID (see that file for how to add a new one). Within a folder:
     that type, instead of the whole doc landing in one section. Headings that
     don't match a known type stay bundled into the doc's own section.
   - Every image (including ones embedded inline as base64) is downloaded into
-    static/images/campaigns/<slug>/ AND gets a small content stub written
-    under content/campaigns/<slug>/images/, so the site's Images tab can list
-    all of a campaign's images regardless of which Drive subfolder they're in.
+    static/images/campaigns/<slug>/. Images have to live under static/ for
+    Hugo to serve them as real URLs — the site's Images tab lists them by
+    reading that directory directly at build time (readDir in hub.html)
+    rather than via a separate content stub page per image.
 
 All content lives under content/campaigns/<slug>/ so campaigns stay
 independent as more of them get added — a page's kind (session, quest,
@@ -273,9 +274,9 @@ def sync_folder(
                     )
             else:
                 ext = Path(entry["name"]).suffix or ""
-                image_path = campaign_images_dir(campaign_slug) / f"{slug}{ext}"
+                image_slug = slugify(Path(entry["name"]).stem)
+                image_path = campaign_images_dir(campaign_slug) / f"{image_slug}{ext}"
                 download_binary(service, content_id, image_path)
-                write_image_stub(campaign_slug, entry["name"], slug, image_path)
         except Exception as exc:
             print(f"WARN: failed to sync '{entry['name']}': {exc}", file=sys.stderr)
             continue
@@ -285,24 +286,6 @@ def sync_folder(
         print(f"synced: {entry['name']}")
 
     return changed
-
-
-def image_title(name: str) -> str:
-    """Turn a raw Drive filename like "job advert.png" into a display title like "Job Advert"."""
-    return Path(name).stem.title()
-
-
-def write_image_stub(campaign_slug: str, name: str, slug: str, image_path: Path) -> None:
-    """Write a lightweight content page for a synced image so the site's Images tab
-    can list it via the same type-based lookup used for sessions/quests/etc."""
-    out_dir = CAMPAIGNS_DIR / campaign_slug / "images"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    front_matter = {
-        "title": image_title(name),
-        "type": "images",
-        "image": f"{site_base_path()}/images/campaigns/{campaign_slug}/{image_path.name}",
-    }
-    (out_dir / f"{slug}.md").write_text("---\n" + yaml.safe_dump(front_matter, sort_keys=False, allow_unicode=True) + "---\n")
 
 
 def main() -> None:
