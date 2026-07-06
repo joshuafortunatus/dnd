@@ -34,14 +34,22 @@
     <label for="tab-misc" class="hub-tab-label">Misc.</label>
 
     <div class="hub-panel" id="panel-sessions">
-      {{ range $sessions.ByDate }}
-        <article class="hub-entry">
-          <h3>{{ .Title }}{{ if not .Date.IsZero }}<span class="entry-date">{{ .Date.Format "Jan 2, 2006" }}</span>{{ end }}</h3>
-          {{ .Content }}
-        </article>
-      {{ else }}
-        <p class="entry-date">No sessions yet.</p>
+      {{ if $sessions }}
+        <label class="sort-toggle">
+          <input type="checkbox" id="sessions-sort-newest">
+          Newest first
+        </label>
       {{ end }}
+      <div class="session-list">
+        {{ range $sessions.ByDate }}
+          <article class="hub-entry">
+            <h3>{{ .Title }}{{ if not .Date.IsZero }}<span class="entry-date">{{ .Date.Format "Jan 2, 2006" }}</span>{{ end }}</h3>
+            {{ .Content }}
+          </article>
+        {{ else }}
+          <p class="entry-date">No sessions yet.</p>
+        {{ end }}
+      </div>
     </div>
 
     <div class="hub-panel" id="panel-quests">

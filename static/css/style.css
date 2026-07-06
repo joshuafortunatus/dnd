@@ -188,6 +188,19 @@ body.is-home {
   display: block;
 }
 
+.sort-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+.sort-toggle input { cursor: pointer; }
+.session-list { display: flex; flex-direction: column; }
+.sort-toggle:has(input:checked) ~ .session-list { flex-direction: column-reverse; }
+
 #panel-characters h2 {
   padding-bottom: 0.5rem;
   margin-bottom: 1.5rem;
