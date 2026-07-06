@@ -22,12 +22,19 @@ jobs:
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
-      - name: Sync Google Drive content
+      - name: Sync Google Drive images
         env:
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         run: python scripts/sync_drive.py
 
+      - name: Sync Google Sheet content
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        run: python scripts/sync_sheet.py
+
       - name: Fetch D&D Beyond characters
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         run: python scripts/fetch_ddb_character.py
 
       - name: Commit changes

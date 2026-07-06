@@ -1,22 +1,29 @@
-# Every campaign synced from Google Drive. To add a new campaign:
+# Every campaign synced from Google Drive + Sheets. To add a new campaign:
 #
-#   1. Create (or find) a Google Drive folder for it.
-#   2. Share that folder as a Viewer with the sync service account
-#      (client_email in your GOOGLE_CREDENTIALS_JSON secret).
+#   1. Create a Google Drive folder with an "images" subfolder for images,
+#      and a Google Sheet for text content, using the "that's fair" folder
+#      and sheet as a template — one tab per type: sessions, quests, lore,
+#      notable_actions, characters, locations, skills_check_guide, misc. See
+#      scripts/sync_sheet.py's docstring for each tab's expected columns.
+#   2. Share both the folder and the sheet as a Viewer with the sync service
+#      account (client_email in your GOOGLE_CREDENTIALS_JSON secret).
 #   3. Add an entry below with the folder's ID (from its share URL:
-#      https://drive.google.com/drive/folders/<id>) and a slug.
+#      https://drive.google.com/drive/folders/<id>) and the sheet's ID (from
+#      its URL: https://docs.google.com/spreadsheets/d/<id>/edit).
 #   4. Scaffold the campaign page: hugo new campaigns/<slug>/_index.md
 #      (fill in hero_image with a real image under
 #      static/images/campaigns/<slug>/).
 #
-# That's it — the next sync (daily cron, or `python scripts/sync_drive.py`
-# locally) picks up the new folder automatically. Drive folder IDs aren't
-# sensitive, so they live here rather than as individual secrets; the
+# That's it — the next sync (daily cron, or running scripts/sync_drive.py
+# and scripts/sync_sheet.py locally) picks up the new campaign automatically.
+# Neither ID is sensitive, so they live here rather than as secrets; the
 # GOOGLE_CREDENTIALS_JSON service account key is the only real secret.
 #
 # campaigns:
 #   - slug: my-campaign
 #     drive_folder_id: "1AbCdEfGhIjKlMnOpQrStUvWxYz"
+#     sheet_id: "1AbCdEfGhIjKlMnOpQrStUvWxYz"
 campaigns:
   - slug: thats-fair
     drive_folder_id: "1CSWY_jJnNacrFx24SII3JAF4g0yupmLs"
+    sheet_id: "1OU8-uEP_AfjVd3GNaNi2hSVjVspmW9kLXzJzHNeux6U"

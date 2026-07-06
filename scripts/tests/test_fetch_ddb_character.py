@@ -3,7 +3,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fetch_ddb_character import character_output_path, load_allowlist, render_markdown
+from fetch_ddb_character import (
+    character_id_from_link,
+    character_output_path,
+    character_slug,
+    load_playable_character_ids,
+    render_markdown,
+)
 
 SAMPLE_CHARACTER = {
     "name": "Thalia Nightshade",
@@ -50,17 +56,44 @@ def test_character_output_path_nests_under_campaign(tmp_path, monkeypatch):
     assert path.parent.is_dir()
 
 
-def test_load_allowlist_reads_characters_list(tmp_path, monkeypatch):
-    allowlist_path = tmp_path / "public_characters.yaml"
-    allowlist_path.write_text("characters:\n  - id: 123\n    slug: thalia\n    campaign: thats-fair\n")
-    monkeypatch.setattr("fetch_ddb_character.ALLOWLIST_PATH", allowlist_path)
-
-    assert load_allowlist() == [{"id": 123, "slug": "thalia", "campaign": "thats-fair"}]
+def test_character_id_from_link_extracts_the_numeric_id():
+    assert character_id_from_link("https://www.dndbeyond.com/characters/149228927") == 149228927
 
 
-def test_load_allowlist_empty_file_returns_empty_list(tmp_path, monkeypatch):
-    allowlist_path = tmp_path / "public_characters.yaml"
-    allowlist_path.write_text("")
-    monkeypatch.setattr("fetch_ddb_character.ALLOWLIST_PATH", allowlist_path)
+def test_character_id_from_link_ignores_trailing_path_segment():
+    assert character_id_from_link("https://www.dndbeyond.com/characters/126491174/Z7AIQ9") == 126491174
 
-    assert load_allowlist() == []
+
+def test_character_id_from_link_returns_none_when_unparseable():
+    assert character_id_from_link("") is None
+    assert character_id_from_link("not a link") is None
+
+
+def test_character_slug_prefers_quoted_nickname():
+    assert character_slug('Bunco "Tink" Dalmarian', fallback="1") == "tink"
+
+
+def test_character_slug_falls_back_to_first_word_when_no_nickname():
+    assert character_slug("Nenkelde Ravenberry", fallback="1") == "nenkelde"
+
+
+def test_character_slug_falls_back_to_id_when_name_is_blank():
+    assert character_slug("", fallback="149228927") == "149228927"
+
+
+def test_load_playable_character_ids_filters_to_playable_rows(monkeypatch):
+    rows = [
+        {"type": "playable", "link": "https://www.dndbeyond.com/characters/111"},
+        {"type": "npc", "link": ""},
+        {"type": "playable", "link": "https://www.dndbeyond.com/characters/222/SomeSlug"},
+    ]
+    monkeypatch.setattr("fetch_ddb_character.read_tab", lambda service, sheet_id, tab: rows)
+
+    assert load_playable_character_ids(service=None, sheet_id="sheet-1") == [111, 222]
+
+
+def test_load_playable_character_ids_skips_unparseable_links(monkeypatch):
+    rows = [{"type": "playable", "link": "not a link"}]
+    monkeypatch.setattr("fetch_ddb_character.read_tab", lambda service, sheet_id, tab: rows)
+
+    assert load_playable_character_ids(service=None, sheet_id="sheet-1") == []

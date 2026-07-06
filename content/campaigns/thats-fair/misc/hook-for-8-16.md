@@ -1,5 +1,5 @@
 ---
-title: Hook For 8/16
+title: Hook for 8/16
 type: misc
 ---
 
@@ -19,4 +19,4 @@ Regards,
 
 Gundren
 
-Hearty friends? Well, Katherine Yrendi is certainly hearty of mind but she is committed to a project at the Planar Studies Institute attempting to map the Astral Plane and is unavailable for this kind of field work. Well, there are always adventurers passing through town, perhaps you can recruit some to join you…  
+Hearty friends? Well, Katherine Yrendi is certainly hearty of mind but she is committed to a project at the Planar Studies Institute attempting to map the Astral Plane and is unavailable for this kind of field work. Well, there are always adventurers passing through town, perhaps you can recruit some to join you…
