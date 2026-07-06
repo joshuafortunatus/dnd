@@ -1,0 +1,26 @@
+{{/*
+  Returns a slice of {name, title} for a campaign's gallery images, sorted by
+  title. Reads static/images/campaigns/<slug>/ directly at build time instead
+  of via a content stub per image — images have to live under static/ for
+  Hugo to serve them, so a separate content page just to list them would be
+  pure duplication.
+
+  Params: .slug (campaign slug) .heroImage (site-relative hero_image param,
+  may be empty) — excluded from the gallery since it's shown in the hero,
+  not the Images tab. Files with "-inline-" in the name (screenshots pasted
+  into a synced doc, embedded in that doc's own body) are excluded too.
+*/}}
+{{ $heroBase := "" }}
+{{ with .heroImage }}{{ $heroBase = path.Base . }}{{ end }}
+{{ $entries := slice }}
+{{ range (readDir (printf "static/images/campaigns/%s" .slug)) }}
+  {{ if not .IsDir }}
+    {{ $name := .Name }}
+    {{ if and (ne $name $heroBase) (not (in $name "-inline-")) }}
+      {{ $stem := strings.TrimSuffix (path.Ext $name) $name }}
+      {{ $title := replace $stem "-" " " | title }}
+      {{ $entries = $entries | append (dict "name" $name "title" $title) }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+{{ return sort $entries "title" }}

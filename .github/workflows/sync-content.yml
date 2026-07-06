@@ -31,23 +31,24 @@ jobs:
         run: python scripts/fetch_ddb_character.py
 
       - name: Commit changes
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add content/ static/images/ data/.drive_sync_state.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No content changes."
-            echo "changed=false" >> "$GITHUB_ENV"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "sync: update campaign content"
             git push
-            echo "changed=true" >> "$GITHUB_ENV"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       # Pushes made with the default GITHUB_TOKEN don't trigger other workflows,
       # so explicitly kick off the deploy workflow when content actually changed.
       - name: Trigger deploy
-        if: env.changed == 'true'
+        if: steps.commit.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run deploy.yml

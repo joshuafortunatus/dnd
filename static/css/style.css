@@ -135,6 +135,7 @@ body.is-home {
   z-index: 1;
   text-align: center;
 }
+.page-hero-symbol { display: inline-block; height: 5rem; width: auto; margin-bottom: 1rem; }
 .page-hero-content h1 { font-size: 4rem; margin-bottom: 0.75rem; }
 .page-hero-content .subtitle { font-size: 1.4rem; margin-bottom: 2rem; }
 .page-hero-content label { font-size: 1.2rem; }
@@ -144,6 +145,7 @@ body.is-home {
 }
 
 .hub-topline {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -151,6 +153,14 @@ body.is-home {
   gap: 1rem;
 }
 .hub-topline h1 { margin: 0; font-size: 2.5rem; }
+.hub-symbol {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height: 2.5rem;
+  width: auto;
+}
 .hub-hero-back { color: var(--text-dim); white-space: nowrap; }
 .hub-hero-back:hover { color: var(--accent); }
 
@@ -299,6 +309,7 @@ body.is-home {
     font-size: 1.05rem;
   }
   .hub-tab-label { display: none; }
+  .hub-symbol { display: none; }
 
   /* Wide tables (NPCs/Locations/etc.) would otherwise force the whole
      frosted content area to scroll sideways. Let the table itself scroll

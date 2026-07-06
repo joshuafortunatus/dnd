@@ -2,6 +2,7 @@
   {{ $slug := .File.ContentBaseName }}
   <div class="hub-topline">
     <h1>{{ .Title }}</h1>
+    <img class="hub-symbol" src="{{ "images/DnD-Symbol.png" | relURL }}" alt="">
     <a class="hub-hero-back" href="{{ .Site.Home.RelPermalink }}">&larr; All campaigns</a>
   </div>
 
@@ -14,7 +15,6 @@
   {{ $characters := where $related "Type" "characters" }}
   {{ $npcs := where $related "Type" "npcs" }}
   {{ $locations := where $related "Type" "locations" }}
-  {{ $images := where $related "Type" "images" }}
   {{ $misc := where $related "Type" "misc" }}
 
   <div class="hub-tabs">
@@ -117,14 +117,15 @@
     </div>
 
     <div class="hub-panel" id="panel-images">
-      {{ with $images.ByTitle }}
+      {{ $gallery := partial "campaign-gallery.html" (dict "slug" $slug "heroImage" .Params.hero_image) }}
+      {{ with $gallery }}
         <div class="hub-gallery">
           {{ range . }}
             <figure class="hub-gallery-item">
-              <a href="#{{ printf "lightbox-%s" .File.ContentBaseName }}">
-                <img src="{{ .Params.image }}" alt="{{ .Title }}">
+              <a href="#{{ printf "lightbox-%s" .name }}">
+                <img src="{{ printf "images/campaigns/%s/%s" $slug .name | relURL }}" alt="{{ .title }}">
               </a>
-              <figcaption>{{ .Title }}</figcaption>
+              <figcaption>{{ .title }}</figcaption>
             </figure>
           {{ end }}
         </div>
@@ -147,11 +148,12 @@
 {{ end }}
 
 {{ define "overlays" }}
-  {{ $images := where .RegularPagesRecursive "Type" "images" }}
-  {{ range $images.ByTitle }}
-    <div class="lightbox" id="{{ printf "lightbox-%s" .File.ContentBaseName }}">
+  {{ $slug := .File.ContentBaseName }}
+  {{ $gallery := partial "campaign-gallery.html" (dict "slug" $slug "heroImage" .Params.hero_image) }}
+  {{ range $gallery }}
+    <div class="lightbox" id="{{ printf "lightbox-%s" .name }}">
       <a href="#" class="lightbox-backdrop" aria-label="Close"></a>
-      <img src="{{ .Params.image }}" alt="{{ .Title }}">
+      <img src="{{ printf "images/campaigns/%s/%s" $slug .name | relURL }}" alt="{{ .title }}">
       <a href="#" class="lightbox-close" aria-label="Close">&times;</a>
     </div>
   {{ end }}
