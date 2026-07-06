@@ -2,6 +2,7 @@
   {{ $campaigns := where site.Pages "Layout" "hub" }}
   <div class="page-hero" style="background-image: url('{{ "images/home-banner.jpg" | relURL }}');">
     <div class="wrap page-hero-content">
+      <img class="page-hero-symbol" src="{{ "images/DnD-Symbol.png" | relURL }}" alt="">
       <h1>{{ .Site.Title }}</h1>
       <p class="subtitle">{{ .Site.Params.subtitle }}</p>
 
