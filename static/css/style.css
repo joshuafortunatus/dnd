@@ -285,9 +285,13 @@ body.is-home {
 }
 .lightbox-close:hover { color: var(--accent); }
 
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-height: 500px) and (max-width: 950px) and (orientation: landscape) {
   /* Seven tab labels wrap awkwardly on a narrow phone screen — swap to a
-     native select that drives the same hidden radios. */
+     native select that drives the same hidden radios. The landscape
+     condition is capped at 950px width so it only catches phones (which
+     top out around 930px wide in landscape) — iPads (1024px+), laptops,
+     and desktops keep the horizontal design no matter how short the
+     window gets. */
   .hub-tab-select {
     display: block;
     width: 100%;
