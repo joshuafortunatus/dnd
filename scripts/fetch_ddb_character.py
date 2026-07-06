@@ -5,31 +5,59 @@ character JSON endpoint community tools (ddb-proxy, Beyond20) rely on, which
 only returns data for characters whose D&D Beyond sharing setting is
 "Public". It is unofficial and may change or break without notice.
 
-Because this site is public, ONLY characters explicitly listed in
-data/public_characters.yaml are fetched or published — this is a safety
-default, not just config, since some characters may belong to other players
-who haven't agreed to have their sheet published here. Do not remove the
-allow-list check.
+Because this site is public, ONLY rows marked type="playable" in a campaign's
+Google Sheet "characters" tab are fetched or published — this is a safety
+default, not just config, since some rows may belong to other players who
+haven't agreed to have their sheet published here. Do not remove this filter.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
 import requests
 import yaml
 
+from sheets_client import build_service, read_tab
+from sync_drive import load_campaigns, slugify
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
-ALLOWLIST_PATH = REPO_ROOT / "data" / "public_characters.yaml"
 CAMPAIGNS_DIR = REPO_ROOT / "content" / "campaigns"
 
 CHARACTER_ENDPOINT = "https://character-service.dndbeyond.com/character/v5/character/{id}"
+CHARACTER_ID_RE = re.compile(r"/characters/(\d+)")
+NICKNAME_RE = re.compile(r'"([^"]+)"')
 
 
-def load_allowlist() -> list[dict]:
-    data = yaml.safe_load(ALLOWLIST_PATH.read_text()) or {}
-    return data.get("characters") or []
+def character_id_from_link(link: str) -> int | None:
+    match = CHARACTER_ID_RE.search(link)
+    return int(match.group(1)) if match else None
+
+
+def character_slug(name: str, fallback: str) -> str:
+    """Prefer a quoted nickname (e.g. 'Bunco "Tink" Dalmarian' -> "tink") since
+    that's what players actually go by; otherwise fall back to the first
+    word of the full name, then to the raw D&D Beyond character id."""
+    match = NICKNAME_RE.search(name)
+    if match:
+        return slugify(match.group(1))
+    first_word = name.split()[0] if name.split() else fallback
+    return slugify(first_word)
+
+
+def load_playable_character_ids(service, sheet_id: str) -> list[int]:
+    character_ids = []
+    for row in read_tab(service, sheet_id, "characters"):
+        if row.get("type", "").strip().lower() != "playable":
+            continue
+        character_id = character_id_from_link(row.get("link", ""))
+        if character_id is None:
+            print(f"WARN: playable row has no parseable D&D Beyond link: {row}", file=sys.stderr)
+            continue
+        character_ids.append(character_id)
+    return character_ids
 
 
 def fetch_character(character_id: int) -> dict:
@@ -77,27 +105,30 @@ def character_output_path(campaign_slug: str, slug: str) -> Path:
 
 
 def main() -> None:
-    allowlist = load_allowlist()
-    if not allowlist:
-        print("no characters in data/public_characters.yaml — nothing to fetch")
+    campaigns = load_campaigns()
+    if not campaigns:
+        print("no campaigns configured in data/campaigns.yaml — nothing to fetch")
         return
 
+    service = build_service()
+    fetched = 0
     failures = 0
-    for entry in allowlist:
-        character_id = entry["id"]
-        slug = entry["slug"]
-        try:
-            campaign_slug = entry["campaign"]
-            character = fetch_character(character_id)
-            markdown = render_markdown(character, slug, character_id)
-            character_output_path(campaign_slug, slug).write_text(markdown)
-            print(f"fetched: {slug} (id={character_id})")
-        except Exception as exc:
-            failures += 1
-            print(f"ERROR fetching character id={character_id} slug={slug}: {exc}", file=sys.stderr)
+    for campaign in campaigns:
+        campaign_slug = campaign["slug"]
+        for character_id in load_playable_character_ids(service, campaign["sheet_id"]):
+            try:
+                character = fetch_character(character_id)
+                slug = character_slug(character.get("name", ""), fallback=str(character_id))
+                markdown = render_markdown(character, slug, character_id)
+                character_output_path(campaign_slug, slug).write_text(markdown)
+                fetched += 1
+                print(f"fetched: {slug} (id={character_id})")
+            except Exception as exc:
+                failures += 1
+                print(f"ERROR fetching character id={character_id} campaign={campaign_slug}: {exc}", file=sys.stderr)
 
+    print(f"done: {fetched} character(s) fetched" + (f", {failures} failure(s)" if failures else ""))
     if failures:
-        print(f"done with {failures} failure(s)", file=sys.stderr)
         sys.exit(1)
 
 
