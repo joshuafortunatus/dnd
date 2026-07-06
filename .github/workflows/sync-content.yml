@@ -2,7 +2,10 @@ name: Sync content
 
 on:
   schedule:
-    - cron: "0 12 * * *" # daily at noon UTC
+    # 3am Pacific. GitHub Actions cron is fixed to UTC (no DST awareness), so
+    # this runs at 3am during Pacific Daylight Time and drifts to 2am during
+    # Pacific Standard Time (roughly Nov-Mar).
+    - cron: "0 10 * * *"
   workflow_dispatch:
 
 permissions:
