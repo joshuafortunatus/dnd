@@ -18,6 +18,16 @@
   {{ $misc := where $related "Type" "misc" }}
 
   <div class="hub-tabs">
+    <select class="hub-tab-select" onchange="document.getElementById('tab-' + this.value).checked = true">
+      <option value="sessions">Sessions</option>
+      <option value="quests">Quests</option>
+      <option value="lore">Lore</option>
+      <option value="characters">Characters</option>
+      <option value="locations">Locations</option>
+      <option value="images">Images</option>
+      <option value="misc">Misc.</option>
+    </select>
+
     <input type="radio" name="hub-tab" id="tab-sessions" class="hub-tab-radio" checked>
     <label for="tab-sessions" class="hub-tab-label">Sessions</label>
     <input type="radio" name="hub-tab" id="tab-quests" class="hub-tab-radio">
@@ -79,7 +89,7 @@
         {{ range $characters.ByTitle }}
           <li>
             <span>{{ .Title }}</span>
-            {{ with .Params.ddb_url }}<a href="{{ . }}" target="_blank" rel="noopener">View on D&amp;D Beyond &rarr;</a>{{ end }}
+            {{ with .Params.ddb_url }}<a class="ddb-link" href="{{ . }}" target="_blank" rel="noopener">View on D&amp;D Beyond &rarr;</a>{{ end }}
           </li>
         {{ else }}
           <li><span class="entry-date">No characters yet.</span></li>
