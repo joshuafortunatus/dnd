@@ -8,7 +8,7 @@ date: '2025-09-20'
 - They continue exploring the cave in search of Gundren and Sildar. They cross a bridge and encounter more goblins that are holding Sildar. Nenkelde offers 5 gold pieces in exchange for Sildar. The goblins accept. The group learns that Gundren was taken to Cragmaw Castle. The goblins who took Gundren were particularly interested in a map in his possession.
 - They arrive in Phandalin and Sildar admits he’s not who he says he is. He’s a member of the Lord’s Alliance - an altruistic FBI - and he’s under cover trying to find Iarno Albrek, a colleague who they’ve lost communications with months ago. Gundren hired Sildar as a bodyguard and did not know his true background.
 - The group finds lodgings at the Stonehill Inn. Sildar informs the group that he’s going to meet them around midday the next day.
-- The group meets with several townspeople and hear about a group called the Red Brands who terrorize the town.
+- The group meets with several townspeople and hear about a group called the Red Brands who terrorize the town
 - They meet with Daran Edermath, an adventurer turned orcharder, who tells them many things:
 Cragmaw Castle might be part of ruins north of the wilderness
 For more information, seek out Rydolf, a druid in Thundertree which is east of the Triboar Trail. Rydolf is also friends with Kellen at Alderleaf Farm.
