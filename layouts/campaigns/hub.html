@@ -3,7 +3,9 @@
   {{ $dmPage := .GetPage "dm" }}
   <div class="hub-topline">
     <h1>{{ .Title }}</h1>
-    <img class="hub-symbol" src="{{ "images/DnD-Symbol.png" | relURL }}" alt="">
+    <a class="hub-symbol-link" href="{{ .Site.Home.RelPermalink }}">
+      <img class="hub-symbol" src="{{ "images/DnD-Symbol.png" | relURL }}" alt="{{ .Site.Title }} home">
+    </a>
     <a class="hub-hero-back" href="{{ .Site.Home.RelPermalink }}">&larr; All campaigns</a>
   </div>
 

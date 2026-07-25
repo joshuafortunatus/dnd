@@ -154,11 +154,18 @@ body.is-home {
 }
 .hub-topline h1 { margin: 0; font-size: 2.5rem; }
 .hub-topline h1.dm-portal-title { font-size: 1.35rem; }
-.hub-symbol {
+.hub-symbol-link {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+  display: inline-block;
+  line-height: 0;
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+.hub-symbol-link:hover { opacity: 0.8; }
+.hub-symbol {
   height: 2.5rem;
   width: auto;
 }
@@ -932,7 +939,7 @@ body.is-home {
     font-size: 1.05rem;
   }
   .hub-tab-label { display: none; }
-  .hub-symbol { display: none; }
+  .hub-symbol-link { display: none; }
 
   .dm-section-select {
     display: block;

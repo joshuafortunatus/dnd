@@ -36,7 +36,9 @@
 
   <div class="hub-topline">
     <h1 class="dm-portal-title">{{ $hub.Title }} &mdash; DM Portal</h1>
-    <img class="hub-symbol" src="{{ "images/DnD-Symbol.png" | relURL }}" alt="">
+    <a class="hub-symbol-link" href="{{ .Site.Home.RelPermalink }}">
+      <img class="hub-symbol" src="{{ "images/DnD-Symbol.png" | relURL }}" alt="{{ .Site.Title }} home">
+    </a>
     <a class="hub-hero-back" href="{{ $hub.RelPermalink }}">&larr; {{ $hub.Title }}</a>
   </div>
 
