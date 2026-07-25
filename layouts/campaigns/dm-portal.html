@@ -139,6 +139,10 @@
       */}}
       <script>
         (function () {
+          var slugifyName = function (name) {
+            return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "character";
+          };
+
           var sectionNav = document.getElementById("dm-section-nav");
           var sectionSelect = document.getElementById("dm-section-select");
           var sectionKey = sectionNav.dataset.selectKey;
@@ -173,10 +177,6 @@
             var rosterKey = expectations.dataset.rosterKey;
             var charsContainer = expectations.querySelector(".expectations-characters");
             var emptyNotice = document.getElementById("expectations-empty");
-
-            var slugifyName = function (name) {
-              return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "character";
-            };
 
             var getButtons = function () { return expectations.querySelectorAll(".expectations-char-btn"); };
             var getPanels = function () { return expectations.querySelectorAll(".expectations-char-panel"); };
@@ -405,9 +405,23 @@
                     if (!payload || !payload.data || !payload.data.name) {
                       throw new Error("Couldn't read a character name from that response.");
                     }
+                    var name = payload.data.name;
+                    // A character with this name might already exist as real,
+                    // synced content (a character page and/or Expectations
+                    // data from the sheet) rather than something loaded here
+                    // — that's not this roster's to manage, and silently
+                    // "loading" it would look successful here while having
+                    // no effect anywhere else, which is exactly the kind of
+                    // ghost state that's confusing to debug later.
+                    var existingReal = document.querySelector(
+                      '.expectations-char-btn[data-char="' + slugifyName(name) + '"]:not([data-source="local"])'
+                    );
+                    if (existingReal) {
+                      throw new Error(name + " already exists as a synced character in this campaign.");
+                    }
                     var roster = loadImporterRoster();
                     if (!roster.some(function (e) { return e.id === id; })) {
-                      roster.push({ id: id, name: payload.data.name, link: link });
+                      roster.push({ id: id, name: name, link: link });
                       saveImporterRoster(roster);
                     }
                     renderImporterList();
