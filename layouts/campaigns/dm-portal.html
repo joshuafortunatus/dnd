@@ -62,14 +62,7 @@
           {{ end }}
         </div>
 
-        <div class="dm-sync-control" id="dm-sync-control" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}">
-          {{ if ne $proxyURL "" }}
-            {{/* No separate sync passphrase to enter — the DM portal
-              password itself doubles as the sync credential (see the gate
-              script below), so this is a status readout, not a control. */}}
-            <span class="dm-sync-status" id="dm-sync-status"></span>
-          {{ end }}
-        </div>
+        <div class="dm-sync-control" id="dm-sync-control" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}"></div>
 
         {{ range $sections }}
           <div class="dm-section-panel" data-section="{{ .id }}" hidden>
@@ -134,6 +127,20 @@
                   </form>
                 {{ end }}
               </div>
+            {{ else if eq .id "npc-tracker" }}
+              {{/* Fields match D&D Beyond's official NPC Tracker sheet
+                (reference/tracking_sheets/npc-tracker-sheet.pdf) — one
+                record per NPC, picked via the same select+add-button
+                pattern as Travel Planner. */}}
+              <div class="npc-tracker" id="npc-tracker" data-storage-key="dm-portal-npcs-{{ $slug }}">
+                <div class="npc-tracker-controls">
+                  <select class="npc-tracker-select" id="npc-tracker-select">
+                    <option value="">&mdash; Select an NPC &mdash;</option>
+                  </select>
+                  <button type="button" class="npc-tracker-add-btn" id="npc-tracker-add-btn">+ Add NPC</button>
+                </div>
+                <div class="npc-tracker-detail" id="npc-tracker-detail"></div>
+              </div>
             {{ else }}
               <p class="entry-date">{{ .label }} is coming soon.</p>
             {{ end }}
@@ -157,6 +164,36 @@
         (function () {
           var slugifyName = function (name) {
             return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "character";
+          };
+
+          {{/* Shared by every delete/remove button in the portal (Character
+            Importer, Travel Planner, NPC Tracker): first click flashes a
+            warning in place of the button's own label; a second click
+            within a few seconds actually deletes. Any other interaction —
+            letting it time out, or just not clicking again — leaves the
+            data untouched. */}}
+          var wireConfirmDelete = function (button, onConfirmed) {
+            var originalText = button.textContent;
+            var confirming = false;
+            var revertTimer = null;
+            var revert = function () {
+              confirming = false;
+              button.textContent = originalText;
+              button.classList.remove("is-confirming");
+            };
+            button.addEventListener("click", function () {
+              if (!confirming) {
+                confirming = true;
+                button.textContent = "Are you sure?";
+                button.classList.add("is-confirming");
+                clearTimeout(revertTimer);
+                revertTimer = setTimeout(revert, 3000);
+                return;
+              }
+              clearTimeout(revertTimer);
+              revert();
+              onConfirmed();
+            });
           };
 
           {{/*
@@ -226,13 +263,6 @@
             password IS the sync credential, there's no separate one to
             enter. */}}
           window.dmPortalSetSyncToken = setSyncToken;
-
-          if (syncControl && syncBase) {
-            var syncStatus = document.getElementById("dm-sync-status");
-            if (syncStatus) {
-              syncStatus.textContent = getSyncToken() ? "Synced across devices." : "";
-            }
-          }
 
           var sectionNav = document.getElementById("dm-section-nav");
           var sectionSelect = document.getElementById("dm-section-select");
@@ -488,7 +518,7 @@
                   if (window.dmPortalRefreshRoster) window.dmPortalRefreshRoster();
                 });
 
-                removeBtn.addEventListener("click", function () {
+                wireConfirmDelete(removeBtn, function () {
                   saveImporterRoster(loadImporterRoster().filter(function (e) { return e.id !== entry.id; }));
                   renderImporterList();
                   if (window.dmPortalRefreshRoster) window.dmPortalRefreshRoster();
@@ -832,7 +862,7 @@
                 clearDetail();
               });
 
-              deleteBtn.addEventListener("click", function () {
+              wireConfirmDelete(deleteBtn, function () {
                 if (planId === unsavedNewPlanId) unsavedNewPlanId = null;
                 var remaining = loadPlans().filter(function (p) { return p.id !== plan.id; });
                 savePlans(remaining);
@@ -869,6 +899,241 @@
               renderSelect();
               tpSelect.value = newPlan.id;
               renderForm(newPlan.id, true);
+            });
+          }
+
+          {{/* NPC Tracker: same select+add-button+detail pattern as Travel
+            Planner above, but flat — one record per NPC with no nested
+            stages, matching D&D Beyond's official NPC Tracker sheet
+            (reference/tracking_sheets/npc-tracker-sheet.pdf). Kept as its
+            own self-contained block (own helpers, own storage key) rather
+            than sharing Travel Planner's editInput/editTextarea, so this
+            section keeps working unchanged if Travel Planner is ever
+            removed or reordered. */}}
+          var npcTracker = document.getElementById("npc-tracker");
+          if (npcTracker) {
+            var npcStorageKey = npcTracker.dataset.storageKey;
+            var npcSelect = document.getElementById("npc-tracker-select");
+            var npcDetail = document.getElementById("npc-tracker-detail");
+            var npcAddBtn = document.getElementById("npc-tracker-add-btn");
+
+            var loadNpcs = function () {
+              try {
+                return JSON.parse(window.localStorage.getItem(npcStorageKey) || "[]");
+              } catch (e) {
+                return [];
+              }
+            };
+
+            var writeNpcsLocal = function (npcs) {
+              window.localStorage.setItem(npcStorageKey, JSON.stringify(npcs));
+            };
+
+            var saveNpcs = function (npcs) {
+              writeNpcsLocal(npcs);
+              syncPush("npcs", npcs);
+            };
+
+            var pullNpcs = function () {
+              syncPull("npcs").then(function (remote) {
+                if (remote) {
+                  writeNpcsLocal(remote);
+                  renderNpcSelect();
+                  clearNpcDetail();
+                } else if (syncEnabled()) {
+                  syncPush("npcs", loadNpcs());
+                }
+              });
+            };
+            syncPullers.push(pullNpcs);
+
+            var npcLabel = function (npc) {
+              return npc.name || "Unnamed NPC";
+            };
+
+            var updateNpcOptionLabel = function (npc) {
+              var option = npcSelect.querySelector('option[value="' + npc.id + '"]');
+              if (option) option.textContent = npcLabel(npc);
+            };
+
+            var npcEditInput = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "npc-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var input = document.createElement("input");
+              input.type = "text";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(input);
+              return wrap;
+            };
+
+            var npcEditTextarea = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "npc-field npc-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var textarea = document.createElement("textarea");
+              textarea.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(textarea);
+              return wrap;
+            };
+
+            var collectNpcFromForm = function (form, originalNpc) {
+              var npc = { id: originalNpc.id, createdAt: originalNpc.createdAt };
+              Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
+                npc[el.dataset.field] = el.value;
+              });
+              return npc;
+            };
+
+            var clearNpcDetail = function () {
+              npcDetail.innerHTML = "";
+            };
+
+            var renderNpcSelect = function () {
+              var npcs = loadNpcs().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var currentValue = npcSelect.value;
+              npcSelect.innerHTML = "";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select an NPC —";
+              npcSelect.appendChild(placeholder);
+              npcs.forEach(function (npc) {
+                var option = document.createElement("option");
+                option.value = npc.id;
+                option.textContent = npcLabel(npc);
+                npcSelect.appendChild(option);
+              });
+              npcSelect.value = npcs.some(function (n) { return n.id === currentValue; }) ? currentValue : "";
+              return npcs;
+            };
+
+            var unsavedNewNpcId = null;
+
+            var discardUnsavedNewNpc = function () {
+              if (!unsavedNewNpcId) return;
+              var remaining = loadNpcs().filter(function (n) { return n.id !== unsavedNewNpcId; });
+              saveNpcs(remaining);
+              unsavedNewNpcId = null;
+              renderNpcSelect();
+            };
+
+            var renderNpcForm = function (npcId, isNew) {
+              if (isNew) unsavedNewNpcId = npcId;
+              var npcs = loadNpcs();
+              var npc = npcs.filter(function (n) { return n.id === npcId; })[0];
+              npcDetail.innerHTML = "";
+              if (!npc) return;
+
+              var actions = document.createElement("div");
+              actions.className = "npc-form-actions";
+              var saveBtn = document.createElement("button");
+              saveBtn.type = "button";
+              saveBtn.className = "npc-save-btn";
+              saveBtn.textContent = "Save";
+              var cancelBtn = document.createElement("button");
+              cancelBtn.type = "button";
+              cancelBtn.className = "npc-cancel-btn";
+              cancelBtn.textContent = "Cancel";
+              var deleteBtn = document.createElement("button");
+              deleteBtn.type = "button";
+              deleteBtn.className = "npc-delete-btn";
+              deleteBtn.textContent = "Delete";
+              actions.appendChild(saveBtn);
+              actions.appendChild(cancelBtn);
+              actions.appendChild(deleteBtn);
+              npcDetail.appendChild(actions);
+
+              var error = document.createElement("p");
+              error.className = "npc-form-error";
+              error.hidden = true;
+              error.textContent = "NPC Name is required.";
+              npcDetail.appendChild(error);
+
+              var form = document.createElement("div");
+              form.className = "npc-edit-form";
+
+              var header = document.createElement("div");
+              header.className = "npc-header-fields";
+              header.appendChild(npcEditInput("NPC Name", npc.name, { field: "name" }));
+              header.appendChild(npcEditInput("Stat Block", npc.statBlock, { field: "statBlock" }));
+              header.appendChild(npcEditInput("MM Page", npc.mmPage, { field: "mmPage" }));
+              form.appendChild(header);
+
+              form.appendChild(npcEditTextarea("Stat Block Alterations", npc.statBlockAlterations, { field: "statBlockAlterations" }));
+              form.appendChild(npcEditTextarea("Alignment", npc.alignment, { field: "alignment" }));
+              form.appendChild(npcEditTextarea("Personality", npc.personality, { field: "personality" }));
+              form.appendChild(npcEditTextarea("Appearance", npc.appearance, { field: "appearance" }));
+              form.appendChild(npcEditTextarea("Secret", npc.secret, { field: "secret" }));
+
+              npcDetail.appendChild(form);
+
+              saveBtn.addEventListener("click", function () {
+                var updated = collectNpcFromForm(form, npc);
+                if (!updated.name || !updated.name.trim()) {
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var allNpcs = loadNpcs();
+                var idx = -1;
+                allNpcs.forEach(function (n, nIdx) { if (n.id === npc.id) idx = nIdx; });
+                if (idx !== -1) allNpcs[idx] = updated;
+                saveNpcs(allNpcs);
+                updateNpcOptionLabel(updated);
+                unsavedNewNpcId = null;
+                var originalText = saveBtn.textContent;
+                saveBtn.textContent = "Saved";
+                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+              });
+
+              cancelBtn.addEventListener("click", function () {
+                discardUnsavedNewNpc();
+                npcSelect.value = "";
+                clearNpcDetail();
+              });
+
+              wireConfirmDelete(deleteBtn, function () {
+                if (npcId === unsavedNewNpcId) unsavedNewNpcId = null;
+                var remaining = loadNpcs().filter(function (n) { return n.id !== npc.id; });
+                saveNpcs(remaining);
+                renderNpcSelect();
+                npcSelect.value = "";
+                clearNpcDetail();
+              });
+            };
+
+            renderNpcSelect();
+            pullNpcs();
+
+            npcSelect.addEventListener("change", function () {
+              discardUnsavedNewNpc();
+              if (npcSelect.value) {
+                renderNpcForm(npcSelect.value);
+              } else {
+                clearNpcDetail();
+              }
+            });
+
+            npcAddBtn.addEventListener("click", function () {
+              discardUnsavedNewNpc();
+              var npcs = loadNpcs();
+              var newNpc = {
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                createdAt: Date.now(),
+                name: "", statBlock: "", mmPage: "",
+                statBlockAlterations: "", alignment: "", personality: "", appearance: "", secret: "",
+              };
+              npcs.push(newNpc);
+              saveNpcs(npcs);
+              renderNpcSelect();
+              npcSelect.value = newNpc.id;
+              renderNpcForm(newNpc.id, true);
             });
           }
         })();
