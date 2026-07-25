@@ -541,6 +541,62 @@
               "Lawful Evil", "Neutral Evil", "Chaotic Evil",
             ];
 
+            {{/* Hard-coded from https://www.dndbeyond.com/backgrounds —
+              every background D&D Beyond lists across all sourcebooks
+              and settings (Ravnica, Eberron, Baldur's Gate, etc.), not
+              just the core Player's Handbook set, deduped and sorted. */}}
+            var DND_BACKGROUNDS = [
+              "Aberrant Heir", "Acolyte", "Acolyte - Baldur's Gate",
+              "Agent of the Ninth Quill (DMLS)", "Anthropologist", "Archaeologist",
+              "Artisan", "Astral Drifter", "Athlete",
+              "Azorius Functionary", "Boros Legionnaire", "Carouser",
+              "Celebrity Adventurer's Scion", "Charlatan", "Charlatan - Baldur's Gate",
+              "Chondathan Freebooter", "City Watch / Investigator", "Clan Crafter",
+              "Cloistered Scholar", "Courtier", "Criminal",
+              "Criminal - Baldur's Gate", "Criminal / Spy", "Dead Magic Dweller",
+              "Dimir Operative", "Dragon Cultist", "Emerald Enclave Caretaker",
+              "Entertainer", "Entertainer - Baldur's Gate", "Faceless",
+              "Faction Agent", "Failed Merchant", "Far Traveler",
+              "Farmer", "Feylost", "Fisher",
+              "Flaming Fist Mercenary", "Folk Hero", "Folk Hero - Baldur's Gate",
+              "Gambler", "Gate Warden", "Genie Touched",
+              "Giant Foundling", "Gladiator", "Golgari Agent",
+              "Gruul Anarch", "Guard", "Guide",
+              "Guild Artisan - Baldur's Gate", "Guild Artisan / Guild Merchant", "Harper",
+              "Haunted One", "Hermit", "Hermit - Baldur's Gate",
+              "House Agent", "House Agent (Cannith)", "House Agent (Deneith)",
+              "House Agent (Ghallanda)", "House Agent (Jorasco)", "House Agent (Kundarak)",
+              "House Agent (Lyrandar)", "House Agent (Medani)", "House Agent (Orien)",
+              "House Agent (Phiarlan)", "House Agent (Sivis)", "House Agent (Tharashk)",
+              "House Agent (Thuranni)", "House Agent (Vadalis)", "House Cannith Heir",
+              "House Deneith Heir", "House Ghallanda Heir", "House Jorasco Heir",
+              "House Kundarak Heir", "House Lyrandar Heir", "House Medani Heir",
+              "House Orien Heir", "House Phiarlan Heir", "House Sivis Heir",
+              "House Tharashk Heir", "House Thuranni Heir", "House Vadalis Heir",
+              "Ice Fisher", "Inheritor", "Inquisitive",
+              "Investigator", "Izzet Engineer", "Knight",
+              "Knight of Solamnia", "Knight of the Gauntlet", "Knight of the Order",
+              "Lords' Alliance Vassal", "Lorehold Student", "Lorwyn Expert",
+              "Mage of High Sorcery", "Marine", "Mercenary Veteran",
+              "Merchant", "Mist Wanderer", "Moonwell Pilgrim",
+              "Mulhorandi Tomb Raider", "Mythalkeeper", "Noble",
+              "Noble - Baldur's Gate", "Orzhov Representative", "Outlander",
+              "Outlander - Baldur's Gate", "Pact Seeker", "Pirate",
+              "Plaintiff", "Planar Philosopher", "Prismari Student",
+              "Purple Dragon Squire", "Quandrix Student", "Rakdos Cultist",
+              "Rashemi Wanderer", "Rewarded", "Rival Intern",
+              "Ruined", "Rune Carver", "Sage",
+              "Sage - Baldur's Gate", "Sailor", "Sailor - Baldur's Gate",
+              "Scribe", "Selesnya Initiate", "Shadowmasters Exile",
+              "Shadowmoor Expert", "Shipwright", "Silverquill Student",
+              "Simic Scientist", "Smuggler", "Soldier",
+              "Soldier - Baldur's Gate", "Spellfire Initiate", "Spirit Medium",
+              "Urban Bounty Hunter", "Urchin", "Urchin - Baldur's Gate",
+              "Uthgardt Tribe Member", "Vampire Devotee", "Vampire Survivor",
+              "Waterdhavian Noble", "Wayfarer", "Wildspacer",
+              "Witchlight Hand", "Witherbloom Student", "Zhentarim Mercenary",
+            ];
+
             var PC_MOTIVATIONS = [
               "Acting", "Exploring", "Fighting", "Instigating",
               "Optimizing", "Problem-Solving", "Socializing", "Storytelling",
@@ -603,13 +659,13 @@
                 header.appendChild(pcFieldStatic("Class", rosterEntry.charClass));
                 header.appendChild(pcFieldSelect("Subclass", DND_SUBCLASSES_BY_CLASS[effectiveClass] || [], d.subclass, { field: "subclass" }));
                 header.appendChild(pcFieldStatic("Level", rosterEntry.level ? String(rosterEntry.level) : ""));
-                header.appendChild(pcFieldInput("Background", d.background, { field: "background" }));
+                header.appendChild(pcFieldSelect("Background", DND_BACKGROUNDS, d.background, { field: "background" }));
                 header.appendChild(pcFieldStatic("Species", rosterEntry.species));
               } else {
                 header.appendChild(pcFieldInput("Class", d.charClass, { field: "charClass" }));
                 header.appendChild(pcFieldSelect("Subclass", DND_SUBCLASSES_BY_CLASS[effectiveClass] || [], d.subclass, { field: "subclass" }));
                 header.appendChild(pcFieldInput("Level", d.level, { field: "level" }));
-                header.appendChild(pcFieldInput("Background", d.background, { field: "background" }));
+                header.appendChild(pcFieldSelect("Background", DND_BACKGROUNDS, d.background, { field: "background" }));
                 header.appendChild(pcFieldInput("Species", d.species, { field: "species" }));
               }
               header.appendChild(pcFieldSelect("Alignment", DND_ALIGNMENTS, d.alignment, { field: "alignment" }));
