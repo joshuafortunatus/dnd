@@ -680,9 +680,17 @@
                     if (existingReal) {
                       throw new Error(name + " already exists as a synced character in this campaign.");
                     }
+                    // Pulled straight off the D&D Beyond payload so
+                    // Character Tracker can auto-fill Class/Level/Species
+                    // instead of the DM re-typing what was just imported.
+                    var classes = payload.data.classes || [];
+                    var charClass = classes.length ? ((classes[0].definition && classes[0].definition.name) || "") : "";
+                    var level = classes.length ? classes.reduce(function (sum, c) { return sum + (c.level || 0); }, 0) : "";
+                    var species = (payload.data.race && payload.data.race.fullName) || "";
+
                     var roster = loadImporterRoster();
                     if (!roster.some(function (e) { return e.id === id; })) {
-                      roster.push({ id: id, name: name, link: link });
+                      roster.push({ id: id, name: name, link: link, charClass: charClass, level: level, species: species });
                       saveImporterRoster(roster);
                     }
                     renderImporterList();
@@ -1903,28 +1911,40 @@
               roster name with no existing entry; never touches entries
               that already exist, so edits are never overwritten. */}}
             var ensureCharTrackerRosterEntries = function () {
-              var names = charTrackerRosterTitles.slice();
+              var rosterMeta = charTrackerRosterTitles.map(function (name) { return { name: name }; });
               try {
                 var localRoster = JSON.parse(window.localStorage.getItem(charTrackerRosterKey) || "[]");
                 localRoster.forEach(function (e) {
-                  if (e && e.name && names.indexOf(e.name) === -1) names.push(e.name);
+                  if (!e || !e.name) return;
+                  var meta = rosterMeta.filter(function (m) { return m.name === e.name; })[0];
+                  if (!meta) {
+                    meta = { name: e.name };
+                    rosterMeta.push(meta);
+                  }
+                  // Character Importer pulls these off the D&D Beyond
+                  // payload at load time — carry them over so the DM
+                  // isn't re-typing what was just imported.
+                  meta.charClass = e.charClass || meta.charClass || "";
+                  meta.level = e.level || meta.level || "";
+                  meta.species = e.species || meta.species || "";
                 });
               } catch (e) {}
 
               var entries = loadCharTrackerEntries();
               var existingNames = entries.map(function (e) { return e.characterName; });
               var added = false;
-              names.forEach(function (name) {
-                if (existingNames.indexOf(name) !== -1) return;
+              rosterMeta.forEach(function (meta) {
+                if (existingNames.indexOf(meta.name) !== -1) return;
                 entries.push({
                   id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                   createdAt: Date.now(),
-                  characterName: name, playerName: "", charClass: "", subclass: "", level: "",
-                  background: "", species: "", alignment: "", motivations: [],
+                  characterName: meta.name, playerName: "",
+                  charClass: meta.charClass || "", subclass: "", level: meta.level ? String(meta.level) : "",
+                  background: "", species: meta.species || "", alignment: "", motivations: [],
                   playerExpectationsNotes: "", goalsAndAmbitions: "", familyFriendsFoes: "",
                   quirksAndWhims: "", magicItems: "", adventureIdeas: "",
                 });
-                existingNames.push(name);
+                existingNames.push(meta.name);
                 added = true;
               });
               if (added) {
