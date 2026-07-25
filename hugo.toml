@@ -3,7 +3,7 @@ languageCode = "en-us"
 title = "Adventure Hub"
 
 [params]
-  subtitle = "Notes, sessions, and characters from our D&D campaigns"
+  subtitle = "Notes, sessions, and characters from our D&D adventures"
   background_image = "images/backgrounds/site-bg.jpg"
   # Cloudflare Worker CORS proxy (worker/ddb-character-proxy.js) that lets the
   # DM portal's Character Tracker fetch a D&D Beyond character live. Leave
