@@ -301,8 +301,8 @@ body.is-home {
 
 .dm-section-select { display: none; }
 .dm-section-nav {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.25rem 1.75rem;
   border-bottom: 1px solid var(--border);
 }
@@ -315,6 +315,7 @@ body.is-home {
   font-size: 1.15rem;
   padding: 0.5rem 0;
   cursor: pointer;
+  text-align: left;
 }
 .dm-section-btn:hover { color: var(--text); }
 .dm-section-btn.is-active {
