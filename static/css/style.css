@@ -358,18 +358,6 @@ body.is-home {
 }
 .pc-manager-details-toggle:hover { color: var(--accent); border-color: var(--accent); }
 
-.character-importer-name-input {
-  flex: 1 1 auto;
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 0.3rem 0.6rem;
-  font-size: 1rem;
-  font-family: inherit;
-}
-.character-importer-edit,
-.character-importer-save,
 .character-importer-remove {
   background: none;
   border: 1px solid var(--border);
@@ -380,8 +368,6 @@ body.is-home {
   cursor: pointer;
   flex-shrink: 0;
 }
-.character-importer-edit:hover,
-.character-importer-save:hover { color: var(--accent); border-color: var(--accent); }
 .character-importer-remove:hover { color: #d16a6a; border-color: #d16a6a; }
 
 .pc-manager-form {
