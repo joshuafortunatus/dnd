@@ -141,6 +141,88 @@
                 </div>
                 <div class="npc-tracker-detail" id="npc-tracker-detail"></div>
               </div>
+            {{ else if eq .id "settlement-tracker" }}
+              {{/* Fields match D&D Beyond's official Settlement Tracker
+                sheet (reference/tracking_sheets/settlement-tracker.pdf) —
+                one record per settlement, same select+add-button pattern
+                as NPC Tracker. */}}
+              <div class="settlement-tracker" id="settlement-tracker" data-storage-key="dm-portal-settlements-{{ $slug }}">
+                <div class="settlement-tracker-controls">
+                  <select class="settlement-tracker-select" id="settlement-tracker-select">
+                    <option value="">&mdash; Select a settlement &mdash;</option>
+                  </select>
+                  <button type="button" class="settlement-tracker-add-btn" id="settlement-tracker-add-btn">+ Add Settlement</button>
+                </div>
+                <div class="settlement-tracker-detail" id="settlement-tracker-detail"></div>
+              </div>
+            {{ else if eq .id "campaign-journal" }}
+              {{/* Fields match D&D Beyond's official Campaign Journal
+                sheet (reference/tracking_sheets/campaign-journal-sheet.pdf)
+                — one record per session, same select+add-button pattern
+                as NPC Tracker. */}}
+              <div class="campaign-journal" id="campaign-journal" data-storage-key="dm-portal-journal-{{ $slug }}">
+                <div class="campaign-journal-controls">
+                  <select class="campaign-journal-select" id="campaign-journal-select">
+                    <option value="">&mdash; Select a session &mdash;</option>
+                  </select>
+                  <button type="button" class="campaign-journal-add-btn" id="campaign-journal-add-btn">+ Add Session</button>
+                </div>
+                <div class="campaign-journal-detail" id="campaign-journal-detail"></div>
+              </div>
+            {{ else if eq .id "character-tracker" }}
+              {{/* Fields match D&D Beyond's official Character Tracker
+                sheet (reference/tracking_sheets/character-tracker.pdf) —
+                one record per PC, same select+add-button pattern as NPC
+                Tracker. */}}
+              <div class="character-tracker" id="character-tracker" data-storage-key="dm-portal-character-tracker-{{ $slug }}">
+                <div class="character-tracker-controls">
+                  <select class="character-tracker-select" id="character-tracker-select">
+                    <option value="">&mdash; Select a character &mdash;</option>
+                  </select>
+                  <button type="button" class="character-tracker-add-btn" id="character-tracker-add-btn">+ Add Character</button>
+                </div>
+                <div class="character-tracker-detail" id="character-tracker-detail"></div>
+              </div>
+            {{ else if eq .id "campaign-conflicts" }}
+              {{/* Fields match D&D Beyond's official Campaign Conflicts
+                sheet (reference/tracking_sheets/campaign-conflict-sheet.pdf)
+                — one record per conflict, same select+add-button pattern
+                as NPC Tracker. */}}
+              <div class="campaign-conflicts" id="campaign-conflicts" data-storage-key="dm-portal-conflicts-{{ $slug }}">
+                <div class="campaign-conflicts-controls">
+                  <select class="campaign-conflicts-select" id="campaign-conflicts-select">
+                    <option value="">&mdash; Select a conflict &mdash;</option>
+                  </select>
+                  <button type="button" class="campaign-conflicts-add-btn" id="campaign-conflicts-add-btn">+ Add Conflict</button>
+                </div>
+                <div class="campaign-conflicts-detail" id="campaign-conflicts-detail"></div>
+              </div>
+            {{ else if eq .id "magic-item-tracker" }}
+              {{/* Matches D&D Beyond's official Magic Item Tracker sheet
+                (reference/tracking_sheets/magic-item-sheet.pdf) — NOT a
+                per-item log. It's the DMG's expected-magic-items-by-rarity
+                checklist per tier of play: a fixed set of tiers, each with
+                fixed rarities and a fixed recommended item count, and one
+                checkbox per expected item that the DM ticks off as
+                they're awarded. Tier/rarity/count structure is fixed by
+                the sheet, so it's built in JS rather than duplicated in
+                the Hugo template; only checkbox state is stored/synced. */}}
+              <div class="magic-item-tracker" id="magic-item-tracker" data-storage-key="dm-portal-magic-items-{{ $slug }}"></div>
+            {{ else if eq .id "bastion-tracker" }}
+              {{/* Fields match D&D Beyond's official Bastion Tracker
+                sheet (reference/tracking_sheets/bastion-sheet.pdf) — one
+                record per bastion, with 6 fixed special-facility slots
+                matching the sheet's layout (same fixed-slot approach as
+                Travel Planner's stages). */}}
+              <div class="bastion-tracker" id="bastion-tracker" data-storage-key="dm-portal-bastions-{{ $slug }}">
+                <div class="bastion-tracker-controls">
+                  <select class="bastion-tracker-select" id="bastion-tracker-select">
+                    <option value="">&mdash; Select a bastion &mdash;</option>
+                  </select>
+                  <button type="button" class="bastion-tracker-add-btn" id="bastion-tracker-add-btn">+ Add Bastion</button>
+                </div>
+                <div class="bastion-tracker-detail" id="bastion-tracker-detail"></div>
+              </div>
             {{ else }}
               <p class="entry-date">{{ .label }} is coming soon.</p>
             {{ end }}
@@ -1134,6 +1216,1388 @@
               renderNpcSelect();
               npcSelect.value = newNpc.id;
               renderNpcForm(newNpc.id, true);
+            });
+          }
+
+          {{/* Settlement Tracker: same select+add-button+detail pattern as
+            NPC Tracker above, matching D&D Beyond's official Settlement
+            Tracker sheet (reference/tracking_sheets/settlement-tracker.pdf).
+            Kept as its own self-contained block for the same reason NPC
+            Tracker is. */}}
+          var settlementTracker = document.getElementById("settlement-tracker");
+          if (settlementTracker) {
+            var settlementStorageKey = settlementTracker.dataset.storageKey;
+            var settlementSelect = document.getElementById("settlement-tracker-select");
+            var settlementDetail = document.getElementById("settlement-tracker-detail");
+            var settlementAddBtn = document.getElementById("settlement-tracker-add-btn");
+
+            var loadSettlements = function () {
+              try {
+                return JSON.parse(window.localStorage.getItem(settlementStorageKey) || "[]");
+              } catch (e) {
+                return [];
+              }
+            };
+
+            var writeSettlementsLocal = function (settlements) {
+              window.localStorage.setItem(settlementStorageKey, JSON.stringify(settlements));
+            };
+
+            var saveSettlements = function (settlements) {
+              writeSettlementsLocal(settlements);
+              syncPush("settlements", settlements);
+            };
+
+            var pullSettlements = function () {
+              syncPull("settlements").then(function (remote) {
+                if (remote) {
+                  writeSettlementsLocal(remote);
+                  renderSettlementSelect();
+                  clearSettlementDetail();
+                } else if (syncEnabled()) {
+                  syncPush("settlements", loadSettlements());
+                }
+              });
+            };
+            syncPullers.push(pullSettlements);
+
+            var settlementLabel = function (settlement) {
+              return settlement.name || "Unnamed Settlement";
+            };
+
+            var updateSettlementOptionLabel = function (settlement) {
+              var option = settlementSelect.querySelector('option[value="' + settlement.id + '"]');
+              if (option) option.textContent = settlementLabel(settlement);
+            };
+
+            var settlementEditInput = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "settlement-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var input = document.createElement("input");
+              input.type = "text";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(input);
+              return wrap;
+            };
+
+            var settlementEditTextarea = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "settlement-field settlement-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var textarea = document.createElement("textarea");
+              textarea.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(textarea);
+              return wrap;
+            };
+
+            var SETTLEMENT_SIZES = [
+              { value: "village", label: "Village (pop. up to 500)" },
+              { value: "town", label: "Town (pop. 501–5,000)" },
+              { value: "city", label: "City (pop. 5,001+)" },
+            ];
+
+            var settlementEditRadioGroup = function (labelText, value, name) {
+              var wrap = document.createElement("div");
+              wrap.className = "settlement-field settlement-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              wrap.appendChild(label);
+              var group = document.createElement("div");
+              group.className = "settlement-radio-group";
+              SETTLEMENT_SIZES.forEach(function (opt) {
+                var optLabel = document.createElement("label");
+                optLabel.className = "settlement-radio-option";
+                var input = document.createElement("input");
+                input.type = "radio";
+                input.name = name;
+                input.value = opt.value;
+                input.checked = value === opt.value;
+                optLabel.appendChild(input);
+                optLabel.appendChild(document.createTextNode(" " + opt.label));
+                group.appendChild(optLabel);
+              });
+              wrap.appendChild(group);
+              return wrap;
+            };
+
+            var collectSettlementFromForm = function (form, originalSettlement) {
+              var settlement = { id: originalSettlement.id, createdAt: originalSettlement.createdAt };
+              Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
+                settlement[el.dataset.field] = el.value;
+              });
+              var checkedSize = form.querySelector('input[name="settlement-size"]:checked');
+              settlement.size = checkedSize ? checkedSize.value : "";
+              return settlement;
+            };
+
+            var clearSettlementDetail = function () {
+              settlementDetail.innerHTML = "";
+            };
+
+            var renderSettlementSelect = function () {
+              var settlements = loadSettlements().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var currentValue = settlementSelect.value;
+              settlementSelect.innerHTML = "";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select a settlement —";
+              settlementSelect.appendChild(placeholder);
+              settlements.forEach(function (settlement) {
+                var option = document.createElement("option");
+                option.value = settlement.id;
+                option.textContent = settlementLabel(settlement);
+                settlementSelect.appendChild(option);
+              });
+              settlementSelect.value = settlements.some(function (s) { return s.id === currentValue; }) ? currentValue : "";
+              return settlements;
+            };
+
+            var unsavedNewSettlementId = null;
+
+            var discardUnsavedNewSettlement = function () {
+              if (!unsavedNewSettlementId) return;
+              var remaining = loadSettlements().filter(function (s) { return s.id !== unsavedNewSettlementId; });
+              saveSettlements(remaining);
+              unsavedNewSettlementId = null;
+              renderSettlementSelect();
+            };
+
+            var renderSettlementForm = function (settlementId, isNew) {
+              if (isNew) unsavedNewSettlementId = settlementId;
+              var settlements = loadSettlements();
+              var settlement = settlements.filter(function (s) { return s.id === settlementId; })[0];
+              settlementDetail.innerHTML = "";
+              if (!settlement) return;
+
+              var actions = document.createElement("div");
+              actions.className = "settlement-form-actions";
+              var saveBtn = document.createElement("button");
+              saveBtn.type = "button";
+              saveBtn.className = "settlement-save-btn";
+              saveBtn.textContent = "Save";
+              var cancelBtn = document.createElement("button");
+              cancelBtn.type = "button";
+              cancelBtn.className = "settlement-cancel-btn";
+              cancelBtn.textContent = "Cancel";
+              var deleteBtn = document.createElement("button");
+              deleteBtn.type = "button";
+              deleteBtn.className = "settlement-delete-btn";
+              deleteBtn.textContent = "Delete";
+              actions.appendChild(saveBtn);
+              actions.appendChild(cancelBtn);
+              actions.appendChild(deleteBtn);
+              settlementDetail.appendChild(actions);
+
+              var error = document.createElement("p");
+              error.className = "settlement-form-error";
+              error.hidden = true;
+              error.textContent = "Settlement Name is required.";
+              settlementDetail.appendChild(error);
+
+              var form = document.createElement("div");
+              form.className = "settlement-edit-form";
+
+              var header = document.createElement("div");
+              header.className = "settlement-header-fields";
+              header.appendChild(settlementEditInput("Settlement Name", settlement.name, { field: "name" }));
+              header.appendChild(settlementEditInput("GP Value of Most Expensive Item for Sale", settlement.gpValue, { field: "gpValue" }));
+              form.appendChild(header);
+
+              form.appendChild(settlementEditRadioGroup("Size", settlement.size, "settlement-size"));
+              form.appendChild(settlementEditTextarea("Defining Trait", settlement.definingTrait, { field: "definingTrait" }));
+              form.appendChild(settlementEditTextarea("Claim to Fame", settlement.claimToFame, { field: "claimToFame" }));
+              form.appendChild(settlementEditTextarea("Current Calamity", settlement.currentCalamity, { field: "currentCalamity" }));
+              form.appendChild(settlementEditTextarea("Local Leader", settlement.localLeader, { field: "localLeader" }));
+              form.appendChild(settlementEditTextarea("Noteworthy People", settlement.noteworthyPeople, { field: "noteworthyPeople" }));
+              form.appendChild(settlementEditTextarea("Noteworthy Places", settlement.noteworthyPlaces, { field: "noteworthyPlaces" }));
+
+              settlementDetail.appendChild(form);
+
+              saveBtn.addEventListener("click", function () {
+                var updated = collectSettlementFromForm(form, settlement);
+                if (!updated.name || !updated.name.trim()) {
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var allSettlements = loadSettlements();
+                var idx = -1;
+                allSettlements.forEach(function (s, sIdx) { if (s.id === settlement.id) idx = sIdx; });
+                if (idx !== -1) allSettlements[idx] = updated;
+                saveSettlements(allSettlements);
+                updateSettlementOptionLabel(updated);
+                unsavedNewSettlementId = null;
+                var originalText = saveBtn.textContent;
+                saveBtn.textContent = "Saved";
+                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+              });
+
+              cancelBtn.addEventListener("click", function () {
+                discardUnsavedNewSettlement();
+                settlementSelect.value = "";
+                clearSettlementDetail();
+              });
+
+              wireConfirmDelete(deleteBtn, function () {
+                if (settlementId === unsavedNewSettlementId) unsavedNewSettlementId = null;
+                var remaining = loadSettlements().filter(function (s) { return s.id !== settlement.id; });
+                saveSettlements(remaining);
+                renderSettlementSelect();
+                settlementSelect.value = "";
+                clearSettlementDetail();
+              });
+            };
+
+            renderSettlementSelect();
+            pullSettlements();
+
+            settlementSelect.addEventListener("change", function () {
+              discardUnsavedNewSettlement();
+              if (settlementSelect.value) {
+                renderSettlementForm(settlementSelect.value);
+              } else {
+                clearSettlementDetail();
+              }
+            });
+
+            settlementAddBtn.addEventListener("click", function () {
+              discardUnsavedNewSettlement();
+              var settlements = loadSettlements();
+              var newSettlement = {
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                createdAt: Date.now(),
+                name: "", size: "", gpValue: "",
+                definingTrait: "", claimToFame: "", currentCalamity: "", localLeader: "",
+                noteworthyPeople: "", noteworthyPlaces: "",
+              };
+              settlements.push(newSettlement);
+              saveSettlements(settlements);
+              renderSettlementSelect();
+              settlementSelect.value = newSettlement.id;
+              renderSettlementForm(newSettlement.id, true);
+            });
+          }
+
+          {{/* Campaign Journal: same select+add-button+detail pattern as
+            NPC Tracker above, matching D&D Beyond's official Campaign
+            Journal sheet (reference/tracking_sheets/campaign-journal-sheet.pdf).
+            Kept as its own self-contained block for the same reason NPC
+            Tracker is. */}}
+          var campaignJournal = document.getElementById("campaign-journal");
+          if (campaignJournal) {
+            var journalStorageKey = campaignJournal.dataset.storageKey;
+            var journalSelect = document.getElementById("campaign-journal-select");
+            var journalDetail = document.getElementById("campaign-journal-detail");
+            var journalAddBtn = document.getElementById("campaign-journal-add-btn");
+
+            var loadJournalEntries = function () {
+              try {
+                return JSON.parse(window.localStorage.getItem(journalStorageKey) || "[]");
+              } catch (e) {
+                return [];
+              }
+            };
+
+            var writeJournalEntriesLocal = function (entries) {
+              window.localStorage.setItem(journalStorageKey, JSON.stringify(entries));
+            };
+
+            var saveJournalEntries = function (entries) {
+              writeJournalEntriesLocal(entries);
+              syncPush("journal", entries);
+            };
+
+            var pullJournalEntries = function () {
+              syncPull("journal").then(function (remote) {
+                if (remote) {
+                  writeJournalEntriesLocal(remote);
+                  renderJournalSelect();
+                  clearJournalDetail();
+                } else if (syncEnabled()) {
+                  syncPush("journal", loadJournalEntries());
+                }
+              });
+            };
+            syncPullers.push(pullJournalEntries);
+
+            var journalLabel = function (entry) {
+              return entry.title || "Untitled Session";
+            };
+
+            var updateJournalOptionLabel = function (entry) {
+              var option = journalSelect.querySelector('option[value="' + entry.id + '"]');
+              if (option) option.textContent = journalLabel(entry);
+            };
+
+            var journalEditInput = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "journal-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var input = document.createElement("input");
+              input.type = "text";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(input);
+              return wrap;
+            };
+
+            var journalEditTextarea = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "journal-field journal-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var textarea = document.createElement("textarea");
+              textarea.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(textarea);
+              return wrap;
+            };
+
+            var collectJournalFromForm = function (form, originalEntry) {
+              var entry = { id: originalEntry.id, createdAt: originalEntry.createdAt };
+              Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
+                entry[el.dataset.field] = el.value;
+              });
+              return entry;
+            };
+
+            var clearJournalDetail = function () {
+              journalDetail.innerHTML = "";
+            };
+
+            var renderJournalSelect = function () {
+              var entries = loadJournalEntries().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var currentValue = journalSelect.value;
+              journalSelect.innerHTML = "";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select a session —";
+              journalSelect.appendChild(placeholder);
+              entries.forEach(function (entry) {
+                var option = document.createElement("option");
+                option.value = entry.id;
+                option.textContent = journalLabel(entry);
+                journalSelect.appendChild(option);
+              });
+              journalSelect.value = entries.some(function (e) { return e.id === currentValue; }) ? currentValue : "";
+              return entries;
+            };
+
+            var unsavedNewJournalId = null;
+
+            var discardUnsavedNewJournal = function () {
+              if (!unsavedNewJournalId) return;
+              var remaining = loadJournalEntries().filter(function (e) { return e.id !== unsavedNewJournalId; });
+              saveJournalEntries(remaining);
+              unsavedNewJournalId = null;
+              renderJournalSelect();
+            };
+
+            var renderJournalForm = function (entryId, isNew) {
+              if (isNew) unsavedNewJournalId = entryId;
+              var entries = loadJournalEntries();
+              var entry = entries.filter(function (e) { return e.id === entryId; })[0];
+              journalDetail.innerHTML = "";
+              if (!entry) return;
+
+              var actions = document.createElement("div");
+              actions.className = "journal-form-actions";
+              var saveBtn = document.createElement("button");
+              saveBtn.type = "button";
+              saveBtn.className = "journal-save-btn";
+              saveBtn.textContent = "Save";
+              var cancelBtn = document.createElement("button");
+              cancelBtn.type = "button";
+              cancelBtn.className = "journal-cancel-btn";
+              cancelBtn.textContent = "Cancel";
+              var deleteBtn = document.createElement("button");
+              deleteBtn.type = "button";
+              deleteBtn.className = "journal-delete-btn";
+              deleteBtn.textContent = "Delete";
+              actions.appendChild(saveBtn);
+              actions.appendChild(cancelBtn);
+              actions.appendChild(deleteBtn);
+              journalDetail.appendChild(actions);
+
+              var error = document.createElement("p");
+              error.className = "journal-form-error";
+              error.hidden = true;
+              error.textContent = "Session/Adventure Title is required.";
+              journalDetail.appendChild(error);
+
+              var form = document.createElement("div");
+              form.className = "journal-edit-form";
+
+              var header = document.createElement("div");
+              header.className = "journal-header-fields";
+              header.appendChild(journalEditInput("Session Number", entry.sessionNumber, { field: "sessionNumber" }));
+              header.appendChild(journalEditInput("Session Date", entry.sessionDate, { field: "sessionDate" }));
+              header.appendChild(journalEditInput("Session/Adventure Title", entry.title, { field: "title" }));
+              form.appendChild(header);
+
+              form.appendChild(journalEditTextarea("Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
+              form.appendChild(journalEditTextarea("What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
+              form.appendChild(journalEditTextarea("Additional Notes", entry.notes, { field: "notes" }));
+
+              journalDetail.appendChild(form);
+
+              saveBtn.addEventListener("click", function () {
+                var updated = collectJournalFromForm(form, entry);
+                if (!updated.title || !updated.title.trim()) {
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var allEntries = loadJournalEntries();
+                var idx = -1;
+                allEntries.forEach(function (e, eIdx) { if (e.id === entry.id) idx = eIdx; });
+                if (idx !== -1) allEntries[idx] = updated;
+                saveJournalEntries(allEntries);
+                updateJournalOptionLabel(updated);
+                unsavedNewJournalId = null;
+                var originalText = saveBtn.textContent;
+                saveBtn.textContent = "Saved";
+                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+              });
+
+              cancelBtn.addEventListener("click", function () {
+                discardUnsavedNewJournal();
+                journalSelect.value = "";
+                clearJournalDetail();
+              });
+
+              wireConfirmDelete(deleteBtn, function () {
+                if (entryId === unsavedNewJournalId) unsavedNewJournalId = null;
+                var remaining = loadJournalEntries().filter(function (e) { return e.id !== entry.id; });
+                saveJournalEntries(remaining);
+                renderJournalSelect();
+                journalSelect.value = "";
+                clearJournalDetail();
+              });
+            };
+
+            renderJournalSelect();
+            pullJournalEntries();
+
+            journalSelect.addEventListener("change", function () {
+              discardUnsavedNewJournal();
+              if (journalSelect.value) {
+                renderJournalForm(journalSelect.value);
+              } else {
+                clearJournalDetail();
+              }
+            });
+
+            journalAddBtn.addEventListener("click", function () {
+              discardUnsavedNewJournal();
+              var entries = loadJournalEntries();
+              var newEntry = {
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                createdAt: Date.now(),
+                sessionNumber: "", sessionDate: "", title: "",
+                priorEvents: "", plannedSummary: "", notes: "",
+              };
+              entries.push(newEntry);
+              saveJournalEntries(entries);
+              renderJournalSelect();
+              journalSelect.value = newEntry.id;
+              renderJournalForm(newEntry.id, true);
+            });
+          }
+
+          {{/* Character Tracker: same select+add-button+detail pattern as
+            NPC Tracker above, matching D&D Beyond's official Character
+            Tracker sheet (reference/tracking_sheets/character-tracker.pdf).
+            Kept as its own self-contained block for the same reason NPC
+            Tracker is. */}}
+          var charTracker = document.getElementById("character-tracker");
+          if (charTracker) {
+            var charTrackerStorageKey = charTracker.dataset.storageKey;
+            var charTrackerSelect = document.getElementById("character-tracker-select");
+            var charTrackerDetail = document.getElementById("character-tracker-detail");
+            var charTrackerAddBtn = document.getElementById("character-tracker-add-btn");
+
+            var loadCharTrackerEntries = function () {
+              try {
+                return JSON.parse(window.localStorage.getItem(charTrackerStorageKey) || "[]");
+              } catch (e) {
+                return [];
+              }
+            };
+
+            var writeCharTrackerEntriesLocal = function (entries) {
+              window.localStorage.setItem(charTrackerStorageKey, JSON.stringify(entries));
+            };
+
+            var saveCharTrackerEntries = function (entries) {
+              writeCharTrackerEntriesLocal(entries);
+              syncPush("character-tracker", entries);
+            };
+
+            var pullCharTrackerEntries = function () {
+              syncPull("character-tracker").then(function (remote) {
+                if (remote) {
+                  writeCharTrackerEntriesLocal(remote);
+                  renderCharTrackerSelect();
+                  clearCharTrackerDetail();
+                } else if (syncEnabled()) {
+                  syncPush("character-tracker", loadCharTrackerEntries());
+                }
+              });
+            };
+            syncPullers.push(pullCharTrackerEntries);
+
+            var charTrackerLabel = function (entry) {
+              return entry.characterName || "Unnamed Character";
+            };
+
+            var updateCharTrackerOptionLabel = function (entry) {
+              var option = charTrackerSelect.querySelector('option[value="' + entry.id + '"]');
+              if (option) option.textContent = charTrackerLabel(entry);
+            };
+
+            var charTrackerEditInput = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "char-tracker-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var input = document.createElement("input");
+              input.type = "text";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(input);
+              return wrap;
+            };
+
+            var charTrackerEditTextarea = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "char-tracker-field char-tracker-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var textarea = document.createElement("textarea");
+              textarea.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(textarea);
+              return wrap;
+            };
+
+            var CHAR_TRACKER_MOTIVATIONS = [
+              "Acting", "Exploring", "Fighting", "Instigating",
+              "Optimizing", "Problem-Solving", "Socializing", "Storytelling",
+            ];
+
+            var charTrackerEditCheckboxGroup = function (labelText, values, name) {
+              var wrap = document.createElement("div");
+              wrap.className = "char-tracker-field char-tracker-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              wrap.appendChild(label);
+              var group = document.createElement("div");
+              group.className = "char-tracker-checkbox-group";
+              group.dataset.checkboxGroup = name;
+              var selected = values || [];
+              CHAR_TRACKER_MOTIVATIONS.forEach(function (opt) {
+                var optLabel = document.createElement("label");
+                optLabel.className = "char-tracker-checkbox-option";
+                var input = document.createElement("input");
+                input.type = "checkbox";
+                input.value = opt;
+                input.checked = selected.indexOf(opt) !== -1;
+                optLabel.appendChild(input);
+                optLabel.appendChild(document.createTextNode(" " + opt));
+                group.appendChild(optLabel);
+              });
+              wrap.appendChild(group);
+              return wrap;
+            };
+
+            var collectCharTrackerFromForm = function (form, originalEntry) {
+              var entry = { id: originalEntry.id, createdAt: originalEntry.createdAt };
+              Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
+                entry[el.dataset.field] = el.value;
+              });
+              var checkedMotivations = form.querySelectorAll('[data-checkbox-group="motivations"] input:checked');
+              entry.motivations = Array.prototype.map.call(checkedMotivations, function (el) { return el.value; });
+              return entry;
+            };
+
+            var clearCharTrackerDetail = function () {
+              charTrackerDetail.innerHTML = "";
+            };
+
+            var renderCharTrackerSelect = function () {
+              var entries = loadCharTrackerEntries().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var currentValue = charTrackerSelect.value;
+              charTrackerSelect.innerHTML = "";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select a character —";
+              charTrackerSelect.appendChild(placeholder);
+              entries.forEach(function (entry) {
+                var option = document.createElement("option");
+                option.value = entry.id;
+                option.textContent = charTrackerLabel(entry);
+                charTrackerSelect.appendChild(option);
+              });
+              charTrackerSelect.value = entries.some(function (e) { return e.id === currentValue; }) ? currentValue : "";
+              return entries;
+            };
+
+            var unsavedNewCharTrackerId = null;
+
+            var discardUnsavedNewCharTracker = function () {
+              if (!unsavedNewCharTrackerId) return;
+              var remaining = loadCharTrackerEntries().filter(function (e) { return e.id !== unsavedNewCharTrackerId; });
+              saveCharTrackerEntries(remaining);
+              unsavedNewCharTrackerId = null;
+              renderCharTrackerSelect();
+            };
+
+            var renderCharTrackerForm = function (entryId, isNew) {
+              if (isNew) unsavedNewCharTrackerId = entryId;
+              var entries = loadCharTrackerEntries();
+              var entry = entries.filter(function (e) { return e.id === entryId; })[0];
+              charTrackerDetail.innerHTML = "";
+              if (!entry) return;
+
+              var actions = document.createElement("div");
+              actions.className = "char-tracker-form-actions";
+              var saveBtn = document.createElement("button");
+              saveBtn.type = "button";
+              saveBtn.className = "char-tracker-save-btn";
+              saveBtn.textContent = "Save";
+              var cancelBtn = document.createElement("button");
+              cancelBtn.type = "button";
+              cancelBtn.className = "char-tracker-cancel-btn";
+              cancelBtn.textContent = "Cancel";
+              var deleteBtn = document.createElement("button");
+              deleteBtn.type = "button";
+              deleteBtn.className = "char-tracker-delete-btn";
+              deleteBtn.textContent = "Delete";
+              actions.appendChild(saveBtn);
+              actions.appendChild(cancelBtn);
+              actions.appendChild(deleteBtn);
+              charTrackerDetail.appendChild(actions);
+
+              var error = document.createElement("p");
+              error.className = "char-tracker-form-error";
+              error.hidden = true;
+              error.textContent = "Character's Name is required.";
+              charTrackerDetail.appendChild(error);
+
+              var form = document.createElement("div");
+              form.className = "char-tracker-edit-form";
+
+              var header = document.createElement("div");
+              header.className = "char-tracker-header-fields";
+              header.appendChild(charTrackerEditInput("Character's Name", entry.characterName, { field: "characterName" }));
+              header.appendChild(charTrackerEditInput("Player's Name", entry.playerName, { field: "playerName" }));
+              header.appendChild(charTrackerEditInput("Class", entry.charClass, { field: "charClass" }));
+              header.appendChild(charTrackerEditInput("Subclass", entry.subclass, { field: "subclass" }));
+              header.appendChild(charTrackerEditInput("Level", entry.level, { field: "level" }));
+              header.appendChild(charTrackerEditInput("Background", entry.background, { field: "background" }));
+              header.appendChild(charTrackerEditInput("Species", entry.species, { field: "species" }));
+              header.appendChild(charTrackerEditInput("Alignment", entry.alignment, { field: "alignment" }));
+              form.appendChild(header);
+
+              form.appendChild(charTrackerEditCheckboxGroup("Player Motivation", entry.motivations, "motivations"));
+              form.appendChild(charTrackerEditTextarea("Notes on Player Expectations", entry.playerExpectationsNotes, { field: "playerExpectationsNotes" }));
+              form.appendChild(charTrackerEditTextarea("Goals and Ambitions", entry.goalsAndAmbitions, { field: "goalsAndAmbitions" }));
+              form.appendChild(charTrackerEditTextarea("Family, Friends, and Foes", entry.familyFriendsFoes, { field: "familyFriendsFoes" }));
+              form.appendChild(charTrackerEditTextarea("Quirks and Whims", entry.quirksAndWhims, { field: "quirksAndWhims" }));
+              form.appendChild(charTrackerEditTextarea("Magic Items", entry.magicItems, { field: "magicItems" }));
+              form.appendChild(charTrackerEditTextarea("Adventure Ideas", entry.adventureIdeas, { field: "adventureIdeas" }));
+
+              charTrackerDetail.appendChild(form);
+
+              saveBtn.addEventListener("click", function () {
+                var updated = collectCharTrackerFromForm(form, entry);
+                if (!updated.characterName || !updated.characterName.trim()) {
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var allEntries = loadCharTrackerEntries();
+                var idx = -1;
+                allEntries.forEach(function (e, eIdx) { if (e.id === entry.id) idx = eIdx; });
+                if (idx !== -1) allEntries[idx] = updated;
+                saveCharTrackerEntries(allEntries);
+                updateCharTrackerOptionLabel(updated);
+                unsavedNewCharTrackerId = null;
+                var originalText = saveBtn.textContent;
+                saveBtn.textContent = "Saved";
+                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+              });
+
+              cancelBtn.addEventListener("click", function () {
+                discardUnsavedNewCharTracker();
+                charTrackerSelect.value = "";
+                clearCharTrackerDetail();
+              });
+
+              wireConfirmDelete(deleteBtn, function () {
+                if (entryId === unsavedNewCharTrackerId) unsavedNewCharTrackerId = null;
+                var remaining = loadCharTrackerEntries().filter(function (e) { return e.id !== entry.id; });
+                saveCharTrackerEntries(remaining);
+                renderCharTrackerSelect();
+                charTrackerSelect.value = "";
+                clearCharTrackerDetail();
+              });
+            };
+
+            renderCharTrackerSelect();
+            pullCharTrackerEntries();
+
+            charTrackerSelect.addEventListener("change", function () {
+              discardUnsavedNewCharTracker();
+              if (charTrackerSelect.value) {
+                renderCharTrackerForm(charTrackerSelect.value);
+              } else {
+                clearCharTrackerDetail();
+              }
+            });
+
+            charTrackerAddBtn.addEventListener("click", function () {
+              discardUnsavedNewCharTracker();
+              var entries = loadCharTrackerEntries();
+              var newEntry = {
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                createdAt: Date.now(),
+                characterName: "", playerName: "", charClass: "", subclass: "", level: "",
+                background: "", species: "", alignment: "", motivations: [],
+                playerExpectationsNotes: "", goalsAndAmbitions: "", familyFriendsFoes: "",
+                quirksAndWhims: "", magicItems: "", adventureIdeas: "",
+              };
+              entries.push(newEntry);
+              saveCharTrackerEntries(entries);
+              renderCharTrackerSelect();
+              charTrackerSelect.value = newEntry.id;
+              renderCharTrackerForm(newEntry.id, true);
+            });
+          }
+
+          {{/* Campaign Conflicts: same select+add-button+detail pattern as
+            NPC Tracker above, matching D&D Beyond's official Campaign
+            Conflicts sheet (reference/tracking_sheets/campaign-conflict-sheet.pdf).
+            Kept as its own self-contained block for the same reason NPC
+            Tracker is. */}}
+          var campaignConflicts = document.getElementById("campaign-conflicts");
+          if (campaignConflicts) {
+            var conflictStorageKey = campaignConflicts.dataset.storageKey;
+            var conflictSelect = document.getElementById("campaign-conflicts-select");
+            var conflictDetail = document.getElementById("campaign-conflicts-detail");
+            var conflictAddBtn = document.getElementById("campaign-conflicts-add-btn");
+
+            var loadConflicts = function () {
+              try {
+                return JSON.parse(window.localStorage.getItem(conflictStorageKey) || "[]");
+              } catch (e) {
+                return [];
+              }
+            };
+
+            var writeConflictsLocal = function (conflicts) {
+              window.localStorage.setItem(conflictStorageKey, JSON.stringify(conflicts));
+            };
+
+            var saveConflicts = function (conflicts) {
+              writeConflictsLocal(conflicts);
+              syncPush("conflicts", conflicts);
+            };
+
+            var pullConflicts = function () {
+              syncPull("conflicts").then(function (remote) {
+                if (remote) {
+                  writeConflictsLocal(remote);
+                  renderConflictSelect();
+                  clearConflictDetail();
+                } else if (syncEnabled()) {
+                  syncPush("conflicts", loadConflicts());
+                }
+              });
+            };
+            syncPullers.push(pullConflicts);
+
+            var conflictLabel = function (conflict) {
+              return conflict.adversary ? "Adventurers vs. " + conflict.adversary : "Unnamed Conflict";
+            };
+
+            var updateConflictOptionLabel = function (conflict) {
+              var option = conflictSelect.querySelector('option[value="' + conflict.id + '"]');
+              if (option) option.textContent = conflictLabel(conflict);
+            };
+
+            var conflictEditInput = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "conflict-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var input = document.createElement("input");
+              input.type = "text";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(input);
+              return wrap;
+            };
+
+            var conflictEditTextarea = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "conflict-field conflict-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var textarea = document.createElement("textarea");
+              textarea.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(textarea);
+              return wrap;
+            };
+
+            var collectConflictFromForm = function (form, originalConflict) {
+              var conflict = { id: originalConflict.id, createdAt: originalConflict.createdAt };
+              Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
+                conflict[el.dataset.field] = el.value;
+              });
+              return conflict;
+            };
+
+            var clearConflictDetail = function () {
+              conflictDetail.innerHTML = "";
+            };
+
+            var renderConflictSelect = function () {
+              var conflicts = loadConflicts().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var currentValue = conflictSelect.value;
+              conflictSelect.innerHTML = "";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select a conflict —";
+              conflictSelect.appendChild(placeholder);
+              conflicts.forEach(function (conflict) {
+                var option = document.createElement("option");
+                option.value = conflict.id;
+                option.textContent = conflictLabel(conflict);
+                conflictSelect.appendChild(option);
+              });
+              conflictSelect.value = conflicts.some(function (c) { return c.id === currentValue; }) ? currentValue : "";
+              return conflicts;
+            };
+
+            var unsavedNewConflictId = null;
+
+            var discardUnsavedNewConflict = function () {
+              if (!unsavedNewConflictId) return;
+              var remaining = loadConflicts().filter(function (c) { return c.id !== unsavedNewConflictId; });
+              saveConflicts(remaining);
+              unsavedNewConflictId = null;
+              renderConflictSelect();
+            };
+
+            var renderConflictForm = function (conflictId, isNew) {
+              if (isNew) unsavedNewConflictId = conflictId;
+              var conflicts = loadConflicts();
+              var conflict = conflicts.filter(function (c) { return c.id === conflictId; })[0];
+              conflictDetail.innerHTML = "";
+              if (!conflict) return;
+
+              var actions = document.createElement("div");
+              actions.className = "conflict-form-actions";
+              var saveBtn = document.createElement("button");
+              saveBtn.type = "button";
+              saveBtn.className = "conflict-save-btn";
+              saveBtn.textContent = "Save";
+              var cancelBtn = document.createElement("button");
+              cancelBtn.type = "button";
+              cancelBtn.className = "conflict-cancel-btn";
+              cancelBtn.textContent = "Cancel";
+              var deleteBtn = document.createElement("button");
+              deleteBtn.type = "button";
+              deleteBtn.className = "conflict-delete-btn";
+              deleteBtn.textContent = "Delete";
+              actions.appendChild(saveBtn);
+              actions.appendChild(cancelBtn);
+              actions.appendChild(deleteBtn);
+              conflictDetail.appendChild(actions);
+
+              var error = document.createElement("p");
+              error.className = "conflict-form-error";
+              error.hidden = true;
+              error.textContent = "The adversary (“Adventurers vs. ___”) is required.";
+              conflictDetail.appendChild(error);
+
+              var form = document.createElement("div");
+              form.className = "conflict-edit-form";
+
+              form.appendChild(conflictEditInput("Adventurers vs.", conflict.adversary, { field: "adversary" }));
+              form.appendChild(conflictEditTextarea("Notes", conflict.notes, { field: "notes" }));
+
+              conflictDetail.appendChild(form);
+
+              saveBtn.addEventListener("click", function () {
+                var updated = collectConflictFromForm(form, conflict);
+                if (!updated.adversary || !updated.adversary.trim()) {
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var allConflicts = loadConflicts();
+                var idx = -1;
+                allConflicts.forEach(function (c, cIdx) { if (c.id === conflict.id) idx = cIdx; });
+                if (idx !== -1) allConflicts[idx] = updated;
+                saveConflicts(allConflicts);
+                updateConflictOptionLabel(updated);
+                unsavedNewConflictId = null;
+                var originalText = saveBtn.textContent;
+                saveBtn.textContent = "Saved";
+                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+              });
+
+              cancelBtn.addEventListener("click", function () {
+                discardUnsavedNewConflict();
+                conflictSelect.value = "";
+                clearConflictDetail();
+              });
+
+              wireConfirmDelete(deleteBtn, function () {
+                if (conflictId === unsavedNewConflictId) unsavedNewConflictId = null;
+                var remaining = loadConflicts().filter(function (c) { return c.id !== conflict.id; });
+                saveConflicts(remaining);
+                renderConflictSelect();
+                conflictSelect.value = "";
+                clearConflictDetail();
+              });
+            };
+
+            renderConflictSelect();
+            pullConflicts();
+
+            conflictSelect.addEventListener("change", function () {
+              discardUnsavedNewConflict();
+              if (conflictSelect.value) {
+                renderConflictForm(conflictSelect.value);
+              } else {
+                clearConflictDetail();
+              }
+            });
+
+            conflictAddBtn.addEventListener("click", function () {
+              discardUnsavedNewConflict();
+              var conflicts = loadConflicts();
+              var newConflict = {
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                createdAt: Date.now(),
+                adversary: "", notes: "",
+              };
+              conflicts.push(newConflict);
+              saveConflicts(conflicts);
+              renderConflictSelect();
+              conflictSelect.value = newConflict.id;
+              renderConflictForm(newConflict.id, true);
+            });
+          }
+
+          {{/* Magic Item Tracker: matches D&D Beyond's official Magic
+            Item Tracker sheet (reference/tracking_sheets/magic-item-sheet.pdf)
+            — NOT a per-item log. It's the DMG's expected-magic-items-by-rarity
+            checklist per tier of play: a fixed set of tiers, each with
+            fixed rarities and a fixed recommended item count, and one
+            checkbox per expected item that the DM ticks off as it's
+            awarded. The tier/rarity/count structure is fixed by the
+            sheet, so it lives here in JS rather than the Hugo template;
+            only checkbox state is stored/synced. */}}
+          var magicItemTracker = document.getElementById("magic-item-tracker");
+          if (magicItemTracker) {
+            var magicItemStorageKey = magicItemTracker.dataset.storageKey;
+
+            var MAGIC_ITEM_TIERS = [
+              { key: "levels1to4", label: "Levels 1–4", rarities: [
+                { key: "common", label: "Common", count: 6 },
+                { key: "uncommon", label: "Uncommon", count: 4 },
+                { key: "rare", label: "Rare", count: 1 },
+              ] },
+              { key: "levels5to10", label: "Levels 5–10", rarities: [
+                { key: "common", label: "Common", count: 10 },
+                { key: "uncommon", label: "Uncommon", count: 17 },
+                { key: "rare", label: "Rare", count: 6 },
+                { key: "veryRare", label: "Very Rare", count: 1 },
+              ] },
+              { key: "levels11to16", label: "Levels 11–16", rarities: [
+                { key: "common", label: "Common", count: 3 },
+                { key: "uncommon", label: "Uncommon", count: 7 },
+                { key: "rare", label: "Rare", count: 11 },
+                { key: "veryRare", label: "Very Rare", count: 7 },
+                { key: "legendary", label: "Legendary", count: 2 },
+              ] },
+              { key: "levels17to20", label: "Levels 17–20", rarities: [
+                { key: "rare", label: "Rare", count: 5 },
+                { key: "veryRare", label: "Very Rare", count: 11 },
+                { key: "legendary", label: "Legendary", count: 9 },
+              ] },
+            ];
+
+            var blankMagicItemState = function () {
+              var state = {};
+              MAGIC_ITEM_TIERS.forEach(function (tier) {
+                state[tier.key] = {};
+                tier.rarities.forEach(function (rarity) {
+                  state[tier.key][rarity.key] = new Array(rarity.count).fill(false);
+                });
+              });
+              return state;
+            };
+
+            var loadMagicItemState = function () {
+              try {
+                var stored = JSON.parse(window.localStorage.getItem(magicItemStorageKey) || "null");
+                return stored || blankMagicItemState();
+              } catch (e) {
+                return blankMagicItemState();
+              }
+            };
+
+            var writeMagicItemStateLocal = function (state) {
+              window.localStorage.setItem(magicItemStorageKey, JSON.stringify(state));
+            };
+
+            var saveMagicItemState = function (state) {
+              writeMagicItemStateLocal(state);
+              syncPush("magic-items", state);
+            };
+
+            var renderMagicItemTracker = function (state) {
+              magicItemTracker.innerHTML = "";
+              MAGIC_ITEM_TIERS.forEach(function (tier) {
+                var section = document.createElement("div");
+                section.className = "magic-item-tier";
+                var heading = document.createElement("h3");
+                heading.textContent = tier.label;
+                section.appendChild(heading);
+
+                tier.rarities.forEach(function (rarity) {
+                  var row = document.createElement("div");
+                  row.className = "magic-item-rarity-row";
+                  var label = document.createElement("span");
+                  label.className = "magic-item-rarity-label";
+                  label.textContent = rarity.count + " " + rarity.label;
+                  row.appendChild(label);
+
+                  var boxes = document.createElement("div");
+                  boxes.className = "magic-item-checkbox-row";
+                  var checkedStates = (state[tier.key] && state[tier.key][rarity.key]) || new Array(rarity.count).fill(false);
+                  for (var i = 0; i < rarity.count; i++) {
+                    var checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.className = "magic-item-checkbox";
+                    checkbox.checked = Boolean(checkedStates[i]);
+                    checkbox.addEventListener("change", (function (tierKey, rarityKey, index, count) {
+                      return function () {
+                        var current = loadMagicItemState();
+                        current[tierKey] = current[tierKey] || {};
+                        current[tierKey][rarityKey] = current[tierKey][rarityKey] || new Array(count).fill(false);
+                        current[tierKey][rarityKey][index] = this.checked;
+                        saveMagicItemState(current);
+                      };
+                    })(tier.key, rarity.key, i, rarity.count));
+                    boxes.appendChild(checkbox);
+                  }
+                  row.appendChild(boxes);
+                  section.appendChild(row);
+                });
+
+                magicItemTracker.appendChild(section);
+              });
+            };
+
+            var pullMagicItemState = function () {
+              syncPull("magic-items").then(function (remote) {
+                if (remote) {
+                  writeMagicItemStateLocal(remote);
+                  renderMagicItemTracker(remote);
+                } else if (syncEnabled()) {
+                  syncPush("magic-items", loadMagicItemState());
+                }
+              });
+            };
+            syncPullers.push(pullMagicItemState);
+
+            renderMagicItemTracker(loadMagicItemState());
+            pullMagicItemState();
+          }
+
+          {{/* Bastion Tracker: same select+add-button+detail pattern as
+            NPC Tracker above, matching D&D Beyond's official Bastion
+            Tracker sheet (reference/tracking_sheets/bastion-sheet.pdf).
+            The sheet has 6 fixed Special Facility slots, handled the same
+            fixed-slot way as Travel Planner's 3 stages above. */}}
+          var bastionTracker = document.getElementById("bastion-tracker");
+          if (bastionTracker) {
+            var bastionStorageKey = bastionTracker.dataset.storageKey;
+            var bastionSelect = document.getElementById("bastion-tracker-select");
+            var bastionDetail = document.getElementById("bastion-tracker-detail");
+            var bastionAddBtn = document.getElementById("bastion-tracker-add-btn");
+
+            var loadBastions = function () {
+              try {
+                return JSON.parse(window.localStorage.getItem(bastionStorageKey) || "[]");
+              } catch (e) {
+                return [];
+              }
+            };
+
+            var writeBastionsLocal = function (bastions) {
+              window.localStorage.setItem(bastionStorageKey, JSON.stringify(bastions));
+            };
+
+            var saveBastions = function (bastions) {
+              writeBastionsLocal(bastions);
+              syncPush("bastions", bastions);
+            };
+
+            var pullBastions = function () {
+              syncPull("bastions").then(function (remote) {
+                if (remote) {
+                  writeBastionsLocal(remote);
+                  renderBastionSelect();
+                  clearBastionDetail();
+                } else if (syncEnabled()) {
+                  syncPush("bastions", loadBastions());
+                }
+              });
+            };
+            syncPullers.push(pullBastions);
+
+            var bastionLabel = function (bastion) {
+              return bastion.bastionName || "Unnamed Bastion";
+            };
+
+            var blankFacility = function () {
+              return { name: "", space: "", order: "", hirelings: "", notes: "" };
+            };
+
+            var updateBastionOptionLabel = function (bastion) {
+              var option = bastionSelect.querySelector('option[value="' + bastion.id + '"]');
+              if (option) option.textContent = bastionLabel(bastion);
+            };
+
+            var bastionEditInput = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "bastion-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var input = document.createElement("input");
+              input.type = "text";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(input);
+              return wrap;
+            };
+
+            var bastionEditTextarea = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "bastion-field bastion-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var textarea = document.createElement("textarea");
+              textarea.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(textarea);
+              return wrap;
+            };
+
+            var collectBastionFromForm = function (form, originalBastion) {
+              var bastion = {
+                id: originalBastion.id,
+                createdAt: originalBastion.createdAt,
+                bastionName: "", characterName: "", level: "", basicFacilities: "", bastionDefenders: "",
+                facilities: [blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility()],
+              };
+              Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
+                var field = el.dataset.field;
+                var facilityIndex = el.dataset.facilityIndex;
+                if (facilityIndex === undefined) {
+                  bastion[field] = el.value;
+                  return;
+                }
+                bastion.facilities[parseInt(facilityIndex, 10)][field] = el.value;
+              });
+              return bastion;
+            };
+
+            var clearBastionDetail = function () {
+              bastionDetail.innerHTML = "";
+            };
+
+            var renderBastionSelect = function () {
+              var bastions = loadBastions().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var currentValue = bastionSelect.value;
+              bastionSelect.innerHTML = "";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select a bastion —";
+              bastionSelect.appendChild(placeholder);
+              bastions.forEach(function (bastion) {
+                var option = document.createElement("option");
+                option.value = bastion.id;
+                option.textContent = bastionLabel(bastion);
+                bastionSelect.appendChild(option);
+              });
+              bastionSelect.value = bastions.some(function (b) { return b.id === currentValue; }) ? currentValue : "";
+              return bastions;
+            };
+
+            var unsavedNewBastionId = null;
+
+            var discardUnsavedNewBastion = function () {
+              if (!unsavedNewBastionId) return;
+              var remaining = loadBastions().filter(function (b) { return b.id !== unsavedNewBastionId; });
+              saveBastions(remaining);
+              unsavedNewBastionId = null;
+              renderBastionSelect();
+            };
+
+            var renderBastionForm = function (bastionId, isNew) {
+              if (isNew) unsavedNewBastionId = bastionId;
+              var bastions = loadBastions();
+              var bastion = bastions.filter(function (b) { return b.id === bastionId; })[0];
+              bastionDetail.innerHTML = "";
+              if (!bastion) return;
+
+              var actions = document.createElement("div");
+              actions.className = "bastion-form-actions";
+              var saveBtn = document.createElement("button");
+              saveBtn.type = "button";
+              saveBtn.className = "bastion-save-btn";
+              saveBtn.textContent = "Save";
+              var cancelBtn = document.createElement("button");
+              cancelBtn.type = "button";
+              cancelBtn.className = "bastion-cancel-btn";
+              cancelBtn.textContent = "Cancel";
+              var deleteBtn = document.createElement("button");
+              deleteBtn.type = "button";
+              deleteBtn.className = "bastion-delete-btn";
+              deleteBtn.textContent = "Delete";
+              actions.appendChild(saveBtn);
+              actions.appendChild(cancelBtn);
+              actions.appendChild(deleteBtn);
+              bastionDetail.appendChild(actions);
+
+              var error = document.createElement("p");
+              error.className = "bastion-form-error";
+              error.hidden = true;
+              error.textContent = "Bastion's Name is required.";
+              bastionDetail.appendChild(error);
+
+              var form = document.createElement("div");
+              form.className = "bastion-edit-form";
+
+              var header = document.createElement("div");
+              header.className = "bastion-header-fields";
+              header.appendChild(bastionEditInput("Bastion's Name", bastion.bastionName, { field: "bastionName" }));
+              header.appendChild(bastionEditInput("Character's Name", bastion.characterName, { field: "characterName" }));
+              header.appendChild(bastionEditInput("Level", bastion.level, { field: "level" }));
+              header.appendChild(bastionEditInput("Bastion Defenders", bastion.bastionDefenders, { field: "bastionDefenders" }));
+              form.appendChild(header);
+
+              form.appendChild(bastionEditTextarea("Basic Facilities", bastion.basicFacilities, { field: "basicFacilities" }));
+
+              var facilities = bastion.facilities && bastion.facilities.length === 6 ? bastion.facilities : [blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility()];
+              facilities.forEach(function (facility, i) {
+                var section = document.createElement("div");
+                section.className = "bastion-facility";
+                var heading = document.createElement("h3");
+                heading.textContent = "Special Facility " + (i + 1);
+                section.appendChild(heading);
+
+                var grid = document.createElement("div");
+                grid.className = "bastion-facility-grid";
+                grid.appendChild(bastionEditInput("Special Facility", facility.name, { field: "name", facilityIndex: i }));
+                grid.appendChild(bastionEditInput("Space", facility.space, { field: "space", facilityIndex: i }));
+                grid.appendChild(bastionEditInput("Order", facility.order, { field: "order", facilityIndex: i }));
+                grid.appendChild(bastionEditInput("Hirelings", facility.hirelings, { field: "hirelings", facilityIndex: i }));
+                section.appendChild(grid);
+
+                section.appendChild(bastionEditTextarea("Notes", facility.notes, { field: "notes", facilityIndex: i }));
+                form.appendChild(section);
+              });
+
+              bastionDetail.appendChild(form);
+
+              saveBtn.addEventListener("click", function () {
+                var updated = collectBastionFromForm(form, bastion);
+                if (!updated.bastionName || !updated.bastionName.trim()) {
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var allBastions = loadBastions();
+                var idx = -1;
+                allBastions.forEach(function (b, bIdx) { if (b.id === bastion.id) idx = bIdx; });
+                if (idx !== -1) allBastions[idx] = updated;
+                saveBastions(allBastions);
+                updateBastionOptionLabel(updated);
+                unsavedNewBastionId = null;
+                var originalText = saveBtn.textContent;
+                saveBtn.textContent = "Saved";
+                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+              });
+
+              cancelBtn.addEventListener("click", function () {
+                discardUnsavedNewBastion();
+                bastionSelect.value = "";
+                clearBastionDetail();
+              });
+
+              wireConfirmDelete(deleteBtn, function () {
+                if (bastionId === unsavedNewBastionId) unsavedNewBastionId = null;
+                var remaining = loadBastions().filter(function (b) { return b.id !== bastion.id; });
+                saveBastions(remaining);
+                renderBastionSelect();
+                bastionSelect.value = "";
+                clearBastionDetail();
+              });
+            };
+
+            renderBastionSelect();
+            pullBastions();
+
+            bastionSelect.addEventListener("change", function () {
+              discardUnsavedNewBastion();
+              if (bastionSelect.value) {
+                renderBastionForm(bastionSelect.value);
+              } else {
+                clearBastionDetail();
+              }
+            });
+
+            bastionAddBtn.addEventListener("click", function () {
+              discardUnsavedNewBastion();
+              var bastions = loadBastions();
+              var newBastion = {
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                createdAt: Date.now(),
+                bastionName: "", characterName: "", level: "", basicFacilities: "", bastionDefenders: "",
+                facilities: [blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility()],
+              };
+              bastions.push(newBastion);
+              saveBastions(bastions);
+              renderBastionSelect();
+              bastionSelect.value = newBastion.id;
+              renderBastionForm(newBastion.id, true);
             });
           }
         })();
