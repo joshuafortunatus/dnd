@@ -70,7 +70,7 @@
                 expand every PC-level field for them in one place. */}}
               <div class="pc-manager" id="pc-manager" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}" data-pc-data-key="dm-portal-pc-data-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}">
                 {{ if eq $proxyURL "" }}
-                  <p class="entry-date">
+                  <p class="entry-date pc-manager-proxy-notice">
                     Live character loading isn&rsquo;t set up yet. Deploy <code>worker/ddb-character-proxy.js</code>
                     to Cloudflare Workers and set <code>ddb_proxy_url</code> in <code>hugo.toml</code> to enable it.
                   </p>
@@ -493,6 +493,54 @@
               return wrap;
             };
 
+            var pcFieldSelect = function (labelText, options, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "pc-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              wrap.appendChild(label);
+              var select = document.createElement("select");
+              Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = options.length ? "— Select —" : "— Unknown class —";
+              select.appendChild(placeholder);
+              options.forEach(function (opt) {
+                var option = document.createElement("option");
+                option.value = opt;
+                option.textContent = opt;
+                select.appendChild(option);
+              });
+              select.value = options.indexOf(value) !== -1 ? value : "";
+              wrap.appendChild(select);
+              return wrap;
+            };
+
+            {{/* Hard-coded since scripts/fetch_ddb_character.py can't read
+              subclass off the D&D Beyond payload reliably — sourced from
+              https://dungeonsanddragonsfan.com/all-dnd-5e-classes-subclasses-complete-guide/ */}}
+            var DND_SUBCLASSES_BY_CLASS = {
+              "Artificer": ["Alchemist", "Armorer", "Artillerist", "Battle Smith"],
+              "Barbarian": ["Path of the Ancestral Guardian", "Path of the Battlerager", "Path of the Beast", "Path of the Berserker", "Path of the Giant", "Path of the Storm Herald", "Path of the Wild Heart", "Path of Wild Magic", "Path of the Zealot", "Path of the World Tree"],
+              "Bard": ["College of Creation", "College of Eloquence", "College of Glamour", "College of Lore", "College of Spirits", "College of Swords", "College of Valor", "College of Whispers", "College of Dance"],
+              "Cleric": ["Arcana Domain", "Death Domain", "Forge Domain", "Grave Domain", "Knowledge Domain", "Life Domain", "Light Domain", "Nature Domain", "Order Domain", "Peace Domain", "Tempest Domain", "Trickery Domain", "Twilight Domain", "War Domain"],
+              "Druid": ["Circle of Dreams", "Circle of the Land", "Circle of the Moon", "Circle of the Shepherd", "Circle of Spores", "Circle of Stars", "Circle of Wildfire", "Circle of the Sea"],
+              "Fighter": ["Arcane Archer", "Battle Master", "Cavalier", "Champion", "Echo Knight", "Eldritch Knight", "Psi Warrior", "Purple Dragon Knight", "Rune Knight", "Samurai"],
+              "Monk": ["Way of the Ascendant Dragon", "Way of the Astral Self", "Way of the Drunken Master", "Way of the Four Elements", "Way of the Kensei", "Way of the Long Death", "Way of Mercy", "Way of the Open Hand", "Way of the Shadow", "Way of the Sun Soul"],
+              "Paladin": ["Oath of Conquest", "Oath of Devotion", "Oath of Glory", "Oath of Redemption", "Oath of the Ancients", "Oath of the Crown", "Oath of the Watchers", "Oath of Vengeance", "Oathbreaker"],
+              "Ranger": ["Beast Master", "Drakewarden", "Fey Wanderer", "Gloom Stalker", "Horizon Walker", "Hunter", "Monster Slayer", "Swarmkeeper"],
+              "Rogue": ["Arcane Trickster", "Assassin", "Inquisitive", "Mastermind", "Phantom", "Scout", "Soulknife", "Swashbuckler", "Thief"],
+              "Sorcerer": ["Aberrant Mind", "Clockwork Soul", "Divine Soul", "Draconic Bloodline", "Lunar Sorcery", "Shadow Magic", "Storm Sorcery", "Wild Magic"],
+              "Warlock": ["Archfey Patron", "Celestial", "Fathomless", "Fiend", "Genie", "Great Old One", "Hexblade", "Undead", "Undying"],
+              "Wizard": ["Bladesinger", "Chronurgy", "Graviturgy", "Order of Scribes", "School of Abjuration", "School of Conjuration", "School of Divination", "School of Enchantment", "School of Evocation", "School of Illusion", "School of Necromancy", "School of Transmutation", "War Magic"],
+            };
+
+            var DND_ALIGNMENTS = [
+              "Lawful Good", "Neutral Good", "Chaotic Good",
+              "Lawful Neutral", "Neutral", "Chaotic Neutral",
+              "Lawful Evil", "Neutral Evil", "Chaotic Evil",
+            ];
+
             var PC_MOTIVATIONS = [
               "Acting", "Exploring", "Fighting", "Instigating",
               "Optimizing", "Problem-Solving", "Socializing", "Storytelling",
@@ -550,20 +598,21 @@
                 confusing than useful, so they're read-only in that case.
                 Characters that only exist as a published page (no D&D
                 Beyond id to refresh from) keep them as free-text fields. */}}
+              var effectiveClass = rosterEntry ? rosterEntry.charClass : d.charClass;
               if (rosterEntry) {
                 header.appendChild(pcFieldStatic("Class", rosterEntry.charClass));
-                header.appendChild(pcFieldInput("Subclass", d.subclass, { field: "subclass" }));
+                header.appendChild(pcFieldSelect("Subclass", DND_SUBCLASSES_BY_CLASS[effectiveClass] || [], d.subclass, { field: "subclass" }));
                 header.appendChild(pcFieldStatic("Level", rosterEntry.level ? String(rosterEntry.level) : ""));
                 header.appendChild(pcFieldInput("Background", d.background, { field: "background" }));
                 header.appendChild(pcFieldStatic("Species", rosterEntry.species));
               } else {
                 header.appendChild(pcFieldInput("Class", d.charClass, { field: "charClass" }));
-                header.appendChild(pcFieldInput("Subclass", d.subclass, { field: "subclass" }));
+                header.appendChild(pcFieldSelect("Subclass", DND_SUBCLASSES_BY_CLASS[effectiveClass] || [], d.subclass, { field: "subclass" }));
                 header.appendChild(pcFieldInput("Level", d.level, { field: "level" }));
                 header.appendChild(pcFieldInput("Background", d.background, { field: "background" }));
                 header.appendChild(pcFieldInput("Species", d.species, { field: "species" }));
               }
-              header.appendChild(pcFieldInput("Alignment", d.alignment, { field: "alignment" }));
+              header.appendChild(pcFieldSelect("Alignment", DND_ALIGNMENTS, d.alignment, { field: "alignment" }));
               form.appendChild(header);
 
               form.appendChild(pcMotivationGroup(d.motivations));
