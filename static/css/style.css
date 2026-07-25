@@ -733,6 +733,8 @@ body.is-home {
   margin-bottom: 2rem;
 }
 
+.char-tracker-name-heading { margin-bottom: 1rem; }
+
 .journal-header-fields,
 .char-tracker-header-fields,
 .bastion-header-fields {

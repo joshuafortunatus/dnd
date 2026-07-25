@@ -174,14 +174,14 @@
             {{ else if eq .id "character-tracker" }}
               {{/* Fields match D&D Beyond's official Character Tracker
                 sheet (reference/tracking_sheets/character-tracker.pdf) —
-                one record per PC, same select+add-button pattern as NPC
-                Tracker. */}}
+                one record per PC. No add button: every entry is auto-
+                imported from Character Importer's roster, so membership
+                here is always tied to that roster, not manually managed. */}}
               <div class="character-tracker" id="character-tracker" data-storage-key="dm-portal-character-tracker-{{ $slug }}" data-roster-key="dm-portal-characters-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}">
                 <div class="character-tracker-controls">
                   <select class="character-tracker-select" id="character-tracker-select">
                     <option value="">&mdash; Select a character &mdash;</option>
                   </select>
-                  <button type="button" class="character-tracker-add-btn" id="character-tracker-add-btn">+ Add Character</button>
                 </div>
                 <div class="character-tracker-detail" id="character-tracker-detail"></div>
               </div>
@@ -1765,7 +1765,6 @@
             var charTrackerStorageKey = charTracker.dataset.storageKey;
             var charTrackerSelect = document.getElementById("character-tracker-select");
             var charTrackerDetail = document.getElementById("character-tracker-detail");
-            var charTrackerAddBtn = document.getElementById("character-tracker-add-btn");
             var charTrackerRosterKey = charTracker.dataset.rosterKey;
             var charTrackerRosterTitles = (function () {
               try {
@@ -1873,7 +1872,12 @@
             };
 
             var collectCharTrackerFromForm = function (form, originalEntry) {
-              var entry = { id: originalEntry.id, createdAt: originalEntry.createdAt };
+              {{/* characterName and source aren't editable fields (name is
+                roster-owned; editing it here would desync it from the
+                roster and cause it to be deleted/recreated on the next
+                refresh) — carry them over untouched rather than reading
+                them from the form. */}}
+              var entry = { id: originalEntry.id, createdAt: originalEntry.createdAt, characterName: originalEntry.characterName, source: originalEntry.source };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 entry[el.dataset.field] = el.value;
               });
@@ -1904,12 +1908,17 @@
               return entries;
             };
 
-            {{/* Character Tracker is about PCs, who already exist as the
-              same roster Character Importer/Expectations use — the DM
-              shouldn't have to re-type a name that's already been
-              imported. Auto-creates a blank entry (name only) for any
-              roster name with no existing entry; never touches entries
-              that already exist, so edits are never overwritten. */}}
+            {{/* Character Tracker has no add/delete of its own — every
+              entry is auto-imported from Character Importer's roster, so
+              membership here always mirrors that roster (same idea as
+              Expectations): a newly imported character gets a blank entry
+              seeded automatically, and one removed from the Importer is
+              removed here too. Entries are tagged source:"roster" so a
+              deletion only ever touches ones this function created. Also
+              backfills Class/Level/Species onto existing entries whose
+              fields are still blank — covers entries that were seeded
+              before that data was available, without ever overwriting
+              something the DM has actually typed in. */}}
             var ensureCharTrackerRosterEntries = function () {
               var rosterMeta = charTrackerRosterTitles.map(function (name) { return { name: name }; });
               try {
@@ -1929,15 +1938,29 @@
                   meta.species = e.species || meta.species || "";
                 });
               } catch (e) {}
+              var rosterMetaByName = {};
+              rosterMeta.forEach(function (m) { rosterMetaByName[m.name] = m; });
+              var rosterNames = rosterMeta.map(function (m) { return m.name; });
 
               var entries = loadCharTrackerEntries();
               var existingNames = entries.map(function (e) { return e.characterName; });
-              var added = false;
+              var changed = false;
+
+              entries.forEach(function (e) {
+                if (e.source !== "roster") return;
+                var meta = rosterMetaByName[e.characterName];
+                if (!meta) return;
+                if (!e.charClass && meta.charClass) { e.charClass = meta.charClass; changed = true; }
+                if (!e.level && meta.level) { e.level = String(meta.level); changed = true; }
+                if (!e.species && meta.species) { e.species = meta.species; changed = true; }
+              });
+
               rosterMeta.forEach(function (meta) {
                 if (existingNames.indexOf(meta.name) !== -1) return;
                 entries.push({
                   id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                   createdAt: Date.now(),
+                  source: "roster",
                   characterName: meta.name, playerName: "",
                   charClass: meta.charClass || "", subclass: "", level: meta.level ? String(meta.level) : "",
                   background: "", species: meta.species || "", alignment: "", motivations: [],
@@ -1945,31 +1968,43 @@
                   quirksAndWhims: "", magicItems: "", adventureIdeas: "",
                 });
                 existingNames.push(meta.name);
-                added = true;
+                changed = true;
               });
-              if (added) {
+
+              var selectedId = charTrackerSelect.value;
+              var selectedRemoved = false;
+              entries = entries.filter(function (e) {
+                if (e.source !== "roster" || rosterNames.indexOf(e.characterName) !== -1) return true;
+                if (e.id === selectedId) selectedRemoved = true;
+                changed = true;
+                return false;
+              });
+
+              if (changed) {
                 saveCharTrackerEntries(entries);
                 renderCharTrackerSelect();
+                if (selectedRemoved) {
+                  charTrackerSelect.value = "";
+                  clearCharTrackerDetail();
+                } else if (charTrackerSelect.value) {
+                  renderCharTrackerForm(charTrackerSelect.value);
+                }
               }
             };
             rosterRefreshListeners.push(ensureCharTrackerRosterEntries);
 
-            var unsavedNewCharTrackerId = null;
-
-            var discardUnsavedNewCharTracker = function () {
-              if (!unsavedNewCharTrackerId) return;
-              var remaining = loadCharTrackerEntries().filter(function (e) { return e.id !== unsavedNewCharTrackerId; });
-              saveCharTrackerEntries(remaining);
-              unsavedNewCharTrackerId = null;
-              renderCharTrackerSelect();
-            };
-
-            var renderCharTrackerForm = function (entryId, isNew) {
-              if (isNew) unsavedNewCharTrackerId = entryId;
+            var renderCharTrackerForm = function (entryId) {
               var entries = loadCharTrackerEntries();
               var entry = entries.filter(function (e) { return e.id === entryId; })[0];
               charTrackerDetail.innerHTML = "";
               if (!entry) return;
+
+              {{/* Character's Name is roster-owned, not editable here —
+                shown as a heading instead of a field. */}}
+              var nameHeading = document.createElement("h3");
+              nameHeading.className = "char-tracker-name-heading";
+              nameHeading.textContent = entry.characterName;
+              charTrackerDetail.appendChild(nameHeading);
 
               var actions = document.createElement("div");
               actions.className = "char-tracker-form-actions";
@@ -1981,27 +2016,15 @@
               cancelBtn.type = "button";
               cancelBtn.className = "char-tracker-cancel-btn";
               cancelBtn.textContent = "Cancel";
-              var deleteBtn = document.createElement("button");
-              deleteBtn.type = "button";
-              deleteBtn.className = "char-tracker-delete-btn";
-              deleteBtn.textContent = "Delete";
               actions.appendChild(saveBtn);
               actions.appendChild(cancelBtn);
-              actions.appendChild(deleteBtn);
               charTrackerDetail.appendChild(actions);
-
-              var error = document.createElement("p");
-              error.className = "char-tracker-form-error";
-              error.hidden = true;
-              error.textContent = "Character's Name is required.";
-              charTrackerDetail.appendChild(error);
 
               var form = document.createElement("div");
               form.className = "char-tracker-edit-form";
 
               var header = document.createElement("div");
               header.className = "char-tracker-header-fields";
-              header.appendChild(charTrackerEditInput("Character's Name", entry.characterName, { field: "characterName" }));
               header.appendChild(charTrackerEditInput("Player's Name", entry.playerName, { field: "playerName" }));
               header.appendChild(charTrackerEditInput("Class", entry.charClass, { field: "charClass" }));
               header.appendChild(charTrackerEditInput("Subclass", entry.subclass, { field: "subclass" }));
@@ -2023,34 +2046,18 @@
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectCharTrackerFromForm(form, entry);
-                if (!updated.characterName || !updated.characterName.trim()) {
-                  error.hidden = false;
-                  return;
-                }
-                error.hidden = true;
                 var allEntries = loadCharTrackerEntries();
                 var idx = -1;
                 allEntries.forEach(function (e, eIdx) { if (e.id === entry.id) idx = eIdx; });
                 if (idx !== -1) allEntries[idx] = updated;
                 saveCharTrackerEntries(allEntries);
                 updateCharTrackerOptionLabel(updated);
-                unsavedNewCharTrackerId = null;
                 var originalText = saveBtn.textContent;
                 saveBtn.textContent = "Saved";
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
               cancelBtn.addEventListener("click", function () {
-                discardUnsavedNewCharTracker();
-                charTrackerSelect.value = "";
-                clearCharTrackerDetail();
-              });
-
-              wireConfirmDelete(deleteBtn, function () {
-                if (entryId === unsavedNewCharTrackerId) unsavedNewCharTrackerId = null;
-                var remaining = loadCharTrackerEntries().filter(function (e) { return e.id !== entry.id; });
-                saveCharTrackerEntries(remaining);
-                renderCharTrackerSelect();
                 charTrackerSelect.value = "";
                 clearCharTrackerDetail();
               });
@@ -2060,30 +2067,11 @@
             pullCharTrackerEntries();
 
             charTrackerSelect.addEventListener("change", function () {
-              discardUnsavedNewCharTracker();
               if (charTrackerSelect.value) {
                 renderCharTrackerForm(charTrackerSelect.value);
               } else {
                 clearCharTrackerDetail();
               }
-            });
-
-            charTrackerAddBtn.addEventListener("click", function () {
-              discardUnsavedNewCharTracker();
-              var entries = loadCharTrackerEntries();
-              var newEntry = {
-                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-                createdAt: Date.now(),
-                characterName: "", playerName: "", charClass: "", subclass: "", level: "",
-                background: "", species: "", alignment: "", motivations: [],
-                playerExpectationsNotes: "", goalsAndAmbitions: "", familyFriendsFoes: "",
-                quirksAndWhims: "", magicItems: "", adventureIdeas: "",
-              };
-              entries.push(newEntry);
-              saveCharTrackerEntries(entries);
-              renderCharTrackerSelect();
-              charTrackerSelect.value = newEntry.id;
-              renderCharTrackerForm(newEntry.id, true);
             });
           }
 
