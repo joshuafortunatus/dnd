@@ -62,6 +62,15 @@
           {{ end }}
         </div>
 
+        <div class="dm-sync-control" id="dm-sync-control" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}">
+          {{ if ne $proxyURL "" }}
+            {{/* No separate sync passphrase to enter — the DM portal
+              password itself doubles as the sync credential (see the gate
+              script below), so this is a status readout, not a control. */}}
+            <span class="dm-sync-status" id="dm-sync-status"></span>
+          {{ end }}
+        </div>
+
         {{ range $sections }}
           <div class="dm-section-panel" data-section="{{ .id }}" hidden>
             {{ if eq .id "expectations" }}
@@ -150,6 +159,81 @@
             return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "character";
           };
 
+          {{/*
+            Cross-device sync: portal data (Character Importer roster,
+            Expectations edits, Travel Planner plans) otherwise lives only
+            in one browser's localStorage. This mirrors it to a Cloudflare
+            KV store (via worker/ddb-character-proxy.js's /sync/ routes)
+            gated by a passphrase entered once per device — the Worker's
+            URL is public (committed in hugo.toml), so an unauthenticated
+            write endpoint would let anyone who found it read or overwrite
+            this data. localStorage stays the fast local cache each feature
+            reads/writes immediately; sync pushes/pulls happen in the
+            background so typing never waits on the network.
+          */}}
+          var syncControl = document.getElementById("dm-sync-control");
+          var syncSlug = syncControl ? syncControl.dataset.slug : "";
+          var syncBase = ((syncControl && syncControl.dataset.proxyUrl) || "").replace(/\/$/, "");
+          var syncTokenStorageKey = "dm-portal-sync-token";
+          var syncPullers = [];
+
+          var getSyncToken = function () {
+            return window.localStorage.getItem(syncTokenStorageKey) || "";
+          };
+
+          var setSyncToken = function (token) {
+            if (token) {
+              window.localStorage.setItem(syncTokenStorageKey, token);
+            } else {
+              window.localStorage.removeItem(syncTokenStorageKey);
+            }
+          };
+
+          var syncEnabled = function () {
+            return Boolean(syncBase) && Boolean(getSyncToken());
+          };
+
+          var syncPull = function (key) {
+            if (!syncEnabled()) return Promise.resolve(null);
+            return fetch(syncBase + "/sync/" + syncSlug + "/" + key, {
+              headers: { Authorization: "Bearer " + getSyncToken() },
+            })
+              .then(function (res) { return res.ok ? res.json() : null; })
+              .catch(function () { return null; });
+          };
+
+          var syncPushTimers = {};
+          var syncPush = function (key, data) {
+            if (!syncEnabled()) return;
+            clearTimeout(syncPushTimers[key]);
+            syncPushTimers[key] = setTimeout(function () {
+              fetch(syncBase + "/sync/" + syncSlug + "/" + key, {
+                method: "PUT",
+                headers: { Authorization: "Bearer " + getSyncToken(), "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+              }).catch(function () {});
+            }, 800);
+          };
+
+          window.dmPortalSyncPullAll = function () {
+            syncPullers.forEach(function (fn) { fn(); });
+          };
+
+          {{/* Exposed so the password-gate script (a separate <script>
+            block further down, since it needs to run whether or not a
+            password is even configured) can hand over the plaintext DM
+            portal password the moment it's entered and verified — that
+            password IS the sync credential, there's no separate one to
+            enter. */}}
+          window.dmPortalSetSyncToken = setSyncToken;
+
+          if (syncControl && syncBase) {
+            var syncStatus = document.getElementById("dm-sync-status");
+            if (syncStatus) {
+              syncStatus.textContent = getSyncToken() ? "Synced across devices." : "";
+            }
+          }
+
           var sectionNav = document.getElementById("dm-section-nav");
           var sectionSelect = document.getElementById("dm-section-select");
           var sectionButtons = sectionNav.querySelectorAll(".dm-section-btn");
@@ -196,6 +280,45 @@
               window.localStorage.setItem(selectKey, char);
             };
 
+            var gatherExpectationsEdits = function () {
+              var result = {};
+              Array.prototype.forEach.call(expectations.querySelectorAll(".expectations-char-panel"), function (panel) {
+                var fields = {};
+                Array.prototype.forEach.call(panel.querySelectorAll(".expectations-field"), function (fieldEl) {
+                  var editable = fieldEl.querySelector(".expectations-editable");
+                  fields[fieldEl.dataset.field] = editable ? editable.innerText : "";
+                });
+                result[panel.dataset.char] = fields;
+              });
+              return result;
+            };
+
+            var refreshEditableDisplays = function () {
+              Array.prototype.forEach.call(expectations.querySelectorAll(".expectations-editable"), function (el) {
+                var panel = el.closest(".expectations-char-panel");
+                var field = el.closest(".expectations-field").dataset.field;
+                var key = editPrefix + "-" + panel.dataset.char + "-" + field;
+                var savedText = window.localStorage.getItem(key);
+                if (savedText !== null) el.innerText = savedText;
+              });
+            };
+
+            var pullExpectations = function () {
+              syncPull("expectations").then(function (remote) {
+                if (remote) {
+                  Object.keys(remote).forEach(function (charKey) {
+                    Object.keys(remote[charKey]).forEach(function (field) {
+                      window.localStorage.setItem(editPrefix + "-" + charKey + "-" + field, remote[charKey][field]);
+                    });
+                  });
+                  refreshEditableDisplays();
+                } else if (syncEnabled()) {
+                  syncPush("expectations", gatherExpectationsEdits());
+                }
+              });
+            };
+            syncPullers.push(pullExpectations);
+
             var wireEditable = function (el) {
               var panel = el.closest(".expectations-char-panel");
               var field = el.closest(".expectations-field").dataset.field;
@@ -204,6 +327,7 @@
               if (savedText !== null) el.innerText = savedText;
               el.addEventListener("input", function () {
                 window.localStorage.setItem(key, el.innerText);
+                syncPush("expectations", gatherExpectationsEdits());
               });
             };
 
@@ -274,6 +398,7 @@
 
             window.dmPortalRefreshRoster = refreshRoster;
             refreshRoster();
+            pullExpectations();
           }
 
           var importer = document.getElementById("character-importer");
@@ -292,9 +417,27 @@
               }
             };
 
-            var saveImporterRoster = function (roster) {
+            var writeImporterRosterLocal = function (roster) {
               window.localStorage.setItem(importerStorageKey, JSON.stringify(roster));
             };
+
+            var saveImporterRoster = function (roster) {
+              writeImporterRosterLocal(roster);
+              syncPush("characters", roster);
+            };
+
+            var pullImporterRoster = function () {
+              syncPull("characters").then(function (remote) {
+                if (remote) {
+                  writeImporterRosterLocal(remote);
+                  renderImporterList();
+                  if (window.dmPortalRefreshRoster) window.dmPortalRefreshRoster();
+                } else if (syncEnabled()) {
+                  syncPush("characters", loadImporterRoster());
+                }
+              });
+            };
+            syncPullers.push(pullImporterRoster);
 
             var renderImporterList = function () {
               var roster = loadImporterRoster();
@@ -361,6 +504,7 @@
             };
 
             renderImporterList();
+            pullImporterRoster();
 
             if (importerForm) {
               importerForm.addEventListener("submit", function (e) {
@@ -442,9 +586,27 @@
               }
             };
 
-            var savePlans = function (plans) {
+            var writePlansLocal = function (plans) {
               window.localStorage.setItem(tpStorageKey, JSON.stringify(plans));
             };
+
+            var savePlans = function (plans) {
+              writePlansLocal(plans);
+              syncPush("travel-plans", plans);
+            };
+
+            var pullTravelPlans = function () {
+              syncPull("travel-plans").then(function (remote) {
+                if (remote) {
+                  writePlansLocal(remote);
+                  renderSelect();
+                  clearDetail();
+                } else if (syncEnabled()) {
+                  syncPush("travel-plans", loadPlans());
+                }
+              });
+            };
+            syncPullers.push(pullTravelPlans);
 
             var planLabel = function (plan) {
               return (plan.origin || "?") + " - " + (plan.destination || "?");
@@ -681,6 +843,7 @@
             };
 
             renderSelect();
+            pullTravelPlans();
 
             tpSelect.addEventListener("change", function () {
               discardUnsavedNewPlan();
@@ -720,7 +883,14 @@
           gated content directly. See the note in archetypes/dm-portal.md
           before relying on it for anything actually sensitive. When
           password_hash is blank, there's no gate at all — dm-portal-content
-          just renders unhidden above.
+          just renders unhidden above (and cross-device sync never
+          activates, since there's no password to double as its credential).
+
+          The DM portal password IS the sync credential (see the sync
+          module's `window.dmPortalSetSyncToken` above) — there's nothing
+          separate to set up client-side. The Cloudflare Worker's
+          SYNC_SECRET just needs to be set to this same plaintext password;
+          see worker/ddb-character-proxy.js for the exact steps.
         */}}
         <script>
           (function () {
@@ -757,6 +927,13 @@
                     window.localStorage.setItem(storageKey, hash);
                     error.hidden = true;
                     reveal();
+                    // First successful unlock on this device: the password
+                    // just typed becomes the sync credential going forward
+                    // (persisted in localStorage — see dmPortalSetSyncToken),
+                    // and an immediate pull picks up anything already synced
+                    // from another device.
+                    if (window.dmPortalSetSyncToken) window.dmPortalSetSyncToken(value);
+                    if (window.dmPortalSyncPullAll) window.dmPortalSyncPullAll();
                   } else {
                     error.hidden = false;
                   }
