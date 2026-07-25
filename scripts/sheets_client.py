@@ -13,6 +13,7 @@ import os
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
@@ -39,3 +40,15 @@ def read_tab(service, sheet_id: str, tab_name: str) -> list[dict]:
         return []
     headers, *rows = values
     return [dict(zip(headers, row + [""] * (len(headers) - len(row)))) for row in rows]
+
+
+def read_tab_optional(service, sheet_id: str, tab_name: str) -> list[dict]:
+    """Like read_tab, but for tabs a campaign's sheet may not have added yet
+    (e.g. a newly introduced type) — returns [] instead of raising so one
+    campaign's incomplete sheet can't break sync for every campaign."""
+    try:
+        return read_tab(service, sheet_id, tab_name)
+    except HttpError as e:
+        if e.resp.status == 400:
+            return []
+        raise

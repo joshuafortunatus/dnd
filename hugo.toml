@@ -5,6 +5,11 @@ title = "Campaigns"
 [params]
   subtitle = "Notes, sessions, and characters from our D&D campaigns"
   background_image = "images/backgrounds/site-bg.jpg"
+  # Cloudflare Worker CORS proxy (worker/ddb-character-proxy.js) that lets the
+  # DM portal's Character Tracker fetch a D&D Beyond character live. Leave
+  # blank until deployed — the portal shows a "not set up yet" notice instead
+  # of the load-a-character form.
+  ddb_proxy_url = "https://ddb-character-proxy.joshuafortunatus.workers.dev"
 
 [taxonomies]
   tag = "tags"
