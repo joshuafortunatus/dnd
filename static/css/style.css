@@ -633,6 +633,251 @@ body.is-home {
 }
 .npc-tracker-add-btn:hover { background: rgba(201, 162, 39, 0.15); }
 
+.settlement-tracker-detail { margin-bottom: 2rem; }
+
+.settlement-header-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.settlement-header-fields .settlement-field { flex: 1 1 14rem; }
+
+.settlement-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.settlement-field label { color: var(--text-dim); font-size: 0.9rem; }
+.settlement-field input[type="text"],
+.settlement-field textarea {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 1rem;
+  font-family: inherit;
+}
+.settlement-field textarea { min-height: 5rem; resize: vertical; }
+.settlement-field-wide { margin-bottom: 1.25rem; }
+
+.settlement-radio-group { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.settlement-radio-option { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text); font-size: 0.95rem; cursor: pointer; }
+
+.settlement-save-btn,
+.settlement-cancel-btn,
+.settlement-delete-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.settlement-save-btn:hover { background: rgba(201, 162, 39, 0.15); }
+.settlement-cancel-btn { border-color: var(--border); color: var(--text-dim); }
+.settlement-cancel-btn:hover { color: var(--text); }
+.settlement-delete-btn { border-color: var(--border); color: var(--text-dim); }
+.settlement-delete-btn:hover { color: #d16a6a; border-color: #d16a6a; }
+.settlement-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.settlement-form-error {
+  color: #d16a6a;
+  font-size: 0.9rem;
+  margin: -1rem 0 1.5rem;
+}
+
+.settlement-tracker-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.settlement-tracker-select {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  flex: 1 1 20rem;
+  max-width: 24rem;
+}
+.settlement-tracker-add-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.settlement-tracker-add-btn:hover { background: rgba(201, 162, 39, 0.15); }
+
+.campaign-journal-detail,
+.character-tracker-detail,
+.campaign-conflicts-detail,
+.bastion-tracker-detail {
+  margin-bottom: 2rem;
+}
+
+.journal-header-fields,
+.char-tracker-header-fields,
+.bastion-header-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.journal-header-fields .journal-field,
+.char-tracker-header-fields .char-tracker-field,
+.bastion-header-fields .bastion-field {
+  flex: 1 1 14rem;
+}
+
+.journal-field, .char-tracker-field, .conflict-field, .bastion-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.journal-field label, .char-tracker-field label, .conflict-field label, .bastion-field label {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+.journal-field input[type="text"], .journal-field textarea,
+.char-tracker-field input[type="text"], .char-tracker-field textarea,
+.conflict-field input[type="text"], .conflict-field textarea,
+.bastion-field input[type="text"], .bastion-field textarea {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 1rem;
+  font-family: inherit;
+}
+.journal-field textarea, .char-tracker-field textarea, .conflict-field textarea, .bastion-field textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+.journal-field-wide, .char-tracker-field-wide, .conflict-field-wide, .bastion-field-wide {
+  margin-bottom: 1.25rem;
+}
+
+.char-tracker-checkbox-group { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.char-tracker-checkbox-option { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text); font-size: 0.95rem; cursor: pointer; }
+
+.bastion-facility {
+  margin-bottom: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.bastion-facility:first-of-type { padding-top: 0; border-top: none; }
+.bastion-facility h3 { margin-bottom: 1rem; }
+.bastion-facility-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.magic-item-tier {
+  margin-bottom: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.magic-item-tier:first-of-type { padding-top: 0; border-top: none; }
+.magic-item-tier h3 { margin-bottom: 1rem; }
+.magic-item-rarity-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+.magic-item-rarity-label { flex: 0 0 10rem; color: var(--text-dim); font-size: 0.9rem; }
+.magic-item-checkbox-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.magic-item-checkbox { width: 1.1rem; height: 1.1rem; cursor: pointer; accent-color: var(--accent); }
+
+.journal-save-btn, .journal-cancel-btn, .journal-delete-btn,
+.char-tracker-save-btn, .char-tracker-cancel-btn, .char-tracker-delete-btn,
+.conflict-save-btn, .conflict-cancel-btn, .conflict-delete-btn,
+.bastion-save-btn, .bastion-cancel-btn, .bastion-delete-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.journal-save-btn:hover, .char-tracker-save-btn:hover, .conflict-save-btn:hover, .bastion-save-btn:hover {
+  background: rgba(201, 162, 39, 0.15);
+}
+.journal-cancel-btn, .char-tracker-cancel-btn, .conflict-cancel-btn, .bastion-cancel-btn {
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+.journal-cancel-btn:hover, .char-tracker-cancel-btn:hover, .conflict-cancel-btn:hover, .bastion-cancel-btn:hover {
+  color: var(--text);
+}
+.journal-delete-btn, .char-tracker-delete-btn, .conflict-delete-btn, .bastion-delete-btn {
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+.journal-delete-btn:hover, .char-tracker-delete-btn:hover, .conflict-delete-btn:hover, .bastion-delete-btn:hover {
+  color: #d16a6a;
+  border-color: #d16a6a;
+}
+.journal-form-actions, .char-tracker-form-actions, .conflict-form-actions, .bastion-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.journal-form-error, .char-tracker-form-error, .conflict-form-error, .bastion-form-error {
+  color: #d16a6a;
+  font-size: 0.9rem;
+  margin: -1rem 0 1.5rem;
+}
+
+.campaign-journal-controls, .character-tracker-controls, .campaign-conflicts-controls, .bastion-tracker-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.campaign-journal-select, .character-tracker-select, .campaign-conflicts-select, .bastion-tracker-select {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  flex: 1 1 20rem;
+  max-width: 24rem;
+}
+.campaign-journal-add-btn, .character-tracker-add-btn, .campaign-conflicts-add-btn, .bastion-tracker-add-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.campaign-journal-add-btn:hover, .character-tracker-add-btn:hover, .campaign-conflicts-add-btn:hover, .bastion-tracker-add-btn:hover {
+  background: rgba(201, 162, 39, 0.15);
+}
+
 .lightbox {
   display: none;
   position: fixed;
