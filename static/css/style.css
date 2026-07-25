@@ -153,6 +153,7 @@ body.is-home {
   gap: 1rem;
 }
 .hub-topline h1 { margin: 0; font-size: 2.5rem; }
+.hub-topline h1.dm-portal-title { font-size: 1.35rem; }
 .hub-symbol {
   position: absolute;
   left: 50%;
@@ -186,6 +187,8 @@ body.is-home {
   color: var(--text);
   border-bottom-color: var(--accent);
 }
+.hub-tab-link { color: var(--accent); margin-right: 0; }
+.hub-tab-link:hover { color: var(--text); }
 .hub-panel {
   display: none;
   padding-top: 1.5rem;
@@ -254,6 +257,40 @@ body.is-home {
   color: var(--text-dim);
   font-size: 0.85rem;
 }
+
+.dm-portal-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.dm-portal-form label { color: var(--text-dim); }
+.dm-portal-form input[type="password"] {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.4rem 0.7rem;
+  font-size: 1.05rem;
+}
+.dm-portal-form button {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.dm-portal-form button:hover { background: rgba(201, 162, 39, 0.15); }
+.dm-portal-error {
+  width: 100%;
+  color: #d16a6a;
+  font-size: 0.9rem;
+  margin: 0;
+}
+.dm-portal-content { margin-top: 2rem; }
 
 .lightbox {
   display: none;

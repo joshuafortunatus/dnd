@@ -1,5 +1,6 @@
 {{ define "main" }}
   {{ $slug := .File.ContentBaseName }}
+  {{ $dmPage := .GetPage "dm" }}
   <div class="hub-topline">
     <h1>{{ .Title }}</h1>
     <img class="hub-symbol" src="{{ "images/DnD-Symbol.png" | relURL }}" alt="">
@@ -18,7 +19,7 @@
   {{ $misc := where $related "Type" "misc" }}
 
   <div class="hub-tabs">
-    <select class="hub-tab-select" onchange="document.getElementById('tab-' + this.value).checked = true">
+    <select class="hub-tab-select" onchange="if (this.value === 'dm') { window.location.href = this.options[this.selectedIndex].dataset.href; } else { document.getElementById('tab-' + this.value).checked = true; }">
       <option value="sessions">Sessions</option>
       <option value="quests">Quests</option>
       <option value="lore">Lore</option>
@@ -26,6 +27,7 @@
       <option value="locations">Locations</option>
       <option value="images">Images</option>
       <option value="misc">Misc.</option>
+      {{ with $dmPage }}<option value="dm" data-href="{{ .RelPermalink }}">DM Portal</option>{{ end }}
     </select>
 
     <input type="radio" name="hub-tab" id="tab-sessions" class="hub-tab-radio" checked>
@@ -42,6 +44,7 @@
     <label for="tab-images" class="hub-tab-label">Images</label>
     <input type="radio" name="hub-tab" id="tab-misc" class="hub-tab-radio">
     <label for="tab-misc" class="hub-tab-label">Misc.</label>
+    {{ with $dmPage }}<a class="hub-tab-label hub-tab-link" href="{{ .RelPermalink }}">DM Portal</a>{{ end }}
 
     <div class="hub-panel" id="panel-sessions">
       {{ if $sessions }}
