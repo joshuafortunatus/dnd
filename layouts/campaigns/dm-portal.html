@@ -1698,13 +1698,31 @@
               }
             });
 
+            var nextJournalSessionNumber = function (entries) {
+              var max = 0;
+              entries.forEach(function (e) {
+                var n = parseInt(e.sessionNumber, 10);
+                if (!isNaN(n) && n > max) max = n;
+              });
+              return String(max + 1);
+            };
+
+            var todayForJournal = function () {
+              var d = new Date();
+              var pad = function (n) { return n < 10 ? "0" + n : String(n); };
+              return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+            };
+
             journalAddBtn.addEventListener("click", function () {
               discardUnsavedNewJournal();
               var entries = loadJournalEntries();
               var newEntry = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
-                sessionNumber: "", sessionDate: "", title: "",
+                {{/* Auto-filled but still editable — same plain text
+                  fields as before, just prefilled with a sensible
+                  default at creation time. */}}
+                sessionNumber: nextJournalSessionNumber(entries), sessionDate: todayForJournal(), title: "",
                 priorEvents: "", plannedSummary: "", notes: "",
               };
               entries.push(newEntry);
