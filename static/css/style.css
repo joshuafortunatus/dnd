@@ -739,6 +739,12 @@ body.is-home {
   margin-bottom: 1.25rem;
 }
 
+.pc-field-static {
+  padding: 0.5rem 0.7rem;
+  color: var(--text-dim);
+  font-size: 1rem;
+}
+
 .pc-checkbox-group { display: flex; flex-wrap: wrap; gap: 1.25rem; }
 .pc-checkbox-option { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text); font-size: 0.95rem; cursor: pointer; }
 

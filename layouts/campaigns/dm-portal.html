@@ -377,9 +377,55 @@
                 } else if (syncEnabled()) {
                   syncPush("characters", loadRoster());
                 }
+                refreshRosterFromDdb();
               });
             };
             syncPullers.push(pullRoster);
+
+            {{/* Keeps Class/Level/Species current with D&D Beyond on
+              every page load, so a level-up shows up here without the
+              DM re-importing. Runs after the sync pull settles so it
+              refreshes the most up-to-date known roster, and pushes
+              the result back to sync so other devices pick it up too.
+              Fetch failures (character made private, deleted, etc.) are
+              swallowed per-character rather than clobbering what's
+              already cached. */}}
+            var refreshRosterFromDdb = function () {
+              if (!pcProxyUrl) return;
+              var withIds = loadRoster().filter(function (e) { return e.id; });
+              if (!withIds.length) return;
+              Promise.all(withIds.map(function (entry) {
+                return fetch(pcProxyUrl.replace(/\/$/, "") + "/character/" + entry.id)
+                  .then(function (res) { return res.ok ? res.json() : null; })
+                  .then(function (payload) {
+                    if (!payload || payload.success === false || !payload.data) return null;
+                    var classes = payload.data.classes || [];
+                    var charClass = classes.length ? ((classes[0].definition && classes[0].definition.name) || "") : "";
+                    var level = classes.length ? classes.reduce(function (sum, c) { return sum + (c.level || 0); }, 0) : "";
+                    var species = (payload.data.race && payload.data.race.fullName) || "";
+                    return { id: entry.id, charClass: charClass, level: level, species: species };
+                  })
+                  .catch(function () { return null; });
+              })).then(function (results) {
+                var current = loadRoster();
+                var changed = false;
+                results.forEach(function (r) {
+                  if (!r) return;
+                  var entry = current.filter(function (e) { return e.id === r.id; })[0];
+                  if (!entry) return;
+                  if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species) {
+                    entry.charClass = r.charClass;
+                    entry.level = r.level;
+                    entry.species = r.species;
+                    changed = true;
+                  }
+                });
+                if (changed) {
+                  saveRoster(current);
+                  renderPcList();
+                }
+              });
+            };
 
             var loadPcData = function () {
               try {
@@ -434,6 +480,19 @@
               return wrap;
             };
 
+            var pcFieldStatic = function (labelText, value) {
+              var wrap = document.createElement("div");
+              wrap.className = "pc-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var span = document.createElement("span");
+              span.className = "pc-field-static";
+              span.textContent = value || "—";
+              wrap.appendChild(label);
+              wrap.appendChild(span);
+              return wrap;
+            };
+
             var PC_MOTIVATIONS = [
               "Acting", "Exploring", "Fighting", "Instigating",
               "Optimizing", "Problem-Solving", "Socializing", "Storytelling",
@@ -484,11 +543,26 @@
               var header = document.createElement("div");
               header.className = "pc-header-fields";
               header.appendChild(pcFieldInput("Player's Name", d.playerName, { field: "playerName" }));
-              header.appendChild(pcFieldInput("Class", d.charClass || (rosterEntry && rosterEntry.charClass) || "", { field: "charClass" }));
-              header.appendChild(pcFieldInput("Subclass", d.subclass, { field: "subclass" }));
-              header.appendChild(pcFieldInput("Level", d.level || (rosterEntry && rosterEntry.level ? String(rosterEntry.level) : ""), { field: "level" }));
-              header.appendChild(pcFieldInput("Background", d.background, { field: "background" }));
-              header.appendChild(pcFieldInput("Species", d.species || (rosterEntry && rosterEntry.species) || "", { field: "species" }));
+              {{/* Class/Level/Species are kept in sync from D&D Beyond on
+                every page load (refreshRosterFromDdb below) for anyone
+                with a live import — editing them here would just get
+                silently overwritten on the next load, which is more
+                confusing than useful, so they're read-only in that case.
+                Characters that only exist as a published page (no D&D
+                Beyond id to refresh from) keep them as free-text fields. */}}
+              if (rosterEntry) {
+                header.appendChild(pcFieldStatic("Class", rosterEntry.charClass));
+                header.appendChild(pcFieldInput("Subclass", d.subclass, { field: "subclass" }));
+                header.appendChild(pcFieldStatic("Level", rosterEntry.level ? String(rosterEntry.level) : ""));
+                header.appendChild(pcFieldInput("Background", d.background, { field: "background" }));
+                header.appendChild(pcFieldStatic("Species", rosterEntry.species));
+              } else {
+                header.appendChild(pcFieldInput("Class", d.charClass, { field: "charClass" }));
+                header.appendChild(pcFieldInput("Subclass", d.subclass, { field: "subclass" }));
+                header.appendChild(pcFieldInput("Level", d.level, { field: "level" }));
+                header.appendChild(pcFieldInput("Background", d.background, { field: "background" }));
+                header.appendChild(pcFieldInput("Species", d.species, { field: "species" }));
+              }
               header.appendChild(pcFieldInput("Alignment", d.alignment, { field: "alignment" }));
               form.appendChild(header);
 
