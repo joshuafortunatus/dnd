@@ -56,7 +56,7 @@
             <option value="{{ .id }}">{{ .label }}</option>
           {{ end }}
         </select>
-        <div class="dm-section-nav" id="dm-section-nav" data-select-key="dm-portal-section-{{ $slug }}">
+        <div class="dm-section-nav" id="dm-section-nav">
           {{ range $sections }}
             <button type="button" class="dm-section-btn" data-section="{{ .id }}">{{ .label }}</button>
           {{ end }}
@@ -152,7 +152,6 @@
 
           var sectionNav = document.getElementById("dm-section-nav");
           var sectionSelect = document.getElementById("dm-section-select");
-          var sectionKey = sectionNav.dataset.selectKey;
           var sectionButtons = sectionNav.querySelectorAll(".dm-section-btn");
           var sectionPanels = document.querySelectorAll(".dm-section-panel");
           var knownSections = Array.prototype.map.call(sectionPanels, function (p) { return p.dataset.section; });
@@ -165,12 +164,13 @@
               p.hidden = p.dataset.section !== section;
             });
             sectionSelect.value = section;
-            window.localStorage.setItem(sectionKey, section);
           }
 
-          var savedSection = window.localStorage.getItem(sectionKey);
-          var initialSection = knownSections.indexOf(savedSection) !== -1 ? savedSection : knownSections[0];
-          if (initialSection) selectSection(initialSection);
+          // Always land on the first section (Character Importer) on a
+          // fresh visit — every other section reads from the roster it
+          // manages, so that's the natural anchor point rather than
+          // whichever section happened to be open last time.
+          if (knownSections.length) selectSection(knownSections[0]);
 
           Array.prototype.forEach.call(sectionButtons, function (b) {
             b.addEventListener("click", function () { selectSection(b.dataset.section); });
