@@ -69,9 +69,6 @@
                 already-published character page), click a name to
                 expand every PC-level field for them in one place. */}}
               <div class="pc-manager" id="pc-manager" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}" data-pc-data-key="dm-portal-pc-data-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}">
-                <p class="entry-date" id="pc-manager-empty" {{ if $rosterTitles }}hidden{{ end }}>No characters yet &mdash; add one below.</p>
-                <ul class="pc-manager-list" id="pc-manager-list"></ul>
-
                 {{ if eq $proxyURL "" }}
                   <p class="entry-date">
                     Live character loading isn&rsquo;t set up yet. Deploy <code>worker/ddb-character-proxy.js</code>
@@ -85,6 +82,9 @@
                     <p class="pc-manager-error" id="pc-manager-error" hidden></p>
                   </form>
                 {{ end }}
+
+                <p class="entry-date" id="pc-manager-empty" {{ if $rosterTitles }}hidden{{ end }}>No characters yet &mdash; add one above.</p>
+                <ul class="pc-manager-list" id="pc-manager-list"></ul>
               </div>
             {{ else if eq .id "travel-planner" }}
               <div class="travel-planner" id="travel-planner" data-storage-key="dm-portal-travel-plans-{{ $slug }}">
@@ -565,42 +565,12 @@
                 row.appendChild(detailsBtn);
 
                 if (rosterEntry) {
-                  var nameInput = document.createElement("input");
-                  nameInput.type = "text";
-                  nameInput.className = "character-importer-name-input";
-                  nameInput.value = name;
-                  nameInput.hidden = true;
-
-                  var editBtn = document.createElement("button");
-                  editBtn.type = "button";
-                  editBtn.className = "character-importer-edit";
-                  editBtn.textContent = "Rename";
-
-                  var saveNameBtn = document.createElement("button");
-                  saveNameBtn.type = "button";
-                  saveNameBtn.className = "character-importer-save";
-                  saveNameBtn.textContent = "Save";
-                  saveNameBtn.hidden = true;
-
+                  {{/* No rename — the name is authoritative from D&D
+                    Beyond, not something to hand-edit here. */}}
                   var removeBtn = document.createElement("button");
                   removeBtn.type = "button";
                   removeBtn.className = "character-importer-remove";
                   removeBtn.textContent = "Remove";
-
-                  editBtn.addEventListener("click", function () {
-                    nameSpan.hidden = true;
-                    nameInput.hidden = false;
-                    editBtn.hidden = true;
-                    saveNameBtn.hidden = false;
-                    nameInput.focus();
-                  });
-
-                  saveNameBtn.addEventListener("click", function () {
-                    var newName = nameInput.value.trim();
-                    if (newName) rosterEntry.name = newName;
-                    saveRoster(loadRoster().map(function (e) { return e.id === rosterEntry.id ? rosterEntry : e; }));
-                    renderPcList();
-                  });
 
                   wireConfirmDelete(removeBtn, function () {
                     saveRoster(loadRoster().filter(function (e) { return e.id !== rosterEntry.id; }));
@@ -611,9 +581,6 @@
                     renderPcList();
                   });
 
-                  row.appendChild(nameInput);
-                  row.appendChild(editBtn);
-                  row.appendChild(saveNameBtn);
                   row.appendChild(removeBtn);
                 }
 
