@@ -97,6 +97,16 @@
                   </div>
                 {{ end }}
               </div>
+            {{ else if eq .id "travel-planner" }}
+              <div class="travel-planner" id="travel-planner" data-storage-key="dm-portal-travel-plans-{{ $slug }}">
+                <div class="travel-planner-controls">
+                  <select class="travel-planner-select" id="travel-planner-select">
+                    <option value="">&mdash; Select a travel plan &mdash;</option>
+                  </select>
+                  <button type="button" class="travel-planner-add-btn" id="travel-planner-add-btn">+ Add Travel Plan</button>
+                </div>
+                <div class="travel-planner-detail" id="travel-planner-detail"></div>
+              </div>
             {{ else if eq .id "character-importer" }}
               <div class="character-importer" id="character-importer" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}">
                 {{ if eq $proxyURL "" }}
@@ -415,6 +425,288 @@
                   });
               });
             }
+          }
+
+          var travelPlanner = document.getElementById("travel-planner");
+          if (travelPlanner) {
+            var tpStorageKey = travelPlanner.dataset.storageKey;
+            var tpSelect = document.getElementById("travel-planner-select");
+            var tpDetail = document.getElementById("travel-planner-detail");
+            var tpAddBtn = document.getElementById("travel-planner-add-btn");
+
+            var loadPlans = function () {
+              try {
+                return JSON.parse(window.localStorage.getItem(tpStorageKey) || "[]");
+              } catch (e) {
+                return [];
+              }
+            };
+
+            var savePlans = function (plans) {
+              window.localStorage.setItem(tpStorageKey, JSON.stringify(plans));
+            };
+
+            var planLabel = function (plan) {
+              return (plan.origin || "?") + " - " + (plan.destination || "?");
+            };
+
+            var blankStage = function () {
+              return {
+                start: "", end: "", distance: "", terrain: "", weather: "",
+                pace: "", paceDays: { fast: "", normal: "", slow: "" },
+                notes: "", challenges: "", elapsedTime: "",
+              };
+            };
+
+            var updateOptionLabel = function (plan) {
+              var option = tpSelect.querySelector('option[value="' + plan.id + '"]');
+              if (option) option.textContent = planLabel(plan);
+            };
+
+            var editInput = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "travel-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var input = document.createElement("input");
+              input.type = "text";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(input);
+              return wrap;
+            };
+
+            var editTextarea = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "travel-field travel-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var textarea = document.createElement("textarea");
+              textarea.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(textarea);
+              return wrap;
+            };
+
+            var collectPlanFromForm = function (form, originalPlan) {
+              var plan = {
+                id: originalPlan.id,
+                createdAt: originalPlan.createdAt,
+                origin: "",
+                destination: "",
+                stages: [blankStage(), blankStage(), blankStage()],
+              };
+              Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
+                var field = el.dataset.field;
+                var stageIndex = el.dataset.stageIndex;
+                if (stageIndex === undefined) {
+                  plan[field] = el.value;
+                  return;
+                }
+                var i = parseInt(stageIndex, 10);
+                if (field === "pace") {
+                  if (el.checked) plan.stages[i].pace = el.value;
+                } else if (field === "paceDays") {
+                  plan.stages[i].paceDays = plan.stages[i].paceDays || {};
+                  plan.stages[i].paceDays[el.dataset.pace] = el.value;
+                } else {
+                  plan.stages[i][field] = el.value;
+                }
+              });
+              return plan;
+            };
+
+            var clearDetail = function () {
+              tpDetail.innerHTML = "";
+            };
+
+            var renderSelect = function () {
+              var plans = loadPlans().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var currentValue = tpSelect.value;
+              tpSelect.innerHTML = "";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select a travel plan —";
+              tpSelect.appendChild(placeholder);
+              plans.forEach(function (plan) {
+                var option = document.createElement("option");
+                option.value = plan.id;
+                option.textContent = planLabel(plan);
+                tpSelect.appendChild(option);
+              });
+              tpSelect.value = plans.some(function (p) { return p.id === currentValue; }) ? currentValue : "";
+              return plans;
+            };
+
+            var unsavedNewPlanId = null;
+
+            var discardUnsavedNewPlan = function () {
+              if (!unsavedNewPlanId) return;
+              var remaining = loadPlans().filter(function (p) { return p.id !== unsavedNewPlanId; });
+              savePlans(remaining);
+              unsavedNewPlanId = null;
+              renderSelect();
+            };
+
+            var renderForm = function (planId, isNew) {
+              if (isNew) unsavedNewPlanId = planId;
+              var plans = loadPlans();
+              var plan = plans.filter(function (p) { return p.id === planId; })[0];
+              tpDetail.innerHTML = "";
+              if (!plan) return;
+
+              var actions = document.createElement("div");
+              actions.className = "travel-form-actions";
+              var saveBtn = document.createElement("button");
+              saveBtn.type = "button";
+              saveBtn.className = "travel-save-btn";
+              saveBtn.textContent = "Save";
+              var cancelBtn = document.createElement("button");
+              cancelBtn.type = "button";
+              cancelBtn.className = "travel-cancel-btn";
+              cancelBtn.textContent = "Cancel";
+              var deleteBtn = document.createElement("button");
+              deleteBtn.type = "button";
+              deleteBtn.className = "travel-delete-btn";
+              deleteBtn.textContent = "Delete";
+              actions.appendChild(saveBtn);
+              actions.appendChild(cancelBtn);
+              actions.appendChild(deleteBtn);
+              tpDetail.appendChild(actions);
+
+              var error = document.createElement("p");
+              error.className = "travel-form-error";
+              error.hidden = true;
+              error.textContent = "Origin and Destination are required.";
+              tpDetail.appendChild(error);
+
+              var form = document.createElement("div");
+              form.className = "travel-edit-form";
+
+              var header = document.createElement("div");
+              header.className = "travel-header-fields";
+              header.appendChild(editInput("Origin", plan.origin, { field: "origin" }));
+              header.appendChild(editInput("Destination", plan.destination, { field: "destination" }));
+              form.appendChild(header);
+
+              plan.stages.forEach(function (stage, i) {
+                var section = document.createElement("div");
+                section.className = "travel-stage";
+                var heading = document.createElement("h3");
+                heading.textContent = "Stage " + (i + 1);
+                section.appendChild(heading);
+
+                var grid = document.createElement("div");
+                grid.className = "travel-stage-grid";
+                grid.appendChild(editInput("Start", stage.start, { field: "start", stageIndex: i }));
+                grid.appendChild(editInput("End", stage.end, { field: "end", stageIndex: i }));
+                grid.appendChild(editInput("Distance", stage.distance, { field: "distance", stageIndex: i }));
+                grid.appendChild(editInput("Terrain", stage.terrain, { field: "terrain", stageIndex: i }));
+                grid.appendChild(editInput("Weather", stage.weather, { field: "weather", stageIndex: i }));
+                section.appendChild(grid);
+
+                var paceWrap = document.createElement("div");
+                paceWrap.className = "travel-pace-group";
+                ["fast", "normal", "slow"].forEach(function (pace) {
+                  var row = document.createElement("label");
+                  row.className = "travel-pace-row";
+                  var radio = document.createElement("input");
+                  radio.type = "radio";
+                  radio.name = "travel-pace-" + plan.id + "-" + i;
+                  radio.value = pace;
+                  radio.checked = stage.pace === pace;
+                  radio.dataset.field = "pace";
+                  radio.dataset.stageIndex = i;
+                  var span = document.createElement("span");
+                  span.textContent = pace.charAt(0).toUpperCase() + pace.slice(1);
+                  var daysInput = document.createElement("input");
+                  daysInput.type = "text";
+                  daysInput.className = "travel-pace-days";
+                  daysInput.placeholder = "days/hrs";
+                  daysInput.dataset.field = "paceDays";
+                  daysInput.dataset.stageIndex = i;
+                  daysInput.dataset.pace = pace;
+                  daysInput.value = (stage.paceDays && stage.paceDays[pace]) || "";
+                  row.appendChild(radio);
+                  row.appendChild(span);
+                  row.appendChild(daysInput);
+                  paceWrap.appendChild(row);
+                });
+                section.appendChild(paceWrap);
+
+                section.appendChild(editTextarea("Narrative Notes", stage.notes, { field: "notes", stageIndex: i }));
+                section.appendChild(editTextarea("Challenges", stage.challenges, { field: "challenges", stageIndex: i }));
+                section.appendChild(editInput("Elapsed Time (Days/Hrs)", stage.elapsedTime, { field: "elapsedTime", stageIndex: i }));
+
+                form.appendChild(section);
+              });
+
+              tpDetail.appendChild(form);
+
+              saveBtn.addEventListener("click", function () {
+                var updated = collectPlanFromForm(form, plan);
+                if (!updated.origin.trim() || !updated.destination.trim()) {
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var allPlans = loadPlans();
+                var idx = -1;
+                allPlans.forEach(function (p, pIdx) { if (p.id === plan.id) idx = pIdx; });
+                if (idx !== -1) allPlans[idx] = updated;
+                savePlans(allPlans);
+                updateOptionLabel(updated);
+                unsavedNewPlanId = null;
+                var originalText = saveBtn.textContent;
+                saveBtn.textContent = "Saved";
+                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+              });
+
+              cancelBtn.addEventListener("click", function () {
+                discardUnsavedNewPlan();
+                tpSelect.value = "";
+                clearDetail();
+              });
+
+              deleteBtn.addEventListener("click", function () {
+                if (planId === unsavedNewPlanId) unsavedNewPlanId = null;
+                var remaining = loadPlans().filter(function (p) { return p.id !== plan.id; });
+                savePlans(remaining);
+                renderSelect();
+                tpSelect.value = "";
+                clearDetail();
+              });
+            };
+
+            renderSelect();
+
+            tpSelect.addEventListener("change", function () {
+              discardUnsavedNewPlan();
+              if (tpSelect.value) {
+                renderForm(tpSelect.value);
+              } else {
+                clearDetail();
+              }
+            });
+
+            tpAddBtn.addEventListener("click", function () {
+              discardUnsavedNewPlan();
+              var plans = loadPlans();
+              var newPlan = {
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                createdAt: Date.now(),
+                origin: "",
+                destination: "",
+                stages: [blankStage(), blankStage(), blankStage()],
+              };
+              plans.push(newPlan);
+              savePlans(plans);
+              renderSelect();
+              tpSelect.value = newPlan.id;
+              renderForm(newPlan.id, true);
+            });
           }
         })();
       </script>
