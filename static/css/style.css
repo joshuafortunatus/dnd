@@ -316,14 +316,14 @@ body.is-home {
 }
 .dm-section-panel { padding-top: 1.5rem; }
 
-.dm-sync-control {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding-top: 1rem;
+/* Shared "click again to confirm" flash state — applies to any
+   delete/remove button in the portal (Character Importer, Travel Planner,
+   NPC Tracker), whatever its base class is. */
+.is-confirming {
+  color: #d16a6a !important;
+  border-color: #d16a6a !important;
+  background: rgba(209, 106, 106, 0.12) !important;
 }
-.dm-sync-status { color: var(--text-dim); font-size: 0.9rem; }
 
 .expectations-char-select {
   display: block;
@@ -549,6 +549,89 @@ body.is-home {
   cursor: pointer;
 }
 .travel-planner-add-btn:hover { background: rgba(201, 162, 39, 0.15); }
+
+.npc-tracker-detail { margin-bottom: 2rem; }
+
+.npc-header-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.npc-header-fields .npc-field { flex: 1 1 14rem; }
+
+.npc-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.npc-field label { color: var(--text-dim); font-size: 0.9rem; }
+.npc-field input[type="text"],
+.npc-field textarea {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 1rem;
+  font-family: inherit;
+}
+.npc-field textarea { min-height: 5rem; resize: vertical; }
+.npc-field-wide { margin-bottom: 1.25rem; }
+
+.npc-save-btn,
+.npc-cancel-btn,
+.npc-delete-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.npc-save-btn:hover { background: rgba(201, 162, 39, 0.15); }
+.npc-cancel-btn { border-color: var(--border); color: var(--text-dim); }
+.npc-cancel-btn:hover { color: var(--text); }
+.npc-delete-btn { border-color: var(--border); color: var(--text-dim); }
+.npc-delete-btn:hover { color: #d16a6a; border-color: #d16a6a; }
+.npc-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.npc-form-error {
+  color: #d16a6a;
+  font-size: 0.9rem;
+  margin: -1rem 0 1.5rem;
+}
+
+.npc-tracker-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.npc-tracker-select {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  flex: 1 1 20rem;
+  max-width: 24rem;
+}
+.npc-tracker-add-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.npc-tracker-add-btn:hover { background: rgba(201, 162, 39, 0.15); }
 
 .lightbox {
   display: none;

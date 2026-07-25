@@ -43,11 +43,11 @@
  *   GET  /character/<numeric id>          — D&D Beyond character proxy (no auth)
  *   GET  /sync/<slug>/<key>                — read a stored JSON blob (Authorization: Bearer <SYNC_SECRET>)
  *   PUT  /sync/<slug>/<key>  (JSON body)   — write a stored JSON blob (Authorization: Bearer <SYNC_SECRET>)
- *   <slug> is a campaign slug; <key> is one of: characters, expectations, travel-plans
+ *   <slug> is a campaign slug; <key> is one of: characters, expectations, travel-plans, npcs
  */
 
 const ALLOWED_ORIGIN = "https://joshuafortunatus.github.io";
-const ALLOWED_SYNC_KEYS = ["characters", "expectations", "travel-plans"];
+const ALLOWED_SYNC_KEYS = ["characters", "expectations", "travel-plans", "npcs"];
 
 function corsHeaders(extra) {
   return Object.assign(

@@ -1,0 +1,7 @@
+name = "ddb-character-proxy"
+main = "ddb-character-proxy.js"
+compatibility_date = "2026-07-25"
+
+[[kv_namespaces]]
+binding = "PORTAL_DATA"
+id = "ab521a5271844f5e8bc2f168221205ca"
