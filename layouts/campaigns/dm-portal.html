@@ -2,6 +2,34 @@
   {{ $hub := .Parent }}
   {{ $slug := $hub.File.ContentBaseName }}
   {{ $hash := .Params.password_hash | default "" }}
+  {{ $proxyURL := site.Params.ddb_proxy_url | default "" }}
+
+  {{/* The roster a DM can pick from in Expectations: every real synced
+    character page, plus any character who already has expectations data
+    recorded even without a character page yet (e.g. hand-entered test
+    data). Characters loaded live via the Character Tracker's D&D Beyond
+    proxy are NOT in here — those only exist in that browser's localStorage
+    and are merged in client-side, since a static build can't know about
+    them. */}}
+  {{ $characters := where $hub.RegularPagesRecursive "Type" "characters" }}
+  {{ $expectationsPages := where $hub.RegularPagesRecursive "Type" "game_expectations" }}
+  {{ $rosterTitles := slice }}
+  {{ range $characters.ByTitle }}{{ $rosterTitles = $rosterTitles | append .Title }}{{ end }}
+  {{ range $expectationsPages.ByTitle }}{{ if not (in $rosterTitles .Title) }}{{ $rosterTitles = $rosterTitles | append .Title }}{{ end }}{{ end }}
+  {{ $rosterTitles = sort $rosterTitles }}
+
+  {{/* Order here is deliberate — matches how the DM wants to move through the portal. */}}
+  {{ $sections := slice
+    (dict "id" "expectations" "label" "Game Expectations")
+    (dict "id" "travel-planner" "label" "Travel Planner")
+    (dict "id" "npc-tracker" "label" "NPC Tracker")
+    (dict "id" "settlement-tracker" "label" "Settlement Tracker")
+    (dict "id" "campaign-journal" "label" "Campaign Journal")
+    (dict "id" "character-tracker" "label" "Character Tracker")
+    (dict "id" "campaign-conflicts" "label" "Campaign Conflicts")
+    (dict "id" "magic-item-tracker" "label" "Magic Item Tracker")
+    (dict "id" "bastion-tracker" "label" "Bastion Tracker")
+  }}
 
   <div class="hub-topline">
     <h1 class="dm-portal-title">{{ $hub.Title }} &mdash; DM Portal</h1>
@@ -25,8 +53,315 @@
       </form>
 
       <div class="dm-portal-content" id="dm-portal-content" hidden>
-        {{ .Content }}
+        <select class="dm-section-select" id="dm-section-select">
+          {{ range $sections }}
+            <option value="{{ .id }}">{{ .label }}</option>
+          {{ end }}
+        </select>
+        <div class="dm-section-nav" id="dm-section-nav" data-select-key="dm-portal-section-{{ $slug }}">
+          {{ range $sections }}
+            <button type="button" class="dm-section-btn" data-section="{{ .id }}">{{ .label }}</button>
+          {{ end }}
+        </div>
+
+        {{ range $sections }}
+          <div class="dm-section-panel" data-section="{{ .id }}" hidden>
+            {{ if eq .id "expectations" }}
+              <div class="expectations-switcher" id="expectations-switcher" data-select-key="dm-portal-expectations-selected-{{ $slug }}" data-edit-prefix="dm-portal-expectations-edit-{{ $slug }}" data-roster-key="dm-portal-characters-{{ $slug }}">
+                <p class="entry-date" id="expectations-empty" {{ if $rosterTitles }}hidden{{ end }}>No characters yet &mdash; add one in the Character Tracker section.</p>
+                <div class="expectations-characters">
+                  {{ range $rosterTitles }}
+                    <button type="button" class="expectations-char-btn" data-char="{{ . | urlize }}">{{ . }}</button>
+                  {{ end }}
+                </div>
+                {{ range $rosterTitles }}
+                  {{ $title := . }}
+                  {{ $matches := where $expectationsPages "Title" $title }}
+                  {{ $exp := "" }}
+                  {{ if $matches }}{{ $exp = index $matches 0 }}{{ end }}
+                  <div class="expectations-char-panel" data-char="{{ $title | urlize }}" hidden>
+                    <div class="expectations-field" data-field="game_theme_and_flavor">
+                      <h3>Game Theme and Flavor</h3>
+                      <div class="expectations-editable" contenteditable="true">{{ if $exp }}{{ $exp.Params.game_theme_and_flavor }}{{ end }}</div>
+                    </div>
+                    <div class="expectations-field" data-field="potentially_sensitive_elements">
+                      <h3>Potentially Sensitive Elements</h3>
+                      <div class="expectations-editable" contenteditable="true">{{ if $exp }}{{ $exp.Params.potentially_sensitive_elements }}{{ end }}</div>
+                    </div>
+                    <div class="expectations-field" data-field="hopes_and_expectations">
+                      <h3>Player&rsquo;s Hopes and Expectations</h3>
+                      <div class="expectations-editable" contenteditable="true">{{ if $exp }}{{ $exp.Params.hopes_and_expectations }}{{ end }}</div>
+                    </div>
+                    <div class="expectations-field" data-field="at_the_table_concerns">
+                      <h3>At-the-Table Concerns</h3>
+                      <div class="expectations-editable" contenteditable="true">{{ if $exp }}{{ $exp.Params.at_the_table_concerns }}{{ end }}</div>
+                    </div>
+                  </div>
+                {{ end }}
+              </div>
+            {{ else if eq .id "character-tracker" }}
+              <div class="character-tracker" id="character-tracker" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}">
+                {{ if eq $proxyURL "" }}
+                  <p class="entry-date">
+                    Live character loading isn&rsquo;t set up yet. Deploy <code>worker/ddb-character-proxy.js</code>
+                    to Cloudflare Workers and set <code>ddb_proxy_url</code> in <code>hugo.toml</code> to enable it.
+                  </p>
+                {{ else }}
+                  <form class="character-tracker-form" id="character-tracker-form">
+                    <label for="character-tracker-link">D&amp;D Beyond character link</label>
+                    <input type="text" id="character-tracker-link" placeholder="https://www.dndbeyond.com/characters/12345678" required>
+                    <button type="submit">Load Character</button>
+                    <p class="character-tracker-error" id="character-tracker-error" hidden></p>
+                  </form>
+                  <ul class="character-tracker-list" id="character-tracker-list"></ul>
+                {{ end }}
+              </div>
+            {{ else }}
+              <p class="entry-date">{{ .label }} is coming soon.</p>
+            {{ end }}
+          </div>
+        {{ end }}
       </div>
+
+      {{/*
+        Several independent things persist here via localStorage, since a
+        static build can't do any of them server-side: which portal section
+        is showing, which character's expectations are showing within that
+        section (a DM flipping back mid-session shouldn't land back on
+        whoever's first alphabetically), whatever the DM types into an
+        expectations field (there's no backend to write it back to the
+        sheet, and re-running the sheet sync should never clobber an edit
+        made here), and the roster of characters loaded live via the D&D
+        Beyond proxy (those never become real content pages — they only
+        exist in this browser's localStorage).
+      */}}
+      <script>
+        (function () {
+          var sectionNav = document.getElementById("dm-section-nav");
+          var sectionSelect = document.getElementById("dm-section-select");
+          var sectionKey = sectionNav.dataset.selectKey;
+          var sectionButtons = sectionNav.querySelectorAll(".dm-section-btn");
+          var sectionPanels = document.querySelectorAll(".dm-section-panel");
+          var knownSections = Array.prototype.map.call(sectionPanels, function (p) { return p.dataset.section; });
+
+          function selectSection(section) {
+            Array.prototype.forEach.call(sectionButtons, function (b) {
+              b.classList.toggle("is-active", b.dataset.section === section);
+            });
+            Array.prototype.forEach.call(sectionPanels, function (p) {
+              p.hidden = p.dataset.section !== section;
+            });
+            sectionSelect.value = section;
+            window.localStorage.setItem(sectionKey, section);
+          }
+
+          var savedSection = window.localStorage.getItem(sectionKey);
+          var initialSection = knownSections.indexOf(savedSection) !== -1 ? savedSection : knownSections[0];
+          if (initialSection) selectSection(initialSection);
+
+          Array.prototype.forEach.call(sectionButtons, function (b) {
+            b.addEventListener("click", function () { selectSection(b.dataset.section); });
+          });
+          sectionSelect.addEventListener("change", function () { selectSection(sectionSelect.value); });
+
+          var expectations = document.getElementById("expectations-switcher");
+          if (expectations) {
+            var selectKey = expectations.dataset.selectKey;
+            var editPrefix = expectations.dataset.editPrefix;
+            var rosterKey = expectations.dataset.rosterKey;
+            var charsContainer = expectations.querySelector(".expectations-characters");
+            var emptyNotice = document.getElementById("expectations-empty");
+
+            var slugifyName = function (name) {
+              return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "character";
+            };
+
+            var getButtons = function () { return expectations.querySelectorAll(".expectations-char-btn"); };
+            var getPanels = function () { return expectations.querySelectorAll(".expectations-char-panel"); };
+
+            var selectChar = function (char) {
+              Array.prototype.forEach.call(getButtons(), function (b) {
+                b.classList.toggle("is-active", b.dataset.char === char);
+              });
+              Array.prototype.forEach.call(getPanels(), function (p) {
+                p.hidden = p.dataset.char !== char;
+              });
+              window.localStorage.setItem(selectKey, char);
+            };
+
+            var wireEditable = function (el) {
+              var panel = el.closest(".expectations-char-panel");
+              var field = el.closest(".expectations-field").dataset.field;
+              var key = editPrefix + "-" + panel.dataset.char + "-" + field;
+              var savedText = window.localStorage.getItem(key);
+              if (savedText !== null) el.innerText = savedText;
+              el.addEventListener("input", function () {
+                window.localStorage.setItem(key, el.innerText);
+              });
+            };
+
+            var wireButton = function (b) {
+              b.addEventListener("click", function () { selectChar(b.dataset.char); });
+            };
+
+            var fieldBlock = function (label, field) {
+              var wrap = document.createElement("div");
+              wrap.className = "expectations-field";
+              wrap.dataset.field = field;
+              var h3 = document.createElement("h3");
+              h3.textContent = label;
+              var editable = document.createElement("div");
+              editable.className = "expectations-editable";
+              editable.contentEditable = "true";
+              wrap.appendChild(h3);
+              wrap.appendChild(editable);
+              return wrap;
+            };
+
+            var addLocalCharacter = function (entry) {
+              var charKey = slugifyName(entry.name);
+              if (expectations.querySelector('.expectations-char-btn[data-char="' + charKey + '"]')) return;
+
+              var btn = document.createElement("button");
+              btn.type = "button";
+              btn.className = "expectations-char-btn";
+              btn.dataset.char = charKey;
+              btn.dataset.source = "local";
+              btn.textContent = entry.name;
+              charsContainer.appendChild(btn);
+              wireButton(btn);
+
+              var panel = document.createElement("div");
+              panel.className = "expectations-char-panel";
+              panel.dataset.char = charKey;
+              panel.dataset.source = "local";
+              panel.hidden = true;
+              panel.appendChild(fieldBlock("Game Theme and Flavor", "game_theme_and_flavor"));
+              panel.appendChild(fieldBlock("Potentially Sensitive Elements", "potentially_sensitive_elements"));
+              panel.appendChild(fieldBlock("Player’s Hopes and Expectations", "hopes_and_expectations"));
+              panel.appendChild(fieldBlock("At-the-Table Concerns", "at_the_table_concerns"));
+              expectations.appendChild(panel);
+
+              Array.prototype.forEach.call(panel.querySelectorAll(".expectations-editable"), wireEditable);
+            };
+
+            var refreshRoster = function () {
+              var raw = window.localStorage.getItem(rosterKey);
+              var roster = [];
+              try { roster = raw ? JSON.parse(raw) : []; } catch (e) { roster = []; }
+              var rosterKeys = roster.map(function (e) { return slugifyName(e.name); });
+
+              roster.forEach(addLocalCharacter);
+
+              Array.prototype.forEach.call(expectations.querySelectorAll('.expectations-char-btn[data-source="local"]'), function (b) {
+                if (rosterKeys.indexOf(b.dataset.char) !== -1) return;
+                var panel = expectations.querySelector('.expectations-char-panel[data-char="' + b.dataset.char + '"]');
+                if (panel) panel.remove();
+                b.remove();
+              });
+
+              var buttons = getButtons();
+              emptyNotice.hidden = buttons.length > 0;
+              var known = Array.prototype.map.call(buttons, function (b) { return b.dataset.char; });
+              if (!known.length) return;
+              var hasActive = Array.prototype.some.call(buttons, function (b) { return b.classList.contains("is-active"); });
+              if (!hasActive) {
+                var saved = window.localStorage.getItem(selectKey);
+                selectChar(known.indexOf(saved) !== -1 ? saved : known[0]);
+              }
+            };
+
+            Array.prototype.forEach.call(getButtons(), wireButton);
+            Array.prototype.forEach.call(expectations.querySelectorAll(".expectations-editable"), wireEditable);
+
+            window.dmPortalRefreshRoster = refreshRoster;
+            refreshRoster();
+          }
+
+          var tracker = document.getElementById("character-tracker");
+          if (tracker) {
+            var proxyUrl = tracker.dataset.proxyUrl;
+            var trackerStorageKey = tracker.dataset.storageKey;
+            var trackerForm = document.getElementById("character-tracker-form");
+            var trackerList = document.getElementById("character-tracker-list");
+            var trackerError = document.getElementById("character-tracker-error");
+
+            var loadTrackerRoster = function () {
+              try {
+                return JSON.parse(window.localStorage.getItem(trackerStorageKey) || "[]");
+              } catch (e) {
+                return [];
+              }
+            };
+
+            var saveTrackerRoster = function (roster) {
+              window.localStorage.setItem(trackerStorageKey, JSON.stringify(roster));
+            };
+
+            var renderTrackerList = function () {
+              var roster = loadTrackerRoster();
+              trackerList.innerHTML = "";
+              roster.forEach(function (entry) {
+                var li = document.createElement("li");
+                var span = document.createElement("span");
+                span.textContent = entry.name;
+                var removeBtn = document.createElement("button");
+                removeBtn.type = "button";
+                removeBtn.className = "character-tracker-remove";
+                removeBtn.textContent = "Remove";
+                removeBtn.addEventListener("click", function () {
+                  saveTrackerRoster(loadTrackerRoster().filter(function (e) { return e.id !== entry.id; }));
+                  renderTrackerList();
+                  if (window.dmPortalRefreshRoster) window.dmPortalRefreshRoster();
+                });
+                li.appendChild(span);
+                li.appendChild(removeBtn);
+                trackerList.appendChild(li);
+              });
+            };
+
+            renderTrackerList();
+
+            if (trackerForm) {
+              trackerForm.addEventListener("submit", function (e) {
+                e.preventDefault();
+                trackerError.hidden = true;
+                var linkInput = document.getElementById("character-tracker-link");
+                var link = linkInput.value.trim();
+                var match = link.match(/characters\/(\d+)/);
+                if (!match) {
+                  trackerError.textContent = "That doesn't look like a D&D Beyond character link.";
+                  trackerError.hidden = false;
+                  return;
+                }
+                var id = match[1];
+                fetch(proxyUrl.replace(/\/$/, "") + "/character/" + id)
+                  .then(function (res) {
+                    if (!res.ok) throw new Error("D&D Beyond returned an error for that character.");
+                    return res.json();
+                  })
+                  .then(function (payload) {
+                    if (!payload || !payload.data || !payload.data.name) {
+                      throw new Error("Couldn't read a character name from that response.");
+                    }
+                    var roster = loadTrackerRoster();
+                    if (!roster.some(function (e) { return e.id === id; })) {
+                      roster.push({ id: id, name: payload.data.name, link: link });
+                      saveTrackerRoster(roster);
+                    }
+                    linkInput.value = "";
+                    renderTrackerList();
+                    if (window.dmPortalRefreshRoster) window.dmPortalRefreshRoster();
+                  })
+                  .catch(function (err) {
+                    trackerError.textContent = err.message;
+                    trackerError.hidden = false;
+                  });
+              });
+            }
+          }
+        })();
+      </script>
 
       {{/*
         Client-side only: the correct answer is a SHA-256 hash embedded in the

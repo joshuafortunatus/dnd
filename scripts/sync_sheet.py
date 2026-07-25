@@ -24,6 +24,19 @@ for a working example):
   skills_check_guide   skill, usage_rank, role_playing, combat
   misc                 name, content
                        One page per row.
+  game_expectations    character, game_theme_and_flavor,
+                       potentially_sensitive_elements, hopes_and_expectations,
+                       at_the_table_concerns
+                       DM-only (D&D Beyond's "Game Expectations" session-zero
+                       sheet). One row per playable character; character is
+                       that character's full name, exactly as it appears on
+                       their D&D Beyond page. The four text columns seed the
+                       DM portal's Expectations view, but the DM can edit them
+                       directly in the browser afterward — those edits are
+                       saved to that browser's localStorage, not written back
+                       to the sheet, so re-running this sync won't clobber
+                       them. Pages land under the DM portal, not the public
+                       hub.
 
 Images still come from each campaign's Drive folder (scripts/sync_drive.py)
 — this script only ever writes text content.
@@ -36,7 +49,7 @@ from pathlib import Path
 
 import yaml
 
-from sheets_client import build_service, read_tab
+from sheets_client import build_service, read_tab, read_tab_optional
 from sync_drive import CAMPAIGNS_DIR, load_campaigns, slugify
 
 TABLE_ALIGN = ":----"
@@ -189,6 +202,28 @@ def sync_skills(rows: list[dict], campaign_slug: str) -> int:
     return 1
 
 
+GAME_EXPECTATIONS_FIELDS = [
+    "game_theme_and_flavor",
+    "potentially_sensitive_elements",
+    "hopes_and_expectations",
+    "at_the_table_concerns",
+]
+
+
+def sync_game_expectations(rows: list[dict], campaign_slug: str) -> int:
+    count = 0
+    for row in rows:
+        character = row.get("character", "").strip()
+        if not character:
+            continue
+        front_matter = {"title": character, "type": "game_expectations", "character": character}
+        for field in GAME_EXPECTATIONS_FIELDS:
+            front_matter[field] = row.get(field, "").strip()
+        write_page(campaign_slug, "dm/expectations", slugify(character), front_matter, "")
+        count += 1
+    return count
+
+
 def sync_misc(rows: list[dict], campaign_slug: str) -> int:
     count = 0
     for row in rows:
@@ -212,6 +247,7 @@ def sync_campaign(service, campaign: dict) -> int:
     changed += sync_locations(read_tab(service, sheet_id, "locations"), slug)
     changed += sync_skills(read_tab(service, sheet_id, "skills_check_guide"), slug)
     changed += sync_misc(read_tab(service, sheet_id, "misc"), slug)
+    changed += sync_game_expectations(read_tab_optional(service, sheet_id, "game_expectations"), slug)
     return changed
 
 

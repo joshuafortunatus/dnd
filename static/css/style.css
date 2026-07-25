@@ -258,7 +258,7 @@ body.is-home {
   font-size: 0.85rem;
 }
 
-.dm-portal-form {
+.dm-portal-form:not([hidden]) {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -291,6 +291,124 @@ body.is-home {
   margin: 0;
 }
 .dm-portal-content { margin-top: 2rem; }
+
+.dm-section-select { display: none; }
+.dm-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.dm-section-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 1.15rem;
+  padding: 0.5rem 0;
+  cursor: pointer;
+}
+.dm-section-btn:hover { color: var(--text); }
+.dm-section-btn.is-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.dm-section-panel { padding-top: 1.5rem; }
+
+.expectations-characters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.expectations-char-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.expectations-char-btn:hover { color: var(--text); }
+.expectations-char-btn.is-active {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.expectations-field { margin-bottom: 1.75rem; }
+.expectations-field:last-child { margin-bottom: 0; }
+.expectations-field h3 { margin-bottom: 0.5rem; }
+.expectations-editable {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  min-height: 1.6rem;
+  white-space: pre-wrap;
+}
+.expectations-editable:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.character-tracker-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.character-tracker-form label { color: var(--text-dim); }
+.character-tracker-form input[type="text"] {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.4rem 0.7rem;
+  font-size: 1.05rem;
+  flex: 1 1 20rem;
+}
+.character-tracker-form button {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.character-tracker-form button:hover { background: rgba(201, 162, 39, 0.15); }
+.character-tracker-error {
+  width: 100%;
+  color: #d16a6a;
+  font-size: 0.9rem;
+  margin: 0;
+}
+.character-tracker-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0;
+}
+.character-tracker-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.character-tracker-remove {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.character-tracker-remove:hover { color: #d16a6a; border-color: #d16a6a; }
 
 .lightbox {
   display: none;
@@ -347,6 +465,15 @@ body.is-home {
   }
   .hub-tab-label { display: none; }
   .hub-symbol { display: none; }
+
+  .dm-section-select {
+    display: block;
+    width: 100%;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0.7rem;
+    font-size: 1.05rem;
+  }
+  .dm-section-nav { display: none; }
 
   /* Wide tables (NPCs/Locations/etc.) would otherwise force the whole
      frosted content area to scroll sideways. Let the table itself scroll

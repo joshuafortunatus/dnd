@@ -18,5 +18,3 @@ layout: "dm-portal"
 password_hash: ""
 ---
 
-## Session Zero
-

@@ -223,5 +223,9 @@ resources/
 hugo_stats.json
 .hugo_build.lock
 
+# Reference material (D&D Beyond sheets, etc.) kept local-only, not published
+# or committed — not ours to redistribute.
+/reference/
+
 # macOS
 .DS_Store
