@@ -7,7 +7,7 @@
   {{/* The roster a DM can pick from in Expectations: every real synced
     character page, plus any character who already has expectations data
     recorded even without a character page yet (e.g. hand-entered test
-    data). Characters loaded live via the Character Tracker's D&D Beyond
+    data). Characters loaded live via the Character Importer's D&D Beyond
     proxy are NOT in here — those only exist in that browser's localStorage
     and are merged in client-side, since a static build can't know about
     them. */}}
@@ -18,8 +18,11 @@
   {{ range $expectationsPages.ByTitle }}{{ if not (in $rosterTitles .Title) }}{{ $rosterTitles = $rosterTitles | append .Title }}{{ end }}{{ end }}
   {{ $rosterTitles = sort $rosterTitles }}
 
-  {{/* Order here is deliberate — matches how the DM wants to move through the portal. */}}
+  {{/* Order here is deliberate — matches how the DM wants to move through the
+    portal. Character Importer comes first since every other section reads
+    from the same roster it manages. */}}
   {{ $sections := slice
+    (dict "id" "character-importer" "label" "Character Importer")
     (dict "id" "expectations" "label" "Game Expectations")
     (dict "id" "travel-planner" "label" "Travel Planner")
     (dict "id" "npc-tracker" "label" "NPC Tracker")
@@ -63,7 +66,7 @@
           <div class="dm-section-panel" data-section="{{ .id }}" hidden>
             {{ if eq .id "expectations" }}
               <div class="expectations-switcher" id="expectations-switcher" data-select-key="dm-portal-expectations-selected-{{ $slug }}" data-edit-prefix="dm-portal-expectations-edit-{{ $slug }}" data-roster-key="dm-portal-characters-{{ $slug }}">
-                <p class="entry-date" id="expectations-empty" {{ if $rosterTitles }}hidden{{ end }}>No characters yet &mdash; add one in the Character Tracker section.</p>
+                <p class="entry-date" id="expectations-empty" {{ if $rosterTitles }}hidden{{ end }}>No characters yet &mdash; add one in the Character Importer section.</p>
                 <div class="expectations-characters">
                   {{ range $rosterTitles }}
                     <button type="button" class="expectations-char-btn" data-char="{{ . | urlize }}">{{ . }}</button>
@@ -94,21 +97,25 @@
                   </div>
                 {{ end }}
               </div>
-            {{ else if eq .id "character-tracker" }}
-              <div class="character-tracker" id="character-tracker" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}">
+            {{ else if eq .id "character-importer" }}
+              <div class="character-importer" id="character-importer" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}">
                 {{ if eq $proxyURL "" }}
                   <p class="entry-date">
                     Live character loading isn&rsquo;t set up yet. Deploy <code>worker/ddb-character-proxy.js</code>
                     to Cloudflare Workers and set <code>ddb_proxy_url</code> in <code>hugo.toml</code> to enable it.
                   </p>
                 {{ else }}
-                  <form class="character-tracker-form" id="character-tracker-form">
-                    <label for="character-tracker-link">D&amp;D Beyond character link</label>
-                    <input type="text" id="character-tracker-link" placeholder="https://www.dndbeyond.com/characters/12345678" required>
+                  <ul class="character-importer-list" id="character-importer-list"></ul>
+
+                  <button type="button" class="character-importer-add-btn" id="character-importer-add-btn">+ Add Character</button>
+
+                  <form class="character-importer-form" id="character-importer-form" hidden>
+                    <label for="character-importer-link">D&amp;D Beyond character link</label>
+                    <input type="text" id="character-importer-link" placeholder="https://www.dndbeyond.com/characters/12345678" required>
                     <button type="submit">Load Character</button>
-                    <p class="character-tracker-error" id="character-tracker-error" hidden></p>
+                    <button type="button" id="character-importer-cancel">Cancel</button>
+                    <p class="character-importer-error" id="character-importer-error" hidden></p>
                   </form>
-                  <ul class="character-tracker-list" id="character-tracker-list"></ul>
                 {{ end }}
               </div>
             {{ else }}
@@ -273,60 +280,119 @@
             refreshRoster();
           }
 
-          var tracker = document.getElementById("character-tracker");
-          if (tracker) {
-            var proxyUrl = tracker.dataset.proxyUrl;
-            var trackerStorageKey = tracker.dataset.storageKey;
-            var trackerForm = document.getElementById("character-tracker-form");
-            var trackerList = document.getElementById("character-tracker-list");
-            var trackerError = document.getElementById("character-tracker-error");
+          var importer = document.getElementById("character-importer");
+          if (importer) {
+            var proxyUrl = importer.dataset.proxyUrl;
+            var importerStorageKey = importer.dataset.storageKey;
+            var importerForm = document.getElementById("character-importer-form");
+            var importerList = document.getElementById("character-importer-list");
+            var importerError = document.getElementById("character-importer-error");
+            var addBtn = document.getElementById("character-importer-add-btn");
+            var cancelBtn = document.getElementById("character-importer-cancel");
 
-            var loadTrackerRoster = function () {
+            var loadImporterRoster = function () {
               try {
-                return JSON.parse(window.localStorage.getItem(trackerStorageKey) || "[]");
+                return JSON.parse(window.localStorage.getItem(importerStorageKey) || "[]");
               } catch (e) {
                 return [];
               }
             };
 
-            var saveTrackerRoster = function (roster) {
-              window.localStorage.setItem(trackerStorageKey, JSON.stringify(roster));
+            var saveImporterRoster = function (roster) {
+              window.localStorage.setItem(importerStorageKey, JSON.stringify(roster));
             };
 
-            var renderTrackerList = function () {
-              var roster = loadTrackerRoster();
-              trackerList.innerHTML = "";
+            var showForm = function () {
+              importerForm.hidden = false;
+              addBtn.hidden = true;
+            };
+
+            var hideForm = function () {
+              importerForm.hidden = true;
+              addBtn.hidden = false;
+              importerError.hidden = true;
+              importerForm.reset();
+            };
+
+            var renderImporterList = function () {
+              var roster = loadImporterRoster();
+              importerList.innerHTML = "";
               roster.forEach(function (entry) {
                 var li = document.createElement("li");
-                var span = document.createElement("span");
-                span.textContent = entry.name;
+
+                var nameSpan = document.createElement("span");
+                nameSpan.textContent = entry.name;
+
+                var nameInput = document.createElement("input");
+                nameInput.type = "text";
+                nameInput.className = "character-importer-name-input";
+                nameInput.value = entry.name;
+                nameInput.hidden = true;
+
+                var editBtn = document.createElement("button");
+                editBtn.type = "button";
+                editBtn.className = "character-importer-edit";
+                editBtn.textContent = "Edit";
+
+                var saveBtn = document.createElement("button");
+                saveBtn.type = "button";
+                saveBtn.className = "character-importer-save";
+                saveBtn.textContent = "Save";
+                saveBtn.hidden = true;
+
                 var removeBtn = document.createElement("button");
                 removeBtn.type = "button";
-                removeBtn.className = "character-tracker-remove";
+                removeBtn.className = "character-importer-remove";
                 removeBtn.textContent = "Remove";
-                removeBtn.addEventListener("click", function () {
-                  saveTrackerRoster(loadTrackerRoster().filter(function (e) { return e.id !== entry.id; }));
-                  renderTrackerList();
+
+                editBtn.addEventListener("click", function () {
+                  nameSpan.hidden = true;
+                  nameInput.hidden = false;
+                  editBtn.hidden = true;
+                  saveBtn.hidden = false;
+                  nameInput.focus();
+                });
+
+                saveBtn.addEventListener("click", function () {
+                  var newName = nameInput.value.trim();
+                  if (newName) entry.name = newName;
+                  saveImporterRoster(loadImporterRoster().map(function (e) {
+                    return e.id === entry.id ? entry : e;
+                  }));
+                  renderImporterList();
                   if (window.dmPortalRefreshRoster) window.dmPortalRefreshRoster();
                 });
-                li.appendChild(span);
+
+                removeBtn.addEventListener("click", function () {
+                  saveImporterRoster(loadImporterRoster().filter(function (e) { return e.id !== entry.id; }));
+                  renderImporterList();
+                  if (window.dmPortalRefreshRoster) window.dmPortalRefreshRoster();
+                });
+
+                li.appendChild(nameSpan);
+                li.appendChild(nameInput);
+                li.appendChild(editBtn);
+                li.appendChild(saveBtn);
                 li.appendChild(removeBtn);
-                trackerList.appendChild(li);
+                importerList.appendChild(li);
               });
             };
 
-            renderTrackerList();
+            renderImporterList();
 
-            if (trackerForm) {
-              trackerForm.addEventListener("submit", function (e) {
+            if (addBtn) addBtn.addEventListener("click", showForm);
+            if (cancelBtn) cancelBtn.addEventListener("click", hideForm);
+
+            if (importerForm) {
+              importerForm.addEventListener("submit", function (e) {
                 e.preventDefault();
-                trackerError.hidden = true;
-                var linkInput = document.getElementById("character-tracker-link");
+                importerError.hidden = true;
+                var linkInput = document.getElementById("character-importer-link");
                 var link = linkInput.value.trim();
                 var match = link.match(/characters\/(\d+)/);
                 if (!match) {
-                  trackerError.textContent = "That doesn't look like a D&D Beyond character link.";
-                  trackerError.hidden = false;
+                  importerError.textContent = "That doesn't look like a D&D Beyond character link.";
+                  importerError.hidden = false;
                   return;
                 }
                 var id = match[1];
@@ -339,18 +405,18 @@
                     if (!payload || !payload.data || !payload.data.name) {
                       throw new Error("Couldn't read a character name from that response.");
                     }
-                    var roster = loadTrackerRoster();
+                    var roster = loadImporterRoster();
                     if (!roster.some(function (e) { return e.id === id; })) {
                       roster.push({ id: id, name: payload.data.name, link: link });
-                      saveTrackerRoster(roster);
+                      saveImporterRoster(roster);
                     }
-                    linkInput.value = "";
-                    renderTrackerList();
+                    renderImporterList();
+                    hideForm();
                     if (window.dmPortalRefreshRoster) window.dmPortalRefreshRoster();
                   })
                   .catch(function (err) {
-                    trackerError.textContent = err.message;
-                    trackerError.hidden = false;
+                    importerError.textContent = err.message;
+                    importerError.hidden = false;
                   });
               });
             }
