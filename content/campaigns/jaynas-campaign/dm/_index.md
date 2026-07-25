@@ -17,6 +17,6 @@ layout: "dm-portal"
 #       .map(x => x.toString(16).padStart(2, "0")).join("")))
 #
 # then paste the printed hex string below.
-password_hash: ""
+password_hash: "7a48c6544f183f0af2718a4255b570a12cdcd220c8610a777d01dcc7a41081e8"
 ---
 
