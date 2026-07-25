@@ -176,7 +176,7 @@
                 sheet (reference/tracking_sheets/character-tracker.pdf) —
                 one record per PC, same select+add-button pattern as NPC
                 Tracker. */}}
-              <div class="character-tracker" id="character-tracker" data-storage-key="dm-portal-character-tracker-{{ $slug }}">
+              <div class="character-tracker" id="character-tracker" data-storage-key="dm-portal-character-tracker-{{ $slug }}" data-roster-key="dm-portal-characters-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}">
                 <div class="character-tracker-controls">
                   <select class="character-tracker-select" id="character-tracker-select">
                     <option value="">&mdash; Select a character &mdash;</option>
@@ -297,6 +297,16 @@
           var syncBase = ((syncControl && syncControl.dataset.proxyUrl) || "").replace(/\/$/, "");
           var syncTokenStorageKey = "dm-portal-sync-token";
           var syncPullers = [];
+
+          {{/* Sections that care about the character roster (Expectations,
+            Character Tracker) each register a listener here instead of
+            clobbering window.dmPortalRefreshRoster directly — the
+            Character Importer calls that one shared entry point whenever
+            its roster changes. */}}
+          var rosterRefreshListeners = [];
+          window.dmPortalRefreshRoster = function () {
+            rosterRefreshListeners.forEach(function (fn) { fn(); });
+          };
 
           var getSyncToken = function () {
             return window.localStorage.getItem(syncTokenStorageKey) || "";
@@ -510,7 +520,7 @@
             charSelect.addEventListener("change", function () { selectChar(charSelect.value); });
             Array.prototype.forEach.call(expectations.querySelectorAll(".expectations-editable"), wireEditable);
 
-            window.dmPortalRefreshRoster = refreshRoster;
+            rosterRefreshListeners.push(refreshRoster);
             refreshRoster();
             pullExpectations();
           }
@@ -554,7 +564,9 @@
             syncPullers.push(pullImporterRoster);
 
             var renderImporterList = function () {
-              var roster = loadImporterRoster();
+              var roster = loadImporterRoster().slice().sort(function (a, b) {
+                return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+              });
               importerList.innerHTML = "";
               roster.forEach(function (entry) {
                 var li = document.createElement("li");
@@ -1746,6 +1758,14 @@
             var charTrackerSelect = document.getElementById("character-tracker-select");
             var charTrackerDetail = document.getElementById("character-tracker-detail");
             var charTrackerAddBtn = document.getElementById("character-tracker-add-btn");
+            var charTrackerRosterKey = charTracker.dataset.rosterKey;
+            var charTrackerRosterTitles = (function () {
+              try {
+                return JSON.parse(charTracker.dataset.rosterTitles || "[]");
+              } catch (e) {
+                return [];
+              }
+            })();
 
             var loadCharTrackerEntries = function () {
               try {
@@ -1773,6 +1793,7 @@
                 } else if (syncEnabled()) {
                   syncPush("character-tracker", loadCharTrackerEntries());
                 }
+                ensureCharTrackerRosterEntries();
               });
             };
             syncPullers.push(pullCharTrackerEntries);
@@ -1874,6 +1895,44 @@
               charTrackerSelect.value = entries.some(function (e) { return e.id === currentValue; }) ? currentValue : "";
               return entries;
             };
+
+            {{/* Character Tracker is about PCs, who already exist as the
+              same roster Character Importer/Expectations use — the DM
+              shouldn't have to re-type a name that's already been
+              imported. Auto-creates a blank entry (name only) for any
+              roster name with no existing entry; never touches entries
+              that already exist, so edits are never overwritten. */}}
+            var ensureCharTrackerRosterEntries = function () {
+              var names = charTrackerRosterTitles.slice();
+              try {
+                var localRoster = JSON.parse(window.localStorage.getItem(charTrackerRosterKey) || "[]");
+                localRoster.forEach(function (e) {
+                  if (e && e.name && names.indexOf(e.name) === -1) names.push(e.name);
+                });
+              } catch (e) {}
+
+              var entries = loadCharTrackerEntries();
+              var existingNames = entries.map(function (e) { return e.characterName; });
+              var added = false;
+              names.forEach(function (name) {
+                if (existingNames.indexOf(name) !== -1) return;
+                entries.push({
+                  id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                  createdAt: Date.now(),
+                  characterName: name, playerName: "", charClass: "", subclass: "", level: "",
+                  background: "", species: "", alignment: "", motivations: [],
+                  playerExpectationsNotes: "", goalsAndAmbitions: "", familyFriendsFoes: "",
+                  quirksAndWhims: "", magicItems: "", adventureIdeas: "",
+                });
+                existingNames.push(name);
+                added = true;
+              });
+              if (added) {
+                saveCharTrackerEntries(entries);
+                renderCharTrackerSelect();
+              }
+            };
+            rosterRefreshListeners.push(ensureCharTrackerRosterEntries);
 
             var unsavedNewCharTrackerId = null;
 
