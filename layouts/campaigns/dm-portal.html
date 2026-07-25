@@ -38,21 +38,16 @@
   </div>
 
   <div class="dm-portal-gate" id="dm-portal-gate" data-hash="{{ $hash }}" data-storage-key="dm-portal-auth-{{ $slug }}">
-    {{ if eq $hash "" }}
-      <p class="entry-date">
-        No password is set for this DM portal yet. Add <code>password_hash</code> to this
-        page's front matter to enable access &mdash; see the comment in
-        <code>archetypes/dm-portal.md</code> for how to generate one.
-      </p>
-    {{ else }}
+    {{ if ne $hash "" }}
       <form class="dm-portal-form" id="dm-portal-form">
         <label for="dm-portal-password">DM password</label>
         <input type="password" id="dm-portal-password" autocomplete="current-password" required>
         <button type="submit">Enter</button>
         <p class="dm-portal-error" id="dm-portal-error" hidden>Incorrect password.</p>
       </form>
+    {{ end }}
 
-      <div class="dm-portal-content" id="dm-portal-content" hidden>
+      <div class="dm-portal-content" id="dm-portal-content" {{ if ne $hash "" }}hidden{{ end }}>
         <select class="dm-section-select" id="dm-section-select">
           {{ range $sections }}
             <option value="{{ .id }}">{{ .label }}</option>
@@ -363,56 +358,59 @@
         })();
       </script>
 
-      {{/*
-        Client-side only: the correct answer is a SHA-256 hash embedded in the
-        rendered HTML, not a real credential check, so this is obscurity
-        (keeps casual players and search engines out) rather than security —
-        anyone viewing page source can still read the gated content directly.
-        See the note in archetypes/dm-portal.md before relying on it for
-        anything actually sensitive.
-      */}}
-      <script>
-        (function () {
-          var gate = document.getElementById("dm-portal-gate");
-          var hash = gate.dataset.hash;
-          var storageKey = gate.dataset.storageKey;
-          var form = document.getElementById("dm-portal-form");
-          var content = document.getElementById("dm-portal-content");
-          var error = document.getElementById("dm-portal-error");
+      {{ if ne $hash "" }}
+        {{/*
+          Client-side only: the correct answer is a SHA-256 hash embedded in
+          the rendered HTML, not a real credential check, so this is
+          obscurity (keeps casual players and search engines out) rather
+          than security — anyone viewing page source can still read the
+          gated content directly. See the note in archetypes/dm-portal.md
+          before relying on it for anything actually sensitive. When
+          password_hash is blank, there's no gate at all — dm-portal-content
+          just renders unhidden above.
+        */}}
+        <script>
+          (function () {
+            var gate = document.getElementById("dm-portal-gate");
+            var hash = gate.dataset.hash;
+            var storageKey = gate.dataset.storageKey;
+            var form = document.getElementById("dm-portal-form");
+            var content = document.getElementById("dm-portal-content");
+            var error = document.getElementById("dm-portal-error");
 
-          function reveal() {
-            form.hidden = true;
-            content.hidden = false;
-          }
+            function reveal() {
+              form.hidden = true;
+              content.hidden = false;
+            }
 
-          function toHex(buffer) {
-            return Array.from(new Uint8Array(buffer))
-              .map(function (b) { return b.toString(16).padStart(2, "0"); })
-              .join("");
-          }
+            function toHex(buffer) {
+              return Array.from(new Uint8Array(buffer))
+                .map(function (b) { return b.toString(16).padStart(2, "0"); })
+                .join("");
+            }
 
-          if (window.localStorage.getItem(storageKey) === hash) {
-            reveal();
-          }
+            if (window.localStorage.getItem(storageKey) === hash) {
+              reveal();
+            }
 
-          form.addEventListener("submit", function (e) {
-            e.preventDefault();
-            var value = document.getElementById("dm-portal-password").value;
-            window.crypto.subtle
-              .digest("SHA-256", new TextEncoder().encode(value))
-              .then(function (buffer) {
-                var entered = toHex(buffer);
-                if (entered === hash) {
-                  window.localStorage.setItem(storageKey, hash);
-                  error.hidden = true;
-                  reveal();
-                } else {
-                  error.hidden = false;
-                }
-              });
-          });
-        })();
-      </script>
-    {{ end }}
+            form.addEventListener("submit", function (e) {
+              e.preventDefault();
+              var value = document.getElementById("dm-portal-password").value;
+              window.crypto.subtle
+                .digest("SHA-256", new TextEncoder().encode(value))
+                .then(function (buffer) {
+                  var entered = toHex(buffer);
+                  if (entered === hash) {
+                    window.localStorage.setItem(storageKey, hash);
+                    error.hidden = true;
+                    reveal();
+                  } else {
+                    error.hidden = false;
+                  }
+                });
+            });
+          })();
+        </script>
+      {{ end }}
   </div>
 {{ end }}
