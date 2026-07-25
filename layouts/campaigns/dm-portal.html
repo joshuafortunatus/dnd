@@ -67,11 +67,11 @@
             {{ if eq .id "expectations" }}
               <div class="expectations-switcher" id="expectations-switcher" data-select-key="dm-portal-expectations-selected-{{ $slug }}" data-edit-prefix="dm-portal-expectations-edit-{{ $slug }}" data-roster-key="dm-portal-characters-{{ $slug }}">
                 <p class="entry-date" id="expectations-empty" {{ if $rosterTitles }}hidden{{ end }}>No characters yet &mdash; add one in the Character Importer section.</p>
-                <div class="expectations-characters">
+                <select class="expectations-char-select" id="expectations-char-select" {{ if not $rosterTitles }}hidden{{ end }}>
                   {{ range $rosterTitles }}
-                    <button type="button" class="expectations-char-btn" data-char="{{ . | urlize }}">{{ . }}</button>
+                    <option value="{{ . | urlize }}">{{ . }}</option>
                   {{ end }}
-                </div>
+                </select>
                 {{ range $rosterTitles }}
                   {{ $title := . }}
                   {{ $matches := where $expectationsPages "Title" $title }}
@@ -107,13 +107,10 @@
                 {{ else }}
                   <ul class="character-importer-list" id="character-importer-list"></ul>
 
-                  <button type="button" class="character-importer-add-btn" id="character-importer-add-btn">+ Add Character</button>
-
-                  <form class="character-importer-form" id="character-importer-form" hidden>
+                  <form class="character-importer-form" id="character-importer-form">
                     <label for="character-importer-link">D&amp;D Beyond character link</label>
                     <input type="text" id="character-importer-link" placeholder="https://www.dndbeyond.com/characters/12345678" required>
                     <button type="submit">Load Character</button>
-                    <button type="button" id="character-importer-cancel">Cancel</button>
                     <p class="character-importer-error" id="character-importer-error" hidden></p>
                   </form>
                 {{ end }}
@@ -175,16 +172,14 @@
             var selectKey = expectations.dataset.selectKey;
             var editPrefix = expectations.dataset.editPrefix;
             var rosterKey = expectations.dataset.rosterKey;
-            var charsContainer = expectations.querySelector(".expectations-characters");
+            var charSelect = document.getElementById("expectations-char-select");
             var emptyNotice = document.getElementById("expectations-empty");
 
-            var getButtons = function () { return expectations.querySelectorAll(".expectations-char-btn"); };
+            var getOptions = function () { return charSelect.querySelectorAll("option"); };
             var getPanels = function () { return expectations.querySelectorAll(".expectations-char-panel"); };
 
             var selectChar = function (char) {
-              Array.prototype.forEach.call(getButtons(), function (b) {
-                b.classList.toggle("is-active", b.dataset.char === char);
-              });
+              charSelect.value = char;
               Array.prototype.forEach.call(getPanels(), function (p) {
                 p.hidden = p.dataset.char !== char;
               });
@@ -200,10 +195,6 @@
               el.addEventListener("input", function () {
                 window.localStorage.setItem(key, el.innerText);
               });
-            };
-
-            var wireButton = function (b) {
-              b.addEventListener("click", function () { selectChar(b.dataset.char); });
             };
 
             var fieldBlock = function (label, field) {
@@ -222,16 +213,13 @@
 
             var addLocalCharacter = function (entry) {
               var charKey = slugifyName(entry.name);
-              if (expectations.querySelector('.expectations-char-btn[data-char="' + charKey + '"]')) return;
+              if (charSelect.querySelector('option[value="' + charKey + '"]')) return;
 
-              var btn = document.createElement("button");
-              btn.type = "button";
-              btn.className = "expectations-char-btn";
-              btn.dataset.char = charKey;
-              btn.dataset.source = "local";
-              btn.textContent = entry.name;
-              charsContainer.appendChild(btn);
-              wireButton(btn);
+              var option = document.createElement("option");
+              option.value = charKey;
+              option.dataset.source = "local";
+              option.textContent = entry.name;
+              charSelect.appendChild(option);
 
               var panel = document.createElement("div");
               panel.className = "expectations-char-panel";
@@ -255,25 +243,23 @@
 
               roster.forEach(addLocalCharacter);
 
-              Array.prototype.forEach.call(expectations.querySelectorAll('.expectations-char-btn[data-source="local"]'), function (b) {
-                if (rosterKeys.indexOf(b.dataset.char) !== -1) return;
-                var panel = expectations.querySelector('.expectations-char-panel[data-char="' + b.dataset.char + '"]');
+              Array.prototype.forEach.call(charSelect.querySelectorAll('option[data-source="local"]'), function (o) {
+                if (rosterKeys.indexOf(o.value) !== -1) return;
+                var panel = expectations.querySelector('.expectations-char-panel[data-char="' + o.value + '"]');
                 if (panel) panel.remove();
-                b.remove();
+                o.remove();
               });
 
-              var buttons = getButtons();
-              emptyNotice.hidden = buttons.length > 0;
-              var known = Array.prototype.map.call(buttons, function (b) { return b.dataset.char; });
+              var options = getOptions();
+              emptyNotice.hidden = options.length > 0;
+              charSelect.hidden = options.length === 0;
+              var known = Array.prototype.map.call(options, function (o) { return o.value; });
               if (!known.length) return;
-              var hasActive = Array.prototype.some.call(buttons, function (b) { return b.classList.contains("is-active"); });
-              if (!hasActive) {
-                var saved = window.localStorage.getItem(selectKey);
-                selectChar(known.indexOf(saved) !== -1 ? saved : known[0]);
-              }
+              var saved = window.localStorage.getItem(selectKey);
+              selectChar(known.indexOf(saved) !== -1 ? saved : known[0]);
             };
 
-            Array.prototype.forEach.call(getButtons(), wireButton);
+            charSelect.addEventListener("change", function () { selectChar(charSelect.value); });
             Array.prototype.forEach.call(expectations.querySelectorAll(".expectations-editable"), wireEditable);
 
             window.dmPortalRefreshRoster = refreshRoster;
@@ -287,8 +273,6 @@
             var importerForm = document.getElementById("character-importer-form");
             var importerList = document.getElementById("character-importer-list");
             var importerError = document.getElementById("character-importer-error");
-            var addBtn = document.getElementById("character-importer-add-btn");
-            var cancelBtn = document.getElementById("character-importer-cancel");
 
             var loadImporterRoster = function () {
               try {
@@ -300,18 +284,6 @@
 
             var saveImporterRoster = function (roster) {
               window.localStorage.setItem(importerStorageKey, JSON.stringify(roster));
-            };
-
-            var showForm = function () {
-              importerForm.hidden = false;
-              addBtn.hidden = true;
-            };
-
-            var hideForm = function () {
-              importerForm.hidden = true;
-              addBtn.hidden = false;
-              importerError.hidden = true;
-              importerForm.reset();
             };
 
             var renderImporterList = function () {
@@ -380,9 +352,6 @@
 
             renderImporterList();
 
-            if (addBtn) addBtn.addEventListener("click", showForm);
-            if (cancelBtn) cancelBtn.addEventListener("click", hideForm);
-
             if (importerForm) {
               importerForm.addEventListener("submit", function (e) {
                 e.preventDefault();
@@ -402,7 +371,19 @@
                     return res.json();
                   })
                   .then(function (payload) {
-                    if (!payload || !payload.data || !payload.data.name) {
+                    // D&D Beyond returns HTTP 200 even for a character it
+                    // won't serve (private sharing, wrong id, etc.) — the
+                    // failure shows up as success:false in the body, not an
+                    // HTTP error status, so it needs its own check with its
+                    // own message pointing at the actual likely cause.
+                    if (!payload || payload.success === false) {
+                      var reason = (payload && payload.data && payload.data.serverMessage) || (payload && payload.message);
+                      throw new Error(
+                        "D&D Beyond couldn't return that character" + (reason ? " (" + reason + ")" : "") +
+                        ". Make sure its sharing is set to Public under that character's D&D Beyond settings."
+                      );
+                    }
+                    if (!payload.data || !payload.data.name) {
                       throw new Error("Couldn't read a character name from that response.");
                     }
                     var name = payload.data.name;
@@ -414,7 +395,7 @@
                     // no effect anywhere else, which is exactly the kind of
                     // ghost state that's confusing to debug later.
                     var existingReal = document.querySelector(
-                      '.expectations-char-btn[data-char="' + slugifyName(name) + '"]:not([data-source="local"])'
+                      '#expectations-char-select option[value="' + slugifyName(name) + '"]:not([data-source="local"])'
                     );
                     if (existingReal) {
                       throw new Error(name + " already exists as a synced character in this campaign.");
@@ -425,7 +406,7 @@
                       saveImporterRoster(roster);
                     }
                     renderImporterList();
-                    hideForm();
+                    importerForm.reset();
                     if (window.dmPortalRefreshRoster) window.dmPortalRefreshRoster();
                   })
                   .catch(function (err) {

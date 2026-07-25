@@ -316,26 +316,18 @@ body.is-home {
 }
 .dm-section-panel { padding-top: 1.5rem; }
 
-.expectations-characters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.expectations-char-select {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
   margin-bottom: 1.5rem;
-}
-.expectations-char-btn {
   background: var(--bg-raised);
   border: 1px solid var(--border);
-  color: var(--text-dim);
-  border-radius: 4px;
-  padding: 0.4rem 0.9rem;
-  font-family: inherit;
-  font-size: 1rem;
-  cursor: pointer;
-}
-.expectations-char-btn:hover { color: var(--text); }
-.expectations-char-btn.is-active {
   color: var(--text);
-  border-color: var(--accent);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 1.05rem;
+  font-family: inherit;
 }
 
 .expectations-field { margin-bottom: 1.75rem; }
@@ -393,17 +385,6 @@ body.is-home {
 .character-importer-save:hover { color: var(--accent); border-color: var(--accent); }
 .character-importer-remove:hover { color: #d16a6a; border-color: #d16a6a; }
 
-.character-importer-add-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 4px;
-  padding: 0.4rem 1rem;
-  font-size: 1.05rem;
-  cursor: pointer;
-}
-.character-importer-add-btn:hover { background: rgba(201, 162, 39, 0.15); }
-
 .character-importer-form {
   display: flex;
   align-items: center;
@@ -430,10 +411,6 @@ body.is-home {
   cursor: pointer;
 }
 .character-importer-form button:hover { background: rgba(201, 162, 39, 0.15); }
-.character-importer-form #character-importer-cancel {
-  border-color: var(--border);
-  color: var(--text-dim);
-}
 .character-importer-error {
   width: 100%;
   color: #d16a6a;
