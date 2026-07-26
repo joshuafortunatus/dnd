@@ -324,14 +324,35 @@ body.is-home {
 }
 .dm-section-panel { padding-top: 1.5rem; }
 
-/* Shared "click again to confirm" flash state — applies to any
-   delete/remove button in the portal (Character Importer, Travel Planner,
-   NPC Tracker), whatever its base class is. */
-.is-confirming {
-  color: #d16a6a !important;
-  border-color: #d16a6a !important;
-  background: rgba(209, 106, 106, 0.12) !important;
+/* Shared inline "Are you sure? Yes / No" prompt — appears in place of
+   any remove button in the portal when clicked. */
+.confirm-delete-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
+.confirm-delete-prompt { color: #d16a6a; font-size: 0.9rem; }
+.confirm-delete-yes,
+.confirm-delete-no {
+  border-radius: 4px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.confirm-delete-yes {
+  background: rgba(209, 106, 106, 0.12);
+  border: 1px solid #d16a6a;
+  color: #d16a6a;
+}
+.confirm-delete-yes:hover { background: rgba(209, 106, 106, 0.25); }
+.confirm-delete-no {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.confirm-delete-no:hover { color: var(--text); }
 
 .pc-manager-list {
   list-style: none;
