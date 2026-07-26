@@ -5,3 +5,11 @@ compatibility_date = "2026-07-25"
 [[kv_namespaces]]
 binding = "PORTAL_DATA"
 id = "ab521a5271844f5e8bc2f168221205ca"
+
+# Not the actual deploy mechanism (deploy is still paste-into-dashboard, per
+# this Worker's own header comment) -- just documentation of the binding.
+# Update bucket_name to match whatever you actually name the bucket when
+# you create it in the Cloudflare dashboard.
+[[r2_buckets]]
+binding = "PORTAL_FILES"
+bucket_name = "dnd-portal-files"

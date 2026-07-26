@@ -135,6 +135,20 @@
       {{ else }}
         <p class="entry-date">No images yet.</p>
       {{ end }}
+
+      {{/* Runtime-fetched, not build-time — files the DM uploaded and
+        marked "sent to players" via the DM Portal's File Library section
+        (Cloudflare R2, proxied through worker/ddb-character-proxy.js's
+        /public-files/<slug> route, same "fetch client-side, no build
+        step" pattern as the Characters tab's roster below). Kept as two
+        distinct blocks (an image grid vs. a plain download list) rather
+        than one merged grid — faking an image-shaped card for a PDF
+        would erase the real image-vs-download distinction this feature
+        is for. */}}
+      <h2>Shared Files</h2>
+      <div class="hub-gallery" id="hub-shared-images-list" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}"></div>
+      <ul class="entry-list" id="hub-shared-docs-list"></ul>
+      <p class="entry-date" id="hub-shared-files-empty" hidden>Nothing shared yet.</p>
     </div>
 
     <div class="hub-panel" id="panel-misc">
@@ -200,6 +214,76 @@
         })
         .catch(function () {
           renderEmpty("Couldn’t load characters.");
+        });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var imagesList = document.getElementById("hub-shared-images-list");
+      if (!imagesList) return;
+      var docsList = document.getElementById("hub-shared-docs-list");
+      var empty = document.getElementById("hub-shared-files-empty");
+      var slug = imagesList.dataset.slug;
+      var proxyUrl = (imagesList.dataset.proxyUrl || "").replace(/\/$/, "");
+
+      var showEmpty = function () {
+        imagesList.innerHTML = "";
+        docsList.innerHTML = "";
+        empty.hidden = false;
+      };
+
+      if (!proxyUrl) {
+        showEmpty();
+        return;
+      }
+
+      fetch(proxyUrl + "/public-files/" + slug)
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (files) {
+          if (!files || !files.length) {
+            showEmpty();
+            return;
+          }
+          empty.hidden = true;
+          imagesList.innerHTML = "";
+          docsList.innerHTML = "";
+          files.forEach(function (file) {
+            var byteUrl = proxyUrl + "/files/" + slug + "/" + file.id;
+            if ((file.contentType || "").indexOf("image/") === 0) {
+              var figure = document.createElement("figure");
+              figure.className = "hub-gallery-item";
+              var a = document.createElement("a");
+              a.href = byteUrl;
+              a.target = "_blank";
+              a.rel = "noopener";
+              var img = document.createElement("img");
+              img.src = byteUrl;
+              img.alt = file.name || "";
+              a.appendChild(img);
+              figure.appendChild(a);
+              var caption = document.createElement("figcaption");
+              caption.textContent = file.name || "";
+              figure.appendChild(caption);
+              imagesList.appendChild(figure);
+            } else {
+              var li = document.createElement("li");
+              var nameSpan = document.createElement("span");
+              nameSpan.textContent = file.name || "Unnamed file";
+              li.appendChild(nameSpan);
+              var link = document.createElement("a");
+              link.className = "ddb-link";
+              link.href = byteUrl;
+              link.target = "_blank";
+              link.rel = "noopener";
+              link.textContent = "Download →";
+              li.appendChild(link);
+              docsList.appendChild(li);
+            }
+          });
+        })
+        .catch(function () {
+          showEmpty();
         });
     })();
   </script>

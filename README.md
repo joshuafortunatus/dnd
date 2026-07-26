@@ -30,6 +30,10 @@ Once deployed: https://joshuafortunatus.github.io/dnd/
   commits any changes, and triggers a redeploy.
 - `.github/workflows/deploy.yml` — builds the Hugo site and publishes it to
   GitHub Pages on every push to `main`.
+- `worker/ddb-character-proxy.js` — Cloudflare Worker: D&D Beyond/aidedd.org
+  CORS proxying, cross-device sync of DM portal data, and the DM Portal's
+  File Library uploads (Cloudflare R2). See that file's header comment for
+  the one-time Worker/KV/R2 setup steps.
 
 ## ⚠️ Before adding a character
 
