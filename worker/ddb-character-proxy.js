@@ -41,8 +41,12 @@
  *
  * Usage:
  *   GET  /character/<numeric id>          — D&D Beyond character proxy (no auth)
- *   GET  /sync/<slug>/<key>                — read a stored JSON blob (Authorization: Bearer <SYNC_SECRET>)
- *   PUT  /sync/<slug>/<key>  (JSON body)   — write a stored JSON blob (Authorization: Bearer <SYNC_SECRET>)
+ *   GET  /sync/<slug>/<key>                — read a stored JSON blob (Authorization: Bearer <SYNC_SECRET>,
+ *                                             EXCEPT key=characters, which is a public read — the
+ *                                             campaign hub page's Characters tab fetches it directly,
+ *                                             unauthenticated, so any visitor can see the roster)
+ *   PUT  /sync/<slug>/<key>  (JSON body)   — write a stored JSON blob (Authorization: Bearer <SYNC_SECRET>,
+ *                                             always required, including for key=characters)
  *   <slug> is a campaign slug; <key> is one of: characters, pc-manager,
  *     travel-plans, npcs, settlements, journal, conflicts, magic-items,
  *     bastions
@@ -99,7 +103,12 @@ export default {
       if (!ALLOWED_SYNC_KEYS.includes(key)) {
         return new Response("Unknown sync key.", { status: 404, headers: corsHeaders() });
       }
-      if (!authorized(request, env)) {
+      // The character roster is the one exception to auth-required reads —
+      // the public campaign hub page displays it (name/class/level/species
+      // only, no DM notes) to any visitor, not just the DM. Writes still
+      // always require the secret.
+      const isPublicRosterRead = key === "characters" && request.method === "GET";
+      if (!isPublicRosterRead && !authorized(request, env)) {
         return new Response("Unauthorized.", { status: 401, headers: corsHeaders() });
       }
       if (!env.PORTAL_DATA) {
