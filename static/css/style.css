@@ -597,12 +597,76 @@ body.is-home {
   margin-top: 0.5rem;
   font-size: 0.95rem;
 }
-.npc-statblock h4 {
-  color: var(--accent);
-  margin: 0 0 0.15rem;
-  font-size: 1.2rem;
+.npc-statblock-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.4rem;
+  margin: 0 0 0.15rem;
+}
+.npc-statblock-header h4 { margin: 0; }
+.npc-statblock-top-controls { display: flex; gap: 0.5rem; }
+.npc-statblock-top-controls button {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.npc-statblock-top-controls button:hover { color: var(--text); }
+.npc-statblock-top { margin: 0 0 0.6rem; }
+.npc-statblock-edit-row { display: flex; align-items: center; gap: 0.4rem; margin: 0.25rem 0; }
+.npc-statblock-edit-row strong { white-space: nowrap; }
+.npc-statblock-edit-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.2rem 0.4rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  flex: 1 1 auto;
+}
+.npc-statblock-name-input { font-size: 1.1rem; font-weight: bold; color: var(--accent); margin-bottom: 0.4rem; }
+.npc-statblock-edit-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.npc-statblock-computed-text { color: var(--text-dim); font-style: italic; }
+.npc-statblock-inline-label { color: var(--text-dim); font-size: 0.85rem; }
+.npc-statblock-ac-value,
+.npc-statblock-hp-count,
+.npc-statblock-hp-size,
+.npc-statblock-initiative-bonus,
+.npc-statblock-speed-feet {
+  flex: 0 0 auto;
+  width: 4rem;
+  text-align: center;
+}
+.npc-statblock-ac-note { flex: 1 1 auto; }
+.npc-statblock-speed-edit { margin: 0.25rem 0; }
+.npc-statblock-speed-row { margin-left: 1rem; }
+.npc-statblock-speed-row select { flex: 0 0 auto; width: 7rem; }
+.npc-statblock-speed-add,
+.npc-statblock-speed-remove {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.npc-statblock-speed-add { margin-left: 1rem; margin-top: 0.25rem; }
+.npc-statblock-speed-add:hover,
+.npc-statblock-speed-remove:hover { color: var(--text); }
+.npc-statblock h4 {
+  color: var(--accent);
+  font-size: 1.2rem;
 }
 .npc-statblock h5 {
   color: var(--accent);
@@ -625,6 +689,19 @@ body.is-home {
   border: 1px solid var(--border);
 }
 .npc-statblock-abilities th:first-child { color: var(--text-dim); text-align: left; padding-left: 0.4rem; }
+.npc-statblock-ability-input {
+  width: 100%;
+  max-width: 4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.15rem 0.3rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.npc-statblock-ability-input-computed { color: var(--text-dim); cursor: default; }
 .npc-statblock-action-name { font-style: italic; font-weight: bold; }
 .npc-statblock-flavor { color: var(--text-dim); font-style: italic; margin-top: 0.75rem; }
 .npc-statblock-footer { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.5rem; }
