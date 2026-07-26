@@ -1113,6 +1113,7 @@ body.is-home {
   display: flex;
   gap: 0.5rem;
 }
+.file-library-preview-btn,
 .file-library-send-btn,
 .file-library-edit-btn {
   background: none;
@@ -1124,6 +1125,7 @@ body.is-home {
   font-family: inherit;
   cursor: pointer;
 }
+.file-library-preview-btn:hover,
 .file-library-send-btn:hover,
 .file-library-edit-btn:hover { color: var(--accent); border-color: var(--accent); }
 

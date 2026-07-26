@@ -3656,13 +3656,6 @@
 
             var FILE_CATEGORY_LABELS = { map: "Map", module: "Module", misc: "Misc.", reference: "Reference" };
 
-            var formatFileBytes = function (bytes) {
-              if (!bytes) return "";
-              if (bytes < 1024) return bytes + " B";
-              if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-              return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-            };
-
             var formatFileDate = function (ms) {
               return new Date(ms).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
             };
@@ -3719,13 +3712,13 @@
               if (file.sentToPlayers) {
                 var sentBadge = document.createElement("span");
                 sentBadge.className = "file-library-sent-badge";
-                sentBadge.textContent = "Sent";
+                sentBadge.textContent = "Shared";
                 nameLine.appendChild(sentBadge);
               }
               info.appendChild(nameLine);
               var meta = document.createElement("div");
               meta.className = "file-library-meta";
-              meta.textContent = [FILE_CATEGORY_LABELS[file.category] || file.category, formatFileDate(file.uploadedAt), formatFileBytes(file.size)]
+              meta.textContent = [FILE_CATEGORY_LABELS[file.category] || file.category, formatFileDate(file.uploadedAt)]
                 .filter(Boolean)
                 .join(" · ");
               info.appendChild(meta);
@@ -3734,10 +3727,27 @@
               var actions = document.createElement("div");
               actions.className = "file-library-row-actions";
 
+              {{/* Preview reuses the same authenticated blob-URL fetch as
+                the image thumbnail above (cached per file id either way),
+                just opened full-size in a new tab instead of shown small
+                — works for documents too, since browsers render a PDF
+                blob URL inline in its own tab rather than only offering a
+                download. */}}
+              var previewBtn = document.createElement("button");
+              previewBtn.type = "button";
+              previewBtn.className = "file-library-preview-btn";
+              previewBtn.textContent = "Preview";
+              previewBtn.addEventListener("click", function () {
+                fetchFileBlobUrl(file.id).then(function (url) {
+                  if (url) window.open(url, "_blank", "noopener");
+                });
+              });
+              actions.appendChild(previewBtn);
+
               var sendBtn = document.createElement("button");
               sendBtn.type = "button";
               sendBtn.className = "file-library-send-btn";
-              sendBtn.textContent = file.sentToPlayers ? "Unsend" : "Send to Players";
+              sendBtn.textContent = file.sentToPlayers ? "Unshare" : "Share with Players";
               sendBtn.addEventListener("click", function () {
                 var files = loadFiles();
                 var target = files.filter(function (f) { return f.id === file.id; })[0];
@@ -3904,7 +3914,6 @@
 
               form.appendChild(flFieldStatic("Uploaded", formatFileDate(file.uploadedAt)));
               form.appendChild(flFieldStatic("Original filename", file.fileName));
-              form.appendChild(flFieldStatic("Size", formatFileBytes(file.size)));
 
               flDetail.appendChild(form);
 
