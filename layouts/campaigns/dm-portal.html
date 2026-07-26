@@ -225,7 +225,8 @@
                     uploading. */}}
                   <form class="file-library-upload-form" id="file-library-upload-form">
                     <input type="file" id="file-library-file" aria-label="File" required>
-                    <select id="file-library-category" aria-label="Category" required>
+                    <label for="file-library-category">Category<span class="required-star" aria-hidden="true"> *</span></label>
+                    <select id="file-library-category" required>
                       <option value="" selected disabled>Choose category&hellip;</option>
                       <option value="map">Map</option>
                       <option value="module">Module</option>
@@ -3981,9 +3982,16 @@
                   flUploadBtn.disabled = false;
                   flUploadBtn.textContent = originalText;
                   if (!res.ok) {
-                    flError.hidden = false;
-                    flError.textContent = "Upload failed. Please try again.";
-                    return;
+                    {{/* Surfaces the Worker's own response text (e.g.
+                      "Unauthorized.", "PORTAL_FILES R2 binding is not
+                      configured...") plus the status code, instead of a
+                      generic message — the previous generic-only text made
+                      every failure (bad auth, missing binding, too large)
+                      look identical and impossible to self-diagnose. */}}
+                    return res.text().then(function (body) {
+                      flError.hidden = false;
+                      flError.textContent = "Upload failed (" + res.status + "): " + (body || res.statusText);
+                    });
                   }
                   var files = loadFiles();
                   files.push({
@@ -4004,7 +4012,12 @@
                   flUploadBtn.disabled = false;
                   flUploadBtn.textContent = originalText;
                   flError.hidden = false;
-                  flError.textContent = "Upload failed. Please try again.";
+                  {{/* A fetch() that never gets a response at all (as
+                    opposed to an HTTP error status, handled above) is
+                    almost always CORS rejecting the request client-side
+                    or the Worker being unreachable — call that out
+                    specifically rather than repeating the generic text. */}}
+                  flError.textContent = "Upload failed — the request never reached the server (check for a CORS error in the browser console, or that the Worker URL is reachable).";
                 });
             });
 

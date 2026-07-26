@@ -48,9 +48,24 @@
  *    password whose hash you put in password_hash — not an independent
  *    value.
  *
- * Deploy: Cloudflare dashboard → Workers & Pages → this Worker → paste this
- * file's contents in place of the existing code → Deploy. Additionally, to
- * enable sync (job 2):
+ * Deploy: two working paths, pick either.
+ *
+ *   CLI (verified working, no dashboard clicking): from this worker/
+ *   directory, `npx wrangler login` once (opens a browser to authorize —
+ *   this step alone can't be scripted around, it needs your real Cloudflare
+ *   session). After that, `npx wrangler r2 bucket create <bucket_name>`
+ *   (matching worker/wrangler.toml's r2_buckets.bucket_name) creates the
+ *   File Library bucket, and `npx wrangler deploy` pushes this file's code
+ *   and applies both the KV and R2 bindings declared in wrangler.toml in
+ *   one shot. R2 must be enabled once on the account first (Cloudflare
+ *   dashboard → R2 → follow its one-time enablement prompt; this part
+ *   can't be done via API either). SYNC_SECRET (below) still needs
+ *   `npx wrangler secret put SYNC_SECRET` (or the dashboard, either works)
+ *   since secrets are deliberately kept out of wrangler.toml.
+ *
+ *   Dashboard (no CLI/terminal needed): Workers & Pages → this Worker →
+ *   paste this file's contents in place of the existing code → Deploy.
+ *   Additionally, to enable sync (job 2):
  *   - Workers & Pages → KV → Create a namespace (any name, e.g. "portal-data").
  *   - This Worker → Settings → Variables → KV Namespace Bindings → Add
  *     binding → variable name `PORTAL_DATA`, pointing at that namespace.
