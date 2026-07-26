@@ -38,19 +38,16 @@ for a working example):
                        them. Pages land under the DM portal, not the public
                        hub.
 
-Images still come from each campaign's Drive folder (scripts/sync_drive.py)
-— this script only ever writes text content.
 """
 
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 import yaml
 
+from campaign_config import CAMPAIGNS_DIR, load_campaigns, slugify
 from sheets_client import build_service, read_tab, read_tab_optional
-from sync_drive import CAMPAIGNS_DIR, load_campaigns, slugify
 
 TABLE_ALIGN = ":----"
 

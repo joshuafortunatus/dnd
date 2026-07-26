@@ -20,11 +20,8 @@ from pathlib import Path
 import requests
 import yaml
 
+from campaign_config import CAMPAIGNS_DIR, load_campaigns, slugify
 from sheets_client import build_service, read_tab
-from sync_drive import load_campaigns, slugify
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-CAMPAIGNS_DIR = REPO_ROOT / "content" / "campaigns"
 
 CHARACTER_ENDPOINT = "https://character-service.dndbeyond.com/character/v5/character/{id}"
 CHARACTER_ID_RE = re.compile(r"/characters/(\d+)")
