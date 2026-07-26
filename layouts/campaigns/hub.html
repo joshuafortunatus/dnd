@@ -1,6 +1,7 @@
 {{ define "main" }}
   {{ $slug := .File.ContentBaseName }}
   {{ $dmPage := .GetPage "dm" }}
+  {{ $proxyURL := site.Params.ddb_proxy_url | default "" }}
   <div class="hub-topline">
     <h1>{{ .Title }}</h1>
     <a class="hub-symbol-link" href="{{ .Site.Home.RelPermalink }}">
@@ -15,7 +16,6 @@
   {{ $sessions := where $related "Type" "sessions" }}
   {{ $quests := where $related "Type" "quests" }}
   {{ $lore := where $related "Type" "lore" }}
-  {{ $characters := where $related "Type" "characters" }}
   {{ $npcs := where $related "Type" "npcs" }}
   {{ $locations := where $related "Type" "locations" }}
   {{ $misc := where $related "Type" "misc" }}
@@ -90,15 +90,13 @@
 
     <div class="hub-panel" id="panel-characters">
       <h2>Playable Characters</h2>
-      <ul class="entry-list">
-        {{ range $characters.ByTitle }}
-          <li>
-            <span>{{ .Title }}</span>
-            {{ with .Params.ddb_url }}<a class="ddb-link" href="{{ . }}" target="_blank" rel="noopener">View on D&amp;D Beyond &rarr;</a>{{ end }}
-          </li>
-        {{ else }}
-          <li><span class="entry-date">No characters yet.</span></li>
-        {{ end }}
+      {{/* Sourced live from the DM Portal's imported roster (Cloudflare
+        KV, public read-only for this one key — see
+        worker/ddb-character-proxy.js), not from published character
+        pages — only characters actually added via the Importer show up
+        here. */}}
+      <ul class="entry-list" id="hub-characters-list" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}">
+        <li><span class="entry-date">Loading&hellip;</span></li>
       </ul>
 
       <h2>NPCs</h2>
@@ -150,6 +148,61 @@
       {{ end }}
     </div>
   </div>
+
+  <script>
+    (function () {
+      var list = document.getElementById("hub-characters-list");
+      if (!list) return;
+      var slug = list.dataset.slug;
+      var proxyUrl = (list.dataset.proxyUrl || "").replace(/\/$/, "");
+
+      var renderEmpty = function (message) {
+        list.innerHTML = "";
+        var li = document.createElement("li");
+        var span = document.createElement("span");
+        span.className = "entry-date";
+        span.textContent = message;
+        li.appendChild(span);
+        list.appendChild(li);
+      };
+
+      if (!proxyUrl) {
+        renderEmpty("No characters yet.");
+        return;
+      }
+
+      fetch(proxyUrl + "/sync/" + slug + "/characters")
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (roster) {
+          if (!roster || !roster.length) {
+            renderEmpty("No characters yet.");
+            return;
+          }
+          list.innerHTML = "";
+          roster.slice().sort(function (a, b) {
+            return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+          }).forEach(function (entry) {
+            var li = document.createElement("li");
+            var nameSpan = document.createElement("span");
+            nameSpan.textContent = entry.name || "Unnamed";
+            li.appendChild(nameSpan);
+            if (entry.link) {
+              var a = document.createElement("a");
+              a.className = "ddb-link";
+              a.href = entry.link;
+              a.target = "_blank";
+              a.rel = "noopener";
+              a.textContent = "View on D&D Beyond →";
+              li.appendChild(a);
+            }
+            list.appendChild(li);
+          });
+        })
+        .catch(function () {
+          renderEmpty("Couldn’t load characters.");
+        });
+    })();
+  </script>
 {{ end }}
 
 {{ define "overlays" }}
