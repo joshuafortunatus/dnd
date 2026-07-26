@@ -1336,8 +1336,14 @@
                 return [];
               }
             })();
-            var npcMonsterLinkByName = {};
-            NPC_MONSTERS.forEach(function (m) { npcMonsterLinkByName[m.name] = m.link; });
+            var NPC_MONSTER_EDITIONS = ["2024", "2014"];
+            {{/* Keyed by edition since the same name (e.g. "Aboleth") can
+              exist in both editions with a different link. */}}
+            var npcMonsterLinkByEditionName = {};
+            NPC_MONSTERS.forEach(function (m) {
+              npcMonsterLinkByEditionName[m.edition] = npcMonsterLinkByEditionName[m.edition] || {};
+              npcMonsterLinkByEditionName[m.edition][m.name] = m.link;
+            });
 
             var loadNpcs = function () {
               try {
@@ -1418,41 +1424,79 @@
               always-visible toggle inside the form — once an NPC exists,
               its statBlockSource is fixed, so the form just renders
               whichever of the two field layouts matches it. */}}
-            var npcMonsterField = function (value) {
+            var npcMonsterField = function (editionValue, nameValue) {
               var wrap = document.createElement("div");
               wrap.className = "npc-field";
               var label = document.createElement("label");
               label.textContent = "Monster";
               wrap.appendChild(label);
-              var select = document.createElement("select");
-              select.dataset.field = "statBlockName";
-              var placeholder = document.createElement("option");
-              placeholder.value = "";
-              placeholder.textContent = "— Select a monster —";
-              select.appendChild(placeholder);
-              NPC_MONSTERS.forEach(function (m) {
+
+              var editionSelect = document.createElement("select");
+              editionSelect.className = "npc-monster-edition-select";
+              editionSelect.dataset.field = "statBlockEdition";
+              NPC_MONSTER_EDITIONS.forEach(function (edition) {
                 var option = document.createElement("option");
-                option.value = m.name;
-                option.textContent = m.name;
-                select.appendChild(option);
+                option.value = edition;
+                option.textContent = edition;
+                editionSelect.appendChild(option);
               });
-              select.value = NPC_MONSTERS.some(function (m) { return m.name === value; }) ? value : "";
-              wrap.appendChild(select);
+              editionSelect.value = NPC_MONSTER_EDITIONS.indexOf(editionValue) !== -1 ? editionValue : NPC_MONSTER_EDITIONS[0];
+              wrap.appendChild(editionSelect);
+
+              var nameSelect = document.createElement("select");
+              nameSelect.dataset.field = "statBlockName";
+              wrap.appendChild(nameSelect);
 
               var link = document.createElement("a");
               link.className = "npc-monster-link";
               link.target = "_blank";
               link.rel = "noopener";
-              npcUpdateMonsterLink(link, select.value);
               wrap.appendChild(link);
 
-              select.addEventListener("change", function () { npcUpdateMonsterLink(link, select.value); });
+              {{/* Rebuilds the name <select> for whichever edition is
+                currently chosen — swapping edition always resets the name
+                choice, since a name from one edition's list has no
+                meaning selected against the other. */}}
+              var populateNames = function (edition, selected) {
+                nameSelect.innerHTML = "";
+                var placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = "— Select a monster —";
+                nameSelect.appendChild(placeholder);
+                var names = NPC_MONSTERS.filter(function (m) { return m.edition === edition; });
+                names.forEach(function (m) {
+                  var option = document.createElement("option");
+                  option.value = m.name;
+                  option.textContent = m.name;
+                  nameSelect.appendChild(option);
+                });
+                nameSelect.value = names.some(function (m) { return m.name === selected; }) ? selected : "";
+                npcUpdateMonsterLink(link, edition, nameSelect.value);
+              };
+
+              populateNames(editionSelect.value, nameValue);
+
+              editionSelect.addEventListener("change", function () { populateNames(editionSelect.value, ""); });
+              nameSelect.addEventListener("change", function () { npcUpdateMonsterLink(link, editionSelect.value, nameSelect.value); });
 
               return wrap;
             };
 
-            var npcUpdateMonsterLink = function (link, name) {
-              var href = npcMonsterLinkByName[name];
+            {{/* Reads statBlockEdition if present; falls back to parsing
+              a leading "2014 - "/"2024 - " off statBlockName for NPCs
+              saved before the edition became its own field. */}}
+            var npcNormalizedEdition = function (npc) {
+              if (npc.statBlockEdition) return npc.statBlockEdition;
+              var match = /^(\d{4}) - /.exec(npc.statBlockName || "");
+              return match ? match[1] : NPC_MONSTER_EDITIONS[0];
+            };
+
+            var npcNormalizedMonsterName = function (npc) {
+              return (npc.statBlockName || "").replace(/^\d{4} - /, "");
+            };
+
+            var npcUpdateMonsterLink = function (link, edition, name) {
+              var href = (npcMonsterLinkByEditionName[edition] || {})[name];
               if (href) {
                 link.href = href;
                 link.textContent = "View stat block on aidedd.org ↗";
@@ -1560,7 +1604,7 @@
                 the field layout that matches how it was created. */}}
               header.appendChild(
                 npc.statBlockSource === "monster-manual"
-                  ? npcMonsterField(npc.statBlockName)
+                  ? npcMonsterField(npcNormalizedEdition(npc), npcNormalizedMonsterName(npc))
                   : npcEditInput("Stat Block", npc.statBlock, { field: "statBlock" })
               );
               header.appendChild(npcEditInput("MM Page", npc.mmPage, { field: "mmPage" }));
@@ -1663,7 +1707,7 @@
               var newNpc = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
-                name: "", statBlockSource: source, statBlock: "", statBlockName: "", mmPage: "",
+                name: "", statBlockSource: source, statBlock: "", statBlockEdition: "2024", statBlockName: "", mmPage: "",
                 statBlockAlterations: "", alignment: "", personality: "", appearance: "", secret: "",
               };
               npcs.push(newNpc);
