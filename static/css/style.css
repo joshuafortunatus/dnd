@@ -767,18 +767,6 @@ body.is-home {
 }
 .pc-subheading:first-of-type { padding-top: 0; border-top: none; }
 
-.pc-save-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 4px;
-  padding: 0.4rem 1rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-.pc-save-btn:hover { background: rgba(201, 162, 39, 0.15); }
-
 .bastion-facility {
   margin-bottom: 2.5rem;
   padding-top: 1.5rem;
