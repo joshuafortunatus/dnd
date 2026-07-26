@@ -76,7 +76,7 @@
                   </p>
                 {{ else }}
                   <form class="pc-manager-form" id="pc-manager-form">
-                    <label for="pc-manager-link">D&amp;D Beyond character link <span class="required-star" aria-hidden="true">*</span></label>
+                    <label for="pc-manager-link">D&amp;D Beyond character link</label>
                     <input type="text" id="pc-manager-link" placeholder="https://www.dndbeyond.com/characters/12345678" required>
                     <button type="submit">Import Character</button>
                     <p class="pc-manager-error" id="pc-manager-error" hidden></p>
@@ -262,13 +262,28 @@
             Conflicts, Bastion Tracker) can't be silently lost by switching
             records, switching portal sections, or leaving the page. PC
             Manager and Magic Item Tracker autosave instead, so they never
-            have an unsaved state to guard. */}}
+            have an unsaved state to guard.
+
+            Each section's isDirtyFn counts as dirty the moment "+ Add" is
+            clicked (a brand-new, never-Saved record — persisted right away
+            as a placeholder so it shows in the picklist, not just once a
+            field is typed into), not only once a field is edited —
+            otherwise clicking Add and immediately navigating away leaves
+            an orphaned "Unnamed ___" record with no prompt at all. Each
+            section's discardFn is that same section's Cancel-button logic
+            (abandon the in-progress record, reset to the blank landing
+            state) — reused here so choosing "leave without saving" during
+            a cross-section switch actually cleans up an unsaved Add
+            instead of just hiding it. */}}
           var dirtyTrackers = [];
-          var registerDirtyTracker = function (isDirtyFn) {
-            dirtyTrackers.push(isDirtyFn);
+          var registerDirtyTracker = function (isDirtyFn, discardFn) {
+            dirtyTrackers.push({ isDirty: isDirtyFn, discard: discardFn || function () {} });
           };
           var isAnyFormDirty = function () {
-            return dirtyTrackers.some(function (fn) { return fn(); });
+            return dirtyTrackers.some(function (t) { return t.isDirty(); });
+          };
+          var discardAllUnsaved = function () {
+            dirtyTrackers.forEach(function (t) { if (t.isDirty()) t.discard(); });
           };
           var confirmLeaveIfDirty = function (isDirtyFn) {
             if (!isDirtyFn()) return true;
@@ -392,13 +407,17 @@
           {{/* Switching sections mid-edit would otherwise silently discard
             whatever's typed into the currently-open record (its detail
             panel just gets hidden, not saved) — guard it the same as
-            switching records within a section. */}}
+            switching records within a section. Confirming "leave without
+            saving" also runs discardAllUnsaved(), so an unsaved "+ Add"ed
+            record left behind in the section being switched away from
+            gets cleaned up rather than lingering forever in its picklist. */}}
           var goToSection = function (section) {
             if (section === currentSection) return;
             if (!confirmLeaveIfDirty(isAnyFormDirty)) {
               sectionSelect.value = currentSection;
               return;
             }
+            discardAllUnsaved();
             selectSection(section);
           };
 
@@ -935,7 +954,8 @@
             var tpAddBtn = document.getElementById("travel-planner-add-btn");
             var tpDirty = false;
             var tpCurrentValue = "";
-            registerDirtyTracker(function () { return tpDirty; });
+            var tpIsDirty = function () { return tpDirty || Boolean(unsavedNewPlanId); };
+            registerDirtyTracker(tpIsDirty, function () { cancelTravelForm(); });
 
             var loadPlans = function () {
               try {
@@ -1071,6 +1091,14 @@
               renderSelect();
             };
 
+            var cancelTravelForm = function () {
+              tpDirty = false;
+              discardUnsavedNewPlan();
+              tpSelect.value = "";
+              tpCurrentValue = "";
+              clearDetail();
+            };
+
             var renderForm = function (planId, isNew) {
               if (isNew) unsavedNewPlanId = planId;
               var plans = loadPlans();
@@ -1190,13 +1218,7 @@
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
-              cancelBtn.addEventListener("click", function () {
-                tpDirty = false;
-                discardUnsavedNewPlan();
-                tpSelect.value = "";
-                tpCurrentValue = "";
-                clearDetail();
-              });
+              cancelBtn.addEventListener("click", cancelTravelForm);
 
               wireConfirmDelete(deleteBtn, function () {
                 if (planId === unsavedNewPlanId) unsavedNewPlanId = null;
@@ -1215,7 +1237,7 @@
 
             tpSelect.addEventListener("change", function () {
               var nextValue = tpSelect.value;
-              if (!confirmLeaveIfDirty(function () { return tpDirty; })) {
+              if (!confirmLeaveIfDirty(tpIsDirty)) {
                 tpSelect.value = tpCurrentValue;
                 return;
               }
@@ -1229,7 +1251,7 @@
             });
 
             tpAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(function () { return tpDirty; })) return;
+              if (!confirmLeaveIfDirty(tpIsDirty)) return;
               discardUnsavedNewPlan();
               var plans = loadPlans();
               var newPlan = {
@@ -1264,7 +1286,8 @@
             var npcAddBtn = document.getElementById("npc-tracker-add-btn");
             var npcDirty = false;
             var npcCurrentValue = "";
-            registerDirtyTracker(function () { return npcDirty; });
+            var npcIsDirty = function () { return npcDirty || Boolean(unsavedNewNpcId); };
+            registerDirtyTracker(npcIsDirty, function () { cancelNpcForm(); });
 
             var loadNpcs = function () {
               try {
@@ -1372,6 +1395,14 @@
               renderNpcSelect();
             };
 
+            var cancelNpcForm = function () {
+              npcDirty = false;
+              discardUnsavedNewNpc();
+              npcSelect.value = "";
+              npcCurrentValue = "";
+              clearNpcDetail();
+            };
+
             var renderNpcForm = function (npcId, isNew) {
               if (isNew) unsavedNewNpcId = npcId;
               var npcs = loadNpcs();
@@ -1446,13 +1477,7 @@
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
-              cancelBtn.addEventListener("click", function () {
-                npcDirty = false;
-                discardUnsavedNewNpc();
-                npcSelect.value = "";
-                npcCurrentValue = "";
-                clearNpcDetail();
-              });
+              cancelBtn.addEventListener("click", cancelNpcForm);
 
               wireConfirmDelete(deleteBtn, function () {
                 if (npcId === unsavedNewNpcId) unsavedNewNpcId = null;
@@ -1471,7 +1496,7 @@
 
             npcSelect.addEventListener("change", function () {
               var nextValue = npcSelect.value;
-              if (!confirmLeaveIfDirty(function () { return npcDirty; })) {
+              if (!confirmLeaveIfDirty(npcIsDirty)) {
                 npcSelect.value = npcCurrentValue;
                 return;
               }
@@ -1485,7 +1510,7 @@
             });
 
             npcAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(function () { return npcDirty; })) return;
+              if (!confirmLeaveIfDirty(npcIsDirty)) return;
               discardUnsavedNewNpc();
               var npcs = loadNpcs();
               var newNpc = {
@@ -1516,7 +1541,8 @@
             var settlementAddBtn = document.getElementById("settlement-tracker-add-btn");
             var settlementDirty = false;
             var settlementCurrentValue = "";
-            registerDirtyTracker(function () { return settlementDirty; });
+            var settlementIsDirty = function () { return settlementDirty || Boolean(unsavedNewSettlementId); };
+            registerDirtyTracker(settlementIsDirty, function () { cancelSettlementForm(); });
 
             var loadSettlements = function () {
               try {
@@ -1656,6 +1682,14 @@
               renderSettlementSelect();
             };
 
+            var cancelSettlementForm = function () {
+              settlementDirty = false;
+              discardUnsavedNewSettlement();
+              settlementSelect.value = "";
+              settlementCurrentValue = "";
+              clearSettlementDetail();
+            };
+
             var renderSettlementForm = function (settlementId, isNew) {
               if (isNew) unsavedNewSettlementId = settlementId;
               var settlements = loadSettlements();
@@ -1731,13 +1765,7 @@
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
-              cancelBtn.addEventListener("click", function () {
-                settlementDirty = false;
-                discardUnsavedNewSettlement();
-                settlementSelect.value = "";
-                settlementCurrentValue = "";
-                clearSettlementDetail();
-              });
+              cancelBtn.addEventListener("click", cancelSettlementForm);
 
               wireConfirmDelete(deleteBtn, function () {
                 if (settlementId === unsavedNewSettlementId) unsavedNewSettlementId = null;
@@ -1756,7 +1784,7 @@
 
             settlementSelect.addEventListener("change", function () {
               var nextValue = settlementSelect.value;
-              if (!confirmLeaveIfDirty(function () { return settlementDirty; })) {
+              if (!confirmLeaveIfDirty(settlementIsDirty)) {
                 settlementSelect.value = settlementCurrentValue;
                 return;
               }
@@ -1770,7 +1798,7 @@
             });
 
             settlementAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(function () { return settlementDirty; })) return;
+              if (!confirmLeaveIfDirty(settlementIsDirty)) return;
               discardUnsavedNewSettlement();
               var settlements = loadSettlements();
               var newSettlement = {
@@ -1802,7 +1830,8 @@
             var journalAddBtn = document.getElementById("campaign-journal-add-btn");
             var journalDirty = false;
             var journalCurrentValue = "";
-            registerDirtyTracker(function () { return journalDirty; });
+            var journalIsDirty = function () { return journalDirty || Boolean(unsavedNewJournalId); };
+            registerDirtyTracker(journalIsDirty, function () { cancelJournalForm(); });
 
             var loadJournalEntries = function () {
               try {
@@ -1910,6 +1939,14 @@
               renderJournalSelect();
             };
 
+            var cancelJournalForm = function () {
+              journalDirty = false;
+              discardUnsavedNewJournal();
+              journalSelect.value = "";
+              journalCurrentValue = "";
+              clearJournalDetail();
+            };
+
             var renderJournalForm = function (entryId, isNew) {
               if (isNew) unsavedNewJournalId = entryId;
               var entries = loadJournalEntries();
@@ -1982,13 +2019,7 @@
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
-              cancelBtn.addEventListener("click", function () {
-                journalDirty = false;
-                discardUnsavedNewJournal();
-                journalSelect.value = "";
-                journalCurrentValue = "";
-                clearJournalDetail();
-              });
+              cancelBtn.addEventListener("click", cancelJournalForm);
 
               wireConfirmDelete(deleteBtn, function () {
                 if (entryId === unsavedNewJournalId) unsavedNewJournalId = null;
@@ -2007,7 +2038,7 @@
 
             journalSelect.addEventListener("change", function () {
               var nextValue = journalSelect.value;
-              if (!confirmLeaveIfDirty(function () { return journalDirty; })) {
+              if (!confirmLeaveIfDirty(journalIsDirty)) {
                 journalSelect.value = journalCurrentValue;
                 return;
               }
@@ -2036,7 +2067,7 @@
             };
 
             journalAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(function () { return journalDirty; })) return;
+              if (!confirmLeaveIfDirty(journalIsDirty)) return;
               discardUnsavedNewJournal();
               var entries = loadJournalEntries();
               var newEntry = {
@@ -2070,7 +2101,8 @@
             var conflictAddBtn = document.getElementById("campaign-conflicts-add-btn");
             var conflictDirty = false;
             var conflictCurrentValue = "";
-            registerDirtyTracker(function () { return conflictDirty; });
+            var conflictIsDirty = function () { return conflictDirty || Boolean(unsavedNewConflictId); };
+            registerDirtyTracker(conflictIsDirty, function () { cancelConflictForm(); });
 
             var loadConflicts = function () {
               try {
@@ -2210,6 +2242,14 @@
               renderConflictSelect();
             };
 
+            var cancelConflictForm = function () {
+              conflictDirty = false;
+              discardUnsavedNewConflict();
+              conflictSelect.value = "";
+              conflictCurrentValue = "";
+              clearConflictDetail();
+            };
+
             var renderConflictForm = function (conflictId, isNew) {
               if (isNew) unsavedNewConflictId = conflictId;
               var conflicts = loadConflicts();
@@ -2275,13 +2315,7 @@
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
-              cancelBtn.addEventListener("click", function () {
-                conflictDirty = false;
-                discardUnsavedNewConflict();
-                conflictSelect.value = "";
-                conflictCurrentValue = "";
-                clearConflictDetail();
-              });
+              cancelBtn.addEventListener("click", cancelConflictForm);
 
               wireConfirmDelete(deleteBtn, function () {
                 if (conflictId === unsavedNewConflictId) unsavedNewConflictId = null;
@@ -2300,7 +2334,7 @@
 
             conflictSelect.addEventListener("change", function () {
               var nextValue = conflictSelect.value;
-              if (!confirmLeaveIfDirty(function () { return conflictDirty; })) {
+              if (!confirmLeaveIfDirty(conflictIsDirty)) {
                 conflictSelect.value = conflictCurrentValue;
                 return;
               }
@@ -2314,7 +2348,7 @@
             });
 
             conflictAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(function () { return conflictDirty; })) return;
+              if (!confirmLeaveIfDirty(conflictIsDirty)) return;
               discardUnsavedNewConflict();
               var conflicts = loadConflicts();
               var newConflict = {
@@ -2472,7 +2506,8 @@
             var bastionAddBtn = document.getElementById("bastion-tracker-add-btn");
             var bastionDirty = false;
             var bastionCurrentValue = "";
-            registerDirtyTracker(function () { return bastionDirty; });
+            var bastionIsDirty = function () { return bastionDirty || Boolean(unsavedNewBastionId); };
+            registerDirtyTracker(bastionIsDirty, function () { cancelBastionForm(); });
 
             var loadBastions = function () {
               try {
@@ -2595,6 +2630,14 @@
               renderBastionSelect();
             };
 
+            var cancelBastionForm = function () {
+              bastionDirty = false;
+              discardUnsavedNewBastion();
+              bastionSelect.value = "";
+              bastionCurrentValue = "";
+              clearBastionDetail();
+            };
+
             var renderBastionForm = function (bastionId, isNew) {
               if (isNew) unsavedNewBastionId = bastionId;
               var bastions = loadBastions();
@@ -2686,13 +2729,7 @@
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
-              cancelBtn.addEventListener("click", function () {
-                bastionDirty = false;
-                discardUnsavedNewBastion();
-                bastionSelect.value = "";
-                bastionCurrentValue = "";
-                clearBastionDetail();
-              });
+              cancelBtn.addEventListener("click", cancelBastionForm);
 
               wireConfirmDelete(deleteBtn, function () {
                 if (bastionId === unsavedNewBastionId) unsavedNewBastionId = null;
@@ -2711,7 +2748,7 @@
 
             bastionSelect.addEventListener("change", function () {
               var nextValue = bastionSelect.value;
-              if (!confirmLeaveIfDirty(function () { return bastionDirty; })) {
+              if (!confirmLeaveIfDirty(bastionIsDirty)) {
                 bastionSelect.value = bastionCurrentValue;
                 return;
               }
@@ -2725,7 +2762,7 @@
             });
 
             bastionAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(function () { return bastionDirty; })) return;
+              if (!confirmLeaveIfDirty(bastionIsDirty)) return;
               discardUnsavedNewBastion();
               var bastions = loadBastions();
               var newBastion = {
