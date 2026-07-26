@@ -37,6 +37,7 @@
     (dict "id" "campaign-conflicts" "label" "Campaign Conflicts")
     (dict "id" "magic-item-tracker" "label" "Magic Item Tracker")
     (dict "id" "bastion-tracker" "label" "Bastion Tracker")
+    (dict "id" "file-library" "label" "File Library")
   }}
 
   <div class="hub-topline">
@@ -196,6 +197,68 @@
                 </div>
                 <div class="bastion-tracker-detail" id="bastion-tracker-detail"></div>
               </div>
+            {{ else if eq .id "file-library" }}
+              {{/* Uploaded reference material (maps, module PDFs, misc.
+                files, reference material) with a per-file "send to
+                players" flag that surfaces it in the public campaign
+                hub's Images tab. Unlike every other section, this one
+                has no meaningful local-only mode — a file that never
+                leaves this browser can't be shared with players — so
+                the whole interactive UI (not just the upload form, like
+                PC Manager) only renders once the Worker/R2 are deployed.
+                Actual file bytes live in a Cloudflare R2 bucket proxied
+                through the same Worker, not in this section's KV
+                metadata blob — see worker/ddb-character-proxy.js's
+                header comment for why. */}}
+              <div class="file-library" id="file-library" data-proxy-url="{{ $proxyURL }}" data-slug="{{ $slug }}" data-storage-key="dm-portal-files-{{ $slug }}">
+                {{ if eq $proxyURL "" }}
+                  <p class="entry-date">
+                    File Library needs both the Cloudflare Worker and an R2 bucket deployed. Deploy
+                    <code>worker/ddb-character-proxy.js</code> and set <code>ddb_proxy_url</code> in
+                    <code>hugo.toml</code> first &mdash; see that file&rsquo;s header comment for the R2 setup steps.
+                  </p>
+                {{ else }}
+                  {{/* No Name field here — the name is taken from the
+                    uploaded file's own filename (stripped of its
+                    extension) and can be changed afterward via each row's
+                    Edit action, so there's nothing to type before
+                    uploading. */}}
+                  <form class="file-library-upload-form" id="file-library-upload-form">
+                    <input type="file" id="file-library-file" aria-label="File" required>
+                    <select id="file-library-category" aria-label="Category" required>
+                      <option value="" selected disabled>Choose category&hellip;</option>
+                      <option value="map">Map</option>
+                      <option value="module">Module</option>
+                      <option value="misc">Misc.</option>
+                      <option value="reference">Reference</option>
+                    </select>
+                    <button type="submit">Upload</button>
+                    <p class="file-library-error" id="file-library-error" hidden></p>
+                  </form>
+
+                  <div class="file-library-controls">
+                    <label for="file-library-filter">Category</label>
+                    <select id="file-library-filter">
+                      <option value="">All categories</option>
+                      <option value="map">Map</option>
+                      <option value="module">Module</option>
+                      <option value="misc">Misc.</option>
+                      <option value="reference">Reference</option>
+                    </select>
+                    <label for="file-library-sort">Sort by</label>
+                    <select id="file-library-sort">
+                      <option value="uploadedAt">Upload date (newest first)</option>
+                      <option value="name">Name</option>
+                      <option value="category">Category</option>
+                      <option value="sentToPlayers">Sent to players</option>
+                    </select>
+                  </div>
+
+                  <p class="entry-date" id="file-library-empty" hidden>No files yet &mdash; upload one above.</p>
+                  <ul class="file-library-list" id="file-library-list"></ul>
+                  <div class="file-library-detail" id="file-library-detail"></div>
+                {{ end }}
+              </div>
             {{ else }}
               <p class="entry-date">{{ .label }} is coming soon.</p>
             {{ end }}
@@ -296,6 +359,17 @@
           var dirtyTrackers = [];
           var registerDirtyTracker = function (isDirtyFn, discardFn) {
             dirtyTrackers.push({ isDirty: isDirtyFn, discard: discardFn || function () {} });
+          };
+
+          {{/* Separate from dirtyTrackers on purpose: these run on every
+            section switch regardless of dirty state, for transient UI
+            (like NPC Tracker's Custom/Monster Manual chooser) that isn't
+            "unsaved data to confirm before discarding" — nothing is lost,
+            it should just silently reset back to default rather than
+            surviving a trip to another section and back. */}}
+          var sectionResetHooks = [];
+          var registerSectionResetHook = function (fn) {
+            sectionResetHooks.push(fn);
           };
           var isAnyFormDirty = function () {
             return dirtyTrackers.some(function (t) { return t.isDirty(); });
@@ -451,6 +525,7 @@
               return;
             }
             discardAllUnsaved();
+            sectionResetHooks.forEach(function (fn) { fn(); });
             selectSection(section);
           };
 
@@ -1358,6 +1433,21 @@
             var npcIsDirty = function () { return npcDirty || Boolean(unsavedNewNpcId); };
             registerDirtyTracker(npcIsDirty, function () { cancelNpcForm(); });
 
+            {{/* Tracks whether the Custom/Monster Manual source chooser (or
+              its edition follow-up) is currently showing. Deliberately not
+              folded into npcIsDirty — nothing is persisted while it's open,
+              so there's nothing to confirm before discarding — but it still
+              needs to reset on section switch, via registerSectionResetHook
+              below, instead of silently surviving as stale DOM. */}}
+            var npcChooserOpen = false;
+            registerSectionResetHook(function () {
+              if (!npcChooserOpen) return;
+              npcChooserOpen = false;
+              npcSelect.value = "";
+              npcCurrentValue = "";
+              clearNpcDetail();
+            });
+
             var NPC_MONSTERS = (function () {
               try {
                 return JSON.parse(npcTracker.dataset.monsters || "[]");
@@ -1857,6 +1947,7 @@
             };
 
             var clearNpcDetail = function () {
+              npcChooserOpen = false;
               npcDetail.innerHTML = "";
             };
 
@@ -1897,6 +1988,7 @@
             };
 
             var renderNpcForm = function (npcId, isNew) {
+              npcChooserOpen = false;
               if (isNew) unsavedNewNpcId = npcId;
               var npcs = loadNpcs();
               var npc = npcs.filter(function (n) { return n.id === npcId; })[0];
@@ -2018,6 +2110,7 @@
               (and so nothing is dirty/discardable) until one of the two
               choices is actually clicked. */}}
             var renderNpcSourceChooser = function () {
+              npcChooserOpen = true;
               npcDetail.innerHTML = "";
               var wrap = document.createElement("div");
               wrap.className = "npc-source-chooser";
@@ -2053,6 +2146,7 @@
               continuation of the same choice rather than a new kind of
               prompt. */}}
             var renderNpcEditionChooser = function () {
+              npcChooserOpen = true;
               npcDetail.innerHTML = "";
               var wrap = document.createElement("div");
               wrap.className = "npc-source-chooser";
@@ -2071,6 +2165,12 @@
                 choices.appendChild(btn);
               });
               wrap.appendChild(choices);
+              var backBtn = document.createElement("button");
+              backBtn.type = "button";
+              backBtn.className = "npc-source-chooser-back";
+              backBtn.textContent = "← Back";
+              backBtn.addEventListener("click", renderNpcSourceChooser);
+              wrap.appendChild(backBtn);
               npcDetail.appendChild(wrap);
             };
 
@@ -3435,6 +3535,481 @@
               bastionCurrentValue = newBastion.id;
               renderBastionForm(newBastion.id, true);
             });
+          }
+
+          {{/* File Library: unlike every other section, the interactive UI
+            (upload form, list, detail) only exists in the DOM when
+            $proxyURL is set (see the Hugo markup above) — a file library
+            that never leaves this browser can't be shared with players,
+            so there's no meaningful local-only mode to fall back to. This
+            block mirrors that by only wiring up listeners when
+            data-proxy-url is non-empty. */}}
+          var fileLibrary = document.getElementById("file-library");
+          if (fileLibrary && fileLibrary.dataset.proxyUrl) {
+            var flProxyUrl = fileLibrary.dataset.proxyUrl.replace(/\/$/, "");
+            var flSlug = fileLibrary.dataset.slug;
+            var flStorageKey = fileLibrary.dataset.storageKey;
+            var flForm = document.getElementById("file-library-upload-form");
+            var flCategorySelect = document.getElementById("file-library-category");
+            var flFileInput = document.getElementById("file-library-file");
+            var flUploadBtn = flForm.querySelector("button[type=submit]");
+            var flError = document.getElementById("file-library-error");
+            var flFilterSelect = document.getElementById("file-library-filter");
+            var flSortSelect = document.getElementById("file-library-sort");
+            var flEmpty = document.getElementById("file-library-empty");
+            var flList = document.getElementById("file-library-list");
+            var flDetail = document.getElementById("file-library-detail");
+            var flDirty = false;
+            var flCurrentId = "";
+            var flIsDirty = function () { return flDirty; };
+            registerDirtyTracker(flIsDirty, function () { cancelFileLibraryForm(); });
+
+            {{/* Matches the Worker's own MAX_FILE_BYTES — fails fast
+              client-side instead of wasting a full upload attempt, but
+              the Worker enforces the real limit too (a client could
+              always bypass this UI). */}}
+            var MAX_FILE_BYTES_CLIENT = 15 * 1024 * 1024;
+
+            var loadFiles = function () {
+              try {
+                return JSON.parse(window.localStorage.getItem(flStorageKey) || "[]");
+              } catch (e) {
+                return [];
+              }
+            };
+
+            var writeFilesLocal = function (files) {
+              window.localStorage.setItem(flStorageKey, JSON.stringify(files));
+            };
+
+            var saveFiles = function (files) {
+              writeFilesLocal(files);
+              syncPush("files", files);
+            };
+
+            {{/* Record shape: { id, name, category, uploadedAt (Date.now(),
+              epoch ms), sentToPlayers, contentType, size, fileName }.
+              `fileName` (the original File.name) is kept distinct from
+              `name` (the DM's own display label) so a download always
+              gets a sane filename even if the display name doesn't have
+              one. No pruneOrphanedDrafts call here, unlike every other
+              Save/Cancel/Delete section — a file metadata record can only
+              ever be created AFTER its R2 upload succeeds (see the upload
+              handler below), so there's never an incomplete placeholder
+              record to prune. */}}
+            var pullFiles = function () {
+              syncPull("files").then(function (remote) {
+                if (remote) {
+                  writeFilesLocal(remote);
+                  renderFileList();
+                } else if (syncEnabled()) {
+                  syncPush("files", loadFiles());
+                }
+              });
+            };
+            syncPullers.push(pullFiles);
+
+            {{/* Thumbnails for not-yet-sent drafts need the DM's own
+              Authorization header (this section's byte route is public
+              only once a file is sent — see the Worker), so they can't
+              just be a plain <img src>. Fetched once per file id and
+              cached as an object URL; revoked on delete to avoid leaking
+              blob URLs across a long DM session. */}}
+            var thumbUrlCache = {};
+
+            var fetchFileBlobUrl = function (fileId) {
+              if (thumbUrlCache[fileId]) return Promise.resolve(thumbUrlCache[fileId]);
+              return fetch(flProxyUrl + "/files/" + flSlug + "/" + fileId, {
+                headers: { Authorization: "Bearer " + getSyncToken() },
+              })
+                .then(function (res) { return res.ok ? res.blob() : null; })
+                .then(function (blob) {
+                  if (!blob) return null;
+                  var url = URL.createObjectURL(blob);
+                  thumbUrlCache[fileId] = url;
+                  return url;
+                })
+                .catch(function () { return null; });
+            };
+
+            var revokeThumbUrl = function (fileId) {
+              if (thumbUrlCache[fileId]) {
+                URL.revokeObjectURL(thumbUrlCache[fileId]);
+                delete thumbUrlCache[fileId];
+              }
+            };
+
+            var fileTypeBadgeLabel = function (file) {
+              var ext = (file.fileName || "").split(".").pop();
+              return (ext || "file").toUpperCase().slice(0, 4);
+            };
+
+            {{/* Upload has no Name field of its own — the display name
+              starts as the uploaded filename minus its extension, and can
+              be changed afterward via each row's Edit action. Falls back
+              to the raw filename if it has no extension to strip. */}}
+            var nameFromFileName = function (fileName) {
+              var stem = fileName.replace(/\.[^./\\]+$/, "");
+              return stem || fileName;
+            };
+
+            var FILE_CATEGORY_LABELS = { map: "Map", module: "Module", misc: "Misc.", reference: "Reference" };
+
+            var formatFileBytes = function (bytes) {
+              if (!bytes) return "";
+              if (bytes < 1024) return bytes + " B";
+              if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+              return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+            };
+
+            var formatFileDate = function (ms) {
+              return new Date(ms).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+            };
+
+            {{/* Sort/filter controls are new to this codebase — no other
+              section has user-facing sort or filter, only a fixed
+              chronological order. Not persisted across reloads (v1 scope
+              cut). */}}
+            var flFilterCategory = "";
+            var flSorters = {
+              name: function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }); },
+              category: function (a, b) { return a.category.localeCompare(b.category) || flSorters.name(a, b); },
+              uploadedAt: function (a, b) { return b.uploadedAt - a.uploadedAt; },
+              sentToPlayers: function (a, b) {
+                if (Boolean(a.sentToPlayers) === Boolean(b.sentToPlayers)) return flSorters.name(a, b);
+                return b.sentToPlayers ? 1 : -1;
+              },
+            };
+            var flCurrentSort = "uploadedAt";
+
+            var buildFileRow = function (file) {
+              var li = document.createElement("li");
+              li.className = "file-library-item";
+              var row = document.createElement("div");
+              row.className = "file-library-row";
+
+              if ((file.contentType || "").indexOf("image/") === 0) {
+                var thumb = document.createElement("span");
+                thumb.className = "file-library-thumb file-library-thumb-loading";
+                row.appendChild(thumb);
+                fetchFileBlobUrl(file.id).then(function (url) {
+                  if (!url || !thumb.parentNode) return;
+                  var img = document.createElement("img");
+                  img.className = "file-library-thumb";
+                  img.src = url;
+                  img.alt = file.name;
+                  thumb.replaceWith(img);
+                });
+              } else {
+                var badge = document.createElement("span");
+                badge.className = "file-library-thumb-badge";
+                badge.textContent = fileTypeBadgeLabel(file);
+                row.appendChild(badge);
+              }
+
+              var info = document.createElement("div");
+              info.className = "file-library-info";
+              var nameLine = document.createElement("div");
+              nameLine.className = "file-library-name-line";
+              var nameSpan = document.createElement("span");
+              nameSpan.className = "file-library-name";
+              nameSpan.textContent = file.name;
+              nameLine.appendChild(nameSpan);
+              if (file.sentToPlayers) {
+                var sentBadge = document.createElement("span");
+                sentBadge.className = "file-library-sent-badge";
+                sentBadge.textContent = "Sent";
+                nameLine.appendChild(sentBadge);
+              }
+              info.appendChild(nameLine);
+              var meta = document.createElement("div");
+              meta.className = "file-library-meta";
+              meta.textContent = [FILE_CATEGORY_LABELS[file.category] || file.category, formatFileDate(file.uploadedAt), formatFileBytes(file.size)]
+                .filter(Boolean)
+                .join(" · ");
+              info.appendChild(meta);
+              row.appendChild(info);
+
+              var actions = document.createElement("div");
+              actions.className = "file-library-row-actions";
+
+              var sendBtn = document.createElement("button");
+              sendBtn.type = "button";
+              sendBtn.className = "file-library-send-btn";
+              sendBtn.textContent = file.sentToPlayers ? "Unsend" : "Send to Players";
+              sendBtn.addEventListener("click", function () {
+                var files = loadFiles();
+                var target = files.filter(function (f) { return f.id === file.id; })[0];
+                if (!target) return;
+                target.sentToPlayers = !target.sentToPlayers;
+                saveFiles(files);
+                renderFileList();
+              });
+              actions.appendChild(sendBtn);
+
+              var editBtn = document.createElement("button");
+              editBtn.type = "button";
+              editBtn.className = "file-library-edit-btn";
+              editBtn.textContent = "Edit";
+              editBtn.addEventListener("click", function () {
+                if (!confirmLeaveIfDirty(flIsDirty)) return;
+                renderFileDetail(file.id);
+              });
+              actions.appendChild(editBtn);
+
+              var deleteBtn = document.createElement("button");
+              deleteBtn.type = "button";
+              deleteBtn.className = "file-library-delete-btn";
+              deleteBtn.textContent = "Delete";
+              actions.appendChild(deleteBtn);
+              {{/* Delete hits the Worker (removing the R2 object) BEFORE
+                touching local metadata — never strand a metadata record
+                pointing at bytes that no longer exist, and never remove a
+                metadata record while leaving its R2 object with no way to
+                retry deleting it from this UI. */}}
+              wireConfirmDelete(deleteBtn, function () {
+                fetch(flProxyUrl + "/files/" + flSlug + "/" + file.id, {
+                  method: "DELETE",
+                  headers: { Authorization: "Bearer " + getSyncToken() },
+                }).then(function (res) {
+                  if (!res.ok) return;
+                  var remaining = loadFiles().filter(function (f) { return f.id !== file.id; });
+                  saveFiles(remaining);
+                  revokeThumbUrl(file.id);
+                  if (flCurrentId === file.id) cancelFileLibraryForm();
+                  renderFileList();
+                });
+              });
+
+              row.appendChild(actions);
+              li.appendChild(row);
+              return li;
+            };
+
+            var renderFileList = function () {
+              var files = loadFiles();
+              var filtered = flFilterCategory ? files.filter(function (f) { return f.category === flFilterCategory; }) : files.slice();
+              filtered.sort(flSorters[flCurrentSort] || flSorters.uploadedAt);
+              flEmpty.hidden = filtered.length > 0;
+              flList.innerHTML = "";
+              filtered.forEach(function (file) { flList.appendChild(buildFileRow(file)); });
+            };
+
+            flFilterSelect.addEventListener("change", function () {
+              flFilterCategory = flFilterSelect.value;
+              renderFileList();
+            });
+            flSortSelect.addEventListener("change", function () {
+              flCurrentSort = flSortSelect.value;
+              renderFileList();
+            });
+
+            var clearFileDetail = function () {
+              flCurrentId = "";
+              flDetail.innerHTML = "";
+            };
+
+            var cancelFileLibraryForm = function () {
+              flDirty = false;
+              clearFileDetail();
+            };
+
+            var flFieldStatic = function (labelText, value) {
+              var wrap = document.createElement("div");
+              wrap.className = "file-library-field-static";
+              var label = document.createElement("span");
+              label.className = "file-library-field-static-label";
+              label.textContent = labelText;
+              var val = document.createElement("span");
+              val.textContent = value;
+              wrap.appendChild(label);
+              wrap.appendChild(val);
+              return wrap;
+            };
+
+            var flEditInput = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "file-library-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var input = document.createElement("input");
+              input.type = "text";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(input);
+              return wrap;
+            };
+
+            var flEditSelect = function (labelText, value, options, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "file-library-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              var select = document.createElement("select");
+              options.forEach(function (opt) {
+                var option = document.createElement("option");
+                option.value = opt.value;
+                option.textContent = opt.label;
+                if (opt.value === value) option.selected = true;
+                select.appendChild(option);
+              });
+              Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(label);
+              wrap.appendChild(select);
+              return wrap;
+            };
+
+            var renderFileDetail = function (fileId) {
+              flCurrentId = fileId;
+              var files = loadFiles();
+              var file = files.filter(function (f) { return f.id === fileId; })[0];
+              flDetail.innerHTML = "";
+              if (!file) return;
+              flDirty = false;
+
+              var actions = document.createElement("div");
+              actions.className = "file-library-form-actions";
+              var saveBtn = document.createElement("button");
+              saveBtn.type = "button";
+              saveBtn.className = "file-library-save-btn";
+              saveBtn.textContent = "Save";
+              var cancelBtn = document.createElement("button");
+              cancelBtn.type = "button";
+              cancelBtn.className = "file-library-cancel-btn";
+              cancelBtn.textContent = "Cancel";
+              actions.appendChild(saveBtn);
+              actions.appendChild(cancelBtn);
+              flDetail.appendChild(actions);
+
+              var error = document.createElement("p");
+              error.className = "file-library-form-error";
+              error.hidden = true;
+              error.textContent = "Name is required.";
+              flDetail.appendChild(error);
+
+              var form = document.createElement("div");
+              form.className = "file-library-edit-form";
+              var header = document.createElement("div");
+              header.className = "file-library-header-fields";
+              header.appendChild(markRequired(flEditInput("Name", file.name, { field: "name" })));
+              header.appendChild(flEditSelect("Category", file.category, [
+                { value: "map", label: "Map" },
+                { value: "module", label: "Module" },
+                { value: "misc", label: "Misc." },
+                { value: "reference", label: "Reference" },
+              ], { field: "category" }));
+              form.appendChild(header);
+
+              form.appendChild(flFieldStatic("Uploaded", formatFileDate(file.uploadedAt)));
+              form.appendChild(flFieldStatic("Original filename", file.fileName));
+              form.appendChild(flFieldStatic("Size", formatFileBytes(file.size)));
+
+              flDetail.appendChild(form);
+
+              form.addEventListener("input", function () { flDirty = true; });
+              form.addEventListener("change", function () { flDirty = true; });
+
+              saveBtn.addEventListener("click", function () {
+                var nameInput = form.querySelector('[data-field="name"]');
+                var categorySelect = form.querySelector('[data-field="category"]');
+                var name = nameInput.value.trim();
+                if (!name) {
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var allFiles = loadFiles();
+                var idx = -1;
+                allFiles.forEach(function (f, i) { if (f.id === file.id) idx = i; });
+                if (idx !== -1) {
+                  allFiles[idx].name = name;
+                  allFiles[idx].category = categorySelect.value;
+                }
+                saveFiles(allFiles);
+                flDirty = false;
+                renderFileList();
+                var originalText = saveBtn.textContent;
+                saveBtn.textContent = "Saved";
+                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+              });
+
+              cancelBtn.addEventListener("click", cancelFileLibraryForm);
+            };
+
+            {{/* Upload is one atomic action, not "+ Add a blank
+              placeholder, then Save" like every other section — a file
+              metadata record can't meaningfully exist before its bytes
+              exist in R2, so there's nothing valid to create up front.
+              Metadata is only appended after the PUT succeeds. */}}
+            flForm.addEventListener("submit", function (e) {
+              e.preventDefault();
+              var file = flFileInput.files[0];
+              if (!file) {
+                flError.hidden = false;
+                flError.textContent = "A file is required.";
+                return;
+              }
+              if (!flCategorySelect.value) {
+                flError.hidden = false;
+                flError.textContent = "Choose a category.";
+                return;
+              }
+              var name = nameFromFileName(file.name);
+              if (file.size > MAX_FILE_BYTES_CLIENT) {
+                flError.hidden = false;
+                flError.textContent = "File is too large (max 15MB).";
+                return;
+              }
+              flError.hidden = true;
+              flUploadBtn.disabled = true;
+              var originalText = flUploadBtn.textContent;
+              flUploadBtn.textContent = "Uploading…";
+
+              var id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+              fetch(flProxyUrl + "/files/" + flSlug + "/" + id, {
+                method: "PUT",
+                headers: {
+                  Authorization: "Bearer " + getSyncToken(),
+                  "Content-Type": file.type || "application/octet-stream",
+                  "X-File-Name": encodeURIComponent(file.name),
+                },
+                body: file,
+              })
+                .then(function (res) {
+                  flUploadBtn.disabled = false;
+                  flUploadBtn.textContent = originalText;
+                  if (!res.ok) {
+                    flError.hidden = false;
+                    flError.textContent = "Upload failed. Please try again.";
+                    return;
+                  }
+                  var files = loadFiles();
+                  files.push({
+                    id: id,
+                    name: name,
+                    category: flCategorySelect.value,
+                    uploadedAt: Date.now(),
+                    sentToPlayers: false,
+                    contentType: file.type || "application/octet-stream",
+                    size: file.size,
+                    fileName: file.name,
+                  });
+                  saveFiles(files);
+                  renderFileList();
+                  flForm.reset();
+                })
+                .catch(function () {
+                  flUploadBtn.disabled = false;
+                  flUploadBtn.textContent = originalText;
+                  flError.hidden = false;
+                  flError.textContent = "Upload failed. Please try again.";
+                });
+            });
+
+            renderFileList();
+            pullFiles();
           }
         })();
       </script>

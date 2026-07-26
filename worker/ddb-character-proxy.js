@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker, three jobs:
+ * Cloudflare Worker, four jobs:
  *
  * 1) CORS proxy for D&D Beyond's public character JSON endpoint, so the DM
  *    portal (a static site with no backend of its own) can fetch a
@@ -26,6 +26,18 @@
  *    to the two URL shapes aidedd.org actually uses for monster pages, so
  *    this can't be turned into an open proxy for arbitrary URLs.
  *
+ * 4) R2-backed file storage for the DM portal's File Library section
+ *    (maps, module PDFs, misc. files, reference material). Metadata (name,
+ *    category, upload date, sentToPlayers flag, content type, size) is
+ *    small and reuses job 2's KV sync store as-is (key "files", added to
+ *    ALLOWED_SYNC_KEYS below) — no new server code needed for that part.
+ *    But actual file bytes do NOT go into that same KV blob: the existing
+ *    sync design stores each key's entire list as one JSON value, capped
+ *    at 25MB by KV, and base64-encoding file bytes into that blob (on top
+ *    of documents being in scope, not just images) would hit that ceiling
+ *    fast. R2 has no such per-object ceiling, so file bytes live there
+ *    instead, addressed by the same id as their KV metadata record.
+ *
  *    There's no separate sync passphrase to invent or type in anywhere:
  *    the DM portal page's own password (whatever you set password_hash to,
  *    in the campaign's dm/_index.md front matter) doubles as the sync
@@ -48,6 +60,12 @@
  *     password_hash for the DM portal page. This is never committed to
  *     git. Nothing further to configure client-side — logging into the DM
  *     portal on any device is what enables sync on that device.
+ *   And, to enable File Library (job 4):
+ *   - Workers & Pages → R2 → Create a bucket (any name, e.g. "dnd-portal-files").
+ *   - This Worker → Settings → Variables → R2 Bucket Bindings → Add
+ *     binding → variable name `PORTAL_FILES`, pointing at that bucket.
+ *   - No new secret needed — SYNC_SECRET (above) already gates File
+ *     Library writes/deletes too.
  *
  * Usage:
  *   GET  /character/<numeric id>          — D&D Beyond character proxy (no auth)
@@ -59,10 +77,27 @@
  *                                             always required, including for key=characters)
  *   <slug> is a campaign slug; <key> is one of: characters, pc-manager,
  *     travel-plans, npcs, settlements, journal, conflicts, magic-items,
- *     bastions
+ *     bastions, files
  *   GET  /monster?url=<aidedd.org monster page URL>  — aidedd.org proxy (no auth), url must be
  *                                             https://www.aidedd.org/monster/<slug> (2024) or
  *                                             https://www.aidedd.org/dnd/monstres.php?vo=<slug> (2014)
+ *   PUT    /files/<slug>/<fileId>          — upload file bytes to R2 (Authorization required always).
+ *                                             Body is the raw file; Content-Type and X-File-Name headers
+ *                                             carry the file's type and original filename.
+ *   DELETE /files/<slug>/<fileId>          — delete file bytes from R2 (Authorization required always)
+ *   GET    /files/<slug>/<fileId>          — read file bytes from R2. Authorization bypasses the check
+ *                                             below entirely (DM-side preview, including drafts not yet
+ *                                             sent to players). Without it, public ONLY if this file's
+ *                                             metadata record (KV key <slug>:files) has sentToPlayers
+ *                                             true — decided per-record, mirroring the /sync "characters"
+ *                                             public-read exception above but at file granularity instead
+ *                                             of key granularity, since an unsent file's very name can be
+ *                                             a spoiler.
+ *   GET    /public-files/<slug>            — public, no auth: <slug>:files KV metadata filtered to
+ *                                             sentToPlayers=true entries only. Exists as its own route
+ *                                             rather than making the whole "files" sync key publicly
+ *                                             readable (like "characters" is), specifically so an
+ *                                             unauthenticated caller never sees draft/unsent file metadata.
  */
 
 /* localhost:1313 is Hugo's default `hugo server -D` port (see README) —
@@ -73,8 +108,14 @@
 const ALLOWED_ORIGINS = ["https://joshuafortunatus.github.io", "http://localhost:1313"];
 const ALLOWED_SYNC_KEYS = [
   "characters", "pc-manager", "travel-plans", "npcs", "settlements",
-  "journal", "conflicts", "magic-items", "bastions",
+  "journal", "conflicts", "magic-items", "bastions", "files",
 ];
+
+/* Sanity default, not a hard platform fact — Workers' request body size
+ * ceiling can change by plan tier; re-check current Cloudflare docs before
+ * relying on this if it ever needs to grow. Comfortably above a realistic
+ * map image or module PDF. */
+const MAX_FILE_BYTES = 15 * 1024 * 1024;
 
 function corsHeaders(request, extra) {
   const origin = request.headers.get("Origin") || "";
@@ -82,8 +123,8 @@ function corsHeaders(request, extra) {
   return Object.assign(
     {
       "Access-Control-Allow-Origin": allowOrigin,
-      "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Allow-Methods": "GET, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-File-Name",
     },
     extra || {}
   );
@@ -177,9 +218,111 @@ export default {
       return new Response("Method not allowed.", { status: 405, headers: corsHeaders(request) });
     }
 
-    return new Response("Not found. Use /character/<numeric id>, /sync/<slug>/<key>, or /monster?url=<aidedd.org URL>.", {
-      status: 404,
-      headers: corsHeaders(request),
-    });
+    const fileMatch = url.pathname.match(/^\/files\/([a-z0-9-]+)\/([a-z0-9]+)$/);
+    if (fileMatch) {
+      const slug = fileMatch[1];
+      const fileId = fileMatch[2];
+
+      if (!env.PORTAL_FILES) {
+        return new Response("PORTAL_FILES R2 binding is not configured on this Worker.", {
+          status: 500,
+          headers: corsHeaders(request),
+        });
+      }
+
+      const objectKey = slug + "/" + fileId;
+
+      if (request.method === "PUT") {
+        if (!authorized(request, env)) {
+          return new Response("Unauthorized.", { status: 401, headers: corsHeaders(request) });
+        }
+        const contentLength = Number(request.headers.get("Content-Length") || "0");
+        if (contentLength > MAX_FILE_BYTES) {
+          return new Response("File is too large (max " + MAX_FILE_BYTES + " bytes).", {
+            status: 413,
+            headers: corsHeaders(request),
+          });
+        }
+        const contentType = request.headers.get("Content-Type") || "application/octet-stream";
+        const fileName = decodeURIComponent(request.headers.get("X-File-Name") || "file");
+        await env.PORTAL_FILES.put(objectKey, request.body, {
+          httpMetadata: { contentType },
+          customMetadata: { fileName },
+        });
+        return new Response("OK", { status: 200, headers: corsHeaders(request) });
+      }
+
+      if (request.method === "DELETE") {
+        if (!authorized(request, env)) {
+          return new Response("Unauthorized.", { status: 401, headers: corsHeaders(request) });
+        }
+        await env.PORTAL_FILES.delete(objectKey);
+        return new Response("OK", { status: 200, headers: corsHeaders(request) });
+      }
+
+      if (request.method === "GET") {
+        if (!authorized(request, env)) {
+          if (!env.PORTAL_DATA) {
+            return new Response("PORTAL_DATA KV binding is not configured on this Worker.", {
+              status: 500,
+              headers: corsHeaders(request),
+            });
+          }
+          const stored = await env.PORTAL_DATA.get(slug + ":files");
+          let records = [];
+          try {
+            records = JSON.parse(stored || "[]") || [];
+          } catch (e) {
+            records = [];
+          }
+          const record = records.filter((r) => r.id === fileId)[0];
+          if (!record || !record.sentToPlayers) {
+            return new Response("Unauthorized.", { status: 401, headers: corsHeaders(request) });
+          }
+        }
+
+        const object = await env.PORTAL_FILES.get(objectKey);
+        if (!object) {
+          return new Response("Not found.", { status: 404, headers: corsHeaders(request) });
+        }
+        const contentType = (object.httpMetadata && object.httpMetadata.contentType) || "application/octet-stream";
+        const responseHeaders = corsHeaders(request, { "Content-Type": contentType });
+        if (!contentType.startsWith("image/")) {
+          const fileName = (object.customMetadata && object.customMetadata.fileName) || "file";
+          responseHeaders["Content-Disposition"] = 'attachment; filename="' + fileName + '"';
+        }
+        return new Response(object.body, { status: 200, headers: responseHeaders });
+      }
+
+      return new Response("Method not allowed.", { status: 405, headers: corsHeaders(request) });
+    }
+
+    const publicFilesMatch = url.pathname.match(/^\/public-files\/([a-z0-9-]+)$/);
+    if (publicFilesMatch) {
+      const slug = publicFilesMatch[1];
+      if (!env.PORTAL_DATA) {
+        return new Response("PORTAL_DATA KV binding is not configured on this Worker.", {
+          status: 500,
+          headers: corsHeaders(request),
+        });
+      }
+      const stored = await env.PORTAL_DATA.get(slug + ":files");
+      let records = [];
+      try {
+        records = JSON.parse(stored || "[]") || [];
+      } catch (e) {
+        records = [];
+      }
+      const publicRecords = records.filter((r) => r.sentToPlayers);
+      return new Response(JSON.stringify(publicRecords), {
+        status: 200,
+        headers: corsHeaders(request, { "Content-Type": "application/json" }),
+      });
+    }
+
+    return new Response(
+      "Not found. Use /character/<numeric id>, /sync/<slug>/<key>, /files/<slug>/<fileId>, /public-files/<slug>, or /monster?url=<aidedd.org URL>.",
+      { status: 404, headers: corsHeaders(request) }
+    );
   },
 };
