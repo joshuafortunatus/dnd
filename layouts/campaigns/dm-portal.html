@@ -203,33 +203,56 @@
             return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "character";
           };
 
-          {{/* Shared by every delete/remove button in the portal (Character
-            Importer, Travel Planner, NPC Tracker): first click flashes a
-            warning in place of the button's own label; a second click
-            within a few seconds actually deletes. Any other interaction —
-            letting it time out, or just not clicking again — leaves the
-            data untouched. */}}
+          {{/* Shared by every remove button in the portal: clicking hides
+            the button and shows an inline "Are you sure? Yes / No"
+            prompt in its place. Yes confirms; No, letting it time out,
+            or any other interaction leaves the data untouched and
+            restores the button. */}}
           var wireConfirmDelete = function (button, onConfirmed) {
-            var originalText = button.textContent;
-            var confirming = false;
             var revertTimer = null;
+            var confirmWrap = null;
+
             var revert = function () {
-              confirming = false;
-              button.textContent = originalText;
-              button.classList.remove("is-confirming");
-            };
-            button.addEventListener("click", function () {
-              if (!confirming) {
-                confirming = true;
-                button.textContent = "Are you sure?";
-                button.classList.add("is-confirming");
-                clearTimeout(revertTimer);
-                revertTimer = setTimeout(revert, 3000);
-                return;
-              }
               clearTimeout(revertTimer);
-              revert();
-              onConfirmed();
+              if (confirmWrap) {
+                confirmWrap.remove();
+                confirmWrap = null;
+              }
+              button.hidden = false;
+            };
+
+            button.addEventListener("click", function () {
+              button.hidden = true;
+
+              confirmWrap = document.createElement("span");
+              confirmWrap.className = "confirm-delete-wrap";
+
+              var prompt = document.createElement("span");
+              prompt.className = "confirm-delete-prompt";
+              prompt.textContent = "Are you sure?";
+
+              var yesBtn = document.createElement("button");
+              yesBtn.type = "button";
+              yesBtn.className = "confirm-delete-yes";
+              yesBtn.textContent = "Yes";
+              yesBtn.addEventListener("click", function () {
+                revert();
+                onConfirmed();
+              });
+
+              var noBtn = document.createElement("button");
+              noBtn.type = "button";
+              noBtn.className = "confirm-delete-no";
+              noBtn.textContent = "No";
+              noBtn.addEventListener("click", revert);
+
+              confirmWrap.appendChild(prompt);
+              confirmWrap.appendChild(yesBtn);
+              confirmWrap.appendChild(noBtn);
+              button.insertAdjacentElement("afterend", confirmWrap);
+
+              clearTimeout(revertTimer);
+              revertTimer = setTimeout(revert, 5000);
             });
           };
 
@@ -1009,7 +1032,7 @@
               var deleteBtn = document.createElement("button");
               deleteBtn.type = "button";
               deleteBtn.className = "travel-delete-btn";
-              deleteBtn.textContent = "Delete";
+              deleteBtn.textContent = "Remove";
               actions.appendChild(saveBtn);
               actions.appendChild(cancelBtn);
               actions.appendChild(deleteBtn);
@@ -1290,7 +1313,7 @@
               var deleteBtn = document.createElement("button");
               deleteBtn.type = "button";
               deleteBtn.className = "npc-delete-btn";
-              deleteBtn.textContent = "Delete";
+              deleteBtn.textContent = "Remove";
               actions.appendChild(saveBtn);
               actions.appendChild(cancelBtn);
               actions.appendChild(deleteBtn);
@@ -1554,7 +1577,7 @@
               var deleteBtn = document.createElement("button");
               deleteBtn.type = "button";
               deleteBtn.className = "settlement-delete-btn";
-              deleteBtn.textContent = "Delete";
+              deleteBtn.textContent = "Remove";
               actions.appendChild(saveBtn);
               actions.appendChild(cancelBtn);
               actions.appendChild(deleteBtn);
@@ -1788,7 +1811,7 @@
               var deleteBtn = document.createElement("button");
               deleteBtn.type = "button";
               deleteBtn.className = "journal-delete-btn";
-              deleteBtn.textContent = "Delete";
+              deleteBtn.textContent = "Remove";
               actions.appendChild(saveBtn);
               actions.appendChild(cancelBtn);
               actions.appendChild(deleteBtn);
@@ -2036,7 +2059,7 @@
               var deleteBtn = document.createElement("button");
               deleteBtn.type = "button";
               deleteBtn.className = "conflict-delete-btn";
-              deleteBtn.textContent = "Delete";
+              deleteBtn.textContent = "Remove";
               actions.appendChild(saveBtn);
               actions.appendChild(cancelBtn);
               actions.appendChild(deleteBtn);
@@ -2400,7 +2423,7 @@
               var deleteBtn = document.createElement("button");
               deleteBtn.type = "button";
               deleteBtn.className = "bastion-delete-btn";
-              deleteBtn.textContent = "Delete";
+              deleteBtn.textContent = "Remove";
               actions.appendChild(saveBtn);
               actions.appendChild(cancelBtn);
               actions.appendChild(deleteBtn);
