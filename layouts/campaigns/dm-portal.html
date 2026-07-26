@@ -1094,6 +1094,7 @@
             var tpCurrentValue = "";
             var tpIsDirty = function () { return tpDirty || Boolean(unsavedNewPlanId); };
             registerDirtyTracker(tpIsDirty, function () { cancelTravelForm(); });
+            registerSectionResetHook(function () { cancelTravelForm(); });
 
             var loadPlans = function () {
               try {
@@ -1139,11 +1140,6 @@
                 pace: "", paceDays: { fast: "", normal: "", slow: "" },
                 notes: "", challenges: "", elapsedTime: "",
               };
-            };
-
-            var updateOptionLabel = function (plan) {
-              var option = tpSelect.querySelector('option[value="' + plan.id + '"]');
-              if (option) option.textContent = planLabel(plan);
             };
 
             var editInput = function (labelText, value, dataAttrs) {
@@ -1224,13 +1220,13 @@
             };
 
             var unsavedNewPlanId = null;
+            var pendingNewPlan = null;
 
+            {{/* A "+ Add"ed plan is never written to storage until its first
+              valid Save — nothing to discard here but the in-memory draft. */}}
             var discardUnsavedNewPlan = function () {
-              if (!unsavedNewPlanId) return;
-              var remaining = loadPlans().filter(function (p) { return p.id !== unsavedNewPlanId; });
-              savePlans(remaining);
               unsavedNewPlanId = null;
-              renderSelect();
+              pendingNewPlan = null;
             };
 
             var cancelTravelForm = function () {
@@ -1243,8 +1239,7 @@
 
             var renderForm = function (planId, isNew) {
               if (isNew) unsavedNewPlanId = planId;
-              var plans = loadPlans();
-              var plan = plans.filter(function (p) { return p.id === planId; })[0];
+              var plan = isNew ? pendingNewPlan : loadPlans().filter(function (p) { return p.id === planId; })[0];
               tpDetail.innerHTML = "";
               if (!plan) return;
               tpDirty = false;
@@ -1350,11 +1345,12 @@
                 var allPlans = loadPlans();
                 var idx = -1;
                 allPlans.forEach(function (p, pIdx) { if (p.id === plan.id) idx = pIdx; });
-                if (idx !== -1) allPlans[idx] = updated;
+                if (idx !== -1) { allPlans[idx] = updated; } else { allPlans.push(updated); }
                 savePlans(allPlans);
-                updateOptionLabel(updated);
                 unsavedNewPlanId = null;
+                pendingNewPlan = null;
                 tpDirty = false;
+                renderSelect();
                 tpSelect.value = "";
                 tpCurrentValue = "";
                 clearDetail();
@@ -1363,10 +1359,13 @@
               cancelBtn.addEventListener("click", cancelTravelForm);
 
               wireConfirmDelete(deleteBtn, function () {
-                if (planId === unsavedNewPlanId) unsavedNewPlanId = null;
-                var remaining = loadPlans().filter(function (p) { return p.id !== plan.id; });
-                savePlans(remaining);
-                renderSelect();
+                if (planId === unsavedNewPlanId) {
+                  discardUnsavedNewPlan();
+                } else {
+                  var remaining = loadPlans().filter(function (p) { return p.id !== plan.id; });
+                  savePlans(remaining);
+                  renderSelect();
+                }
                 tpDirty = false;
                 tpSelect.value = "";
                 tpCurrentValue = "";
@@ -1398,20 +1397,16 @@
             tpAddBtn.addEventListener("click", function () {
               if (!confirmLeaveIfDirty(tpIsDirty)) return;
               discardUnsavedNewPlan();
-              var plans = loadPlans();
-              var newPlan = {
+              pendingNewPlan = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
                 origin: "",
                 destination: "",
                 stages: [blankStage(), blankStage(), blankStage()],
               };
-              plans.push(newPlan);
-              savePlans(plans);
-              renderSelect();
-              tpSelect.value = newPlan.id;
-              tpCurrentValue = newPlan.id;
-              renderForm(newPlan.id, true);
+              tpSelect.value = "";
+              tpCurrentValue = "";
+              renderForm(pendingNewPlan.id, true);
             });
           }
 
@@ -1433,21 +1428,13 @@
             var npcCurrentValue = "";
             var npcIsDirty = function () { return npcDirty || Boolean(unsavedNewNpcId); };
             registerDirtyTracker(npcIsDirty, function () { cancelNpcForm(); });
+            {{/* Also covers the Custom/Monster Manual source chooser (or its
+              edition follow-up): clearNpcDetail() resets npcChooserOpen, and
+              cancelNpcForm() always calls clearNpcDetail(), so leaving the
+              section can't strand that chooser as stale DOM either. */}}
+            registerSectionResetHook(function () { cancelNpcForm(); });
 
-            {{/* Tracks whether the Custom/Monster Manual source chooser (or
-              its edition follow-up) is currently showing. Deliberately not
-              folded into npcIsDirty — nothing is persisted while it's open,
-              so there's nothing to confirm before discarding — but it still
-              needs to reset on section switch, via registerSectionResetHook
-              below, instead of silently surviving as stale DOM. */}}
             var npcChooserOpen = false;
-            registerSectionResetHook(function () {
-              if (!npcChooserOpen) return;
-              npcChooserOpen = false;
-              npcSelect.value = "";
-              npcCurrentValue = "";
-              clearNpcDetail();
-            });
 
             var NPC_MONSTERS = (function () {
               try {
@@ -1510,11 +1497,6 @@
 
             var npcLabel = function (npc) {
               return npc.name || "Unnamed NPC";
-            };
-
-            var updateNpcOptionLabel = function (npc) {
-              var option = npcSelect.querySelector('option[value="' + npc.id + '"]');
-              if (option) option.textContent = npcLabel(npc);
             };
 
             var npcEditInput = function (labelText, value, dataAttrs) {
@@ -1971,13 +1953,13 @@
             };
 
             var unsavedNewNpcId = null;
+            var pendingNewNpc = null;
 
+            {{/* A "+ Add"ed NPC is never written to storage until its first
+              valid Save — nothing to discard here but the in-memory draft. */}}
             var discardUnsavedNewNpc = function () {
-              if (!unsavedNewNpcId) return;
-              var remaining = loadNpcs().filter(function (n) { return n.id !== unsavedNewNpcId; });
-              saveNpcs(remaining);
               unsavedNewNpcId = null;
-              renderNpcSelect();
+              pendingNewNpc = null;
             };
 
             var cancelNpcForm = function () {
@@ -1991,8 +1973,7 @@
             var renderNpcForm = function (npcId, isNew) {
               npcChooserOpen = false;
               if (isNew) unsavedNewNpcId = npcId;
-              var npcs = loadNpcs();
-              var npc = npcs.filter(function (n) { return n.id === npcId; })[0];
+              var npc = isNew ? pendingNewNpc : loadNpcs().filter(function (n) { return n.id === npcId; })[0];
               npcDetail.innerHTML = "";
               if (!npc) return;
               npcDirty = false;
@@ -2061,11 +2042,12 @@
                 var allNpcs = loadNpcs();
                 var idx = -1;
                 allNpcs.forEach(function (n, nIdx) { if (n.id === npc.id) idx = nIdx; });
-                if (idx !== -1) allNpcs[idx] = updated;
+                if (idx !== -1) { allNpcs[idx] = updated; } else { allNpcs.push(updated); }
                 saveNpcs(allNpcs);
-                updateNpcOptionLabel(updated);
                 unsavedNewNpcId = null;
+                pendingNewNpc = null;
                 npcDirty = false;
+                renderNpcSelect();
                 npcSelect.value = "";
                 npcCurrentValue = "";
                 clearNpcDetail();
@@ -2074,10 +2056,13 @@
               cancelBtn.addEventListener("click", cancelNpcForm);
 
               wireConfirmDelete(deleteBtn, function () {
-                if (npcId === unsavedNewNpcId) unsavedNewNpcId = null;
-                var remaining = loadNpcs().filter(function (n) { return n.id !== npc.id; });
-                saveNpcs(remaining);
-                renderNpcSelect();
+                if (npcId === unsavedNewNpcId) {
+                  discardUnsavedNewNpc();
+                } else {
+                  var remaining = loadNpcs().filter(function (n) { return n.id !== npc.id; });
+                  saveNpcs(remaining);
+                  renderNpcSelect();
+                }
                 npcDirty = false;
                 npcSelect.value = "";
                 npcCurrentValue = "";
@@ -2176,19 +2161,15 @@
             };
 
             var createNpcWithSource = function (source, edition) {
-              var npcs = loadNpcs();
-              var newNpc = {
+              pendingNewNpc = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
                 name: "", statBlockSource: source, statBlock: "", statBlockEdition: edition || NPC_MONSTER_EDITIONS[0], statBlockName: "", mmPage: "",
                 statBlockAlterations: "", alignment: "", personality: "", appearance: "", secret: "",
               };
-              npcs.push(newNpc);
-              saveNpcs(npcs);
-              renderNpcSelect();
-              npcSelect.value = newNpc.id;
-              npcCurrentValue = newNpc.id;
-              renderNpcForm(newNpc.id, true);
+              npcSelect.value = "";
+              npcCurrentValue = "";
+              renderNpcForm(pendingNewNpc.id, true);
             };
 
             npcAddBtn.addEventListener("click", function () {
@@ -2215,6 +2196,7 @@
             var settlementCurrentValue = "";
             var settlementIsDirty = function () { return settlementDirty || Boolean(unsavedNewSettlementId); };
             registerDirtyTracker(settlementIsDirty, function () { cancelSettlementForm(); });
+            registerSectionResetHook(function () { cancelSettlementForm(); });
 
             var loadSettlements = function () {
               try {
@@ -2252,11 +2234,6 @@
 
             var settlementLabel = function (settlement) {
               return settlement.name || "Unnamed Settlement";
-            };
-
-            var updateSettlementOptionLabel = function (settlement) {
-              var option = settlementSelect.querySelector('option[value="' + settlement.id + '"]');
-              if (option) option.textContent = settlementLabel(settlement);
             };
 
             var settlementEditInput = function (labelText, value, dataAttrs) {
@@ -2349,13 +2326,14 @@
             };
 
             var unsavedNewSettlementId = null;
+            var pendingNewSettlement = null;
 
+            {{/* A "+ Add"ed settlement is never written to storage until its
+              first valid Save — nothing to discard here but the in-memory
+              draft. */}}
             var discardUnsavedNewSettlement = function () {
-              if (!unsavedNewSettlementId) return;
-              var remaining = loadSettlements().filter(function (s) { return s.id !== unsavedNewSettlementId; });
-              saveSettlements(remaining);
               unsavedNewSettlementId = null;
-              renderSettlementSelect();
+              pendingNewSettlement = null;
             };
 
             var cancelSettlementForm = function () {
@@ -2368,8 +2346,7 @@
 
             var renderSettlementForm = function (settlementId, isNew) {
               if (isNew) unsavedNewSettlementId = settlementId;
-              var settlements = loadSettlements();
-              var settlement = settlements.filter(function (s) { return s.id === settlementId; })[0];
+              var settlement = isNew ? pendingNewSettlement : loadSettlements().filter(function (s) { return s.id === settlementId; })[0];
               settlementDetail.innerHTML = "";
               if (!settlement) return;
               settlementDirty = false;
@@ -2431,11 +2408,12 @@
                 var allSettlements = loadSettlements();
                 var idx = -1;
                 allSettlements.forEach(function (s, sIdx) { if (s.id === settlement.id) idx = sIdx; });
-                if (idx !== -1) allSettlements[idx] = updated;
+                if (idx !== -1) { allSettlements[idx] = updated; } else { allSettlements.push(updated); }
                 saveSettlements(allSettlements);
-                updateSettlementOptionLabel(updated);
                 unsavedNewSettlementId = null;
+                pendingNewSettlement = null;
                 settlementDirty = false;
+                renderSettlementSelect();
                 settlementSelect.value = "";
                 settlementCurrentValue = "";
                 clearSettlementDetail();
@@ -2444,10 +2422,13 @@
               cancelBtn.addEventListener("click", cancelSettlementForm);
 
               wireConfirmDelete(deleteBtn, function () {
-                if (settlementId === unsavedNewSettlementId) unsavedNewSettlementId = null;
-                var remaining = loadSettlements().filter(function (s) { return s.id !== settlement.id; });
-                saveSettlements(remaining);
-                renderSettlementSelect();
+                if (settlementId === unsavedNewSettlementId) {
+                  discardUnsavedNewSettlement();
+                } else {
+                  var remaining = loadSettlements().filter(function (s) { return s.id !== settlement.id; });
+                  saveSettlements(remaining);
+                  renderSettlementSelect();
+                }
                 settlementDirty = false;
                 settlementSelect.value = "";
                 settlementCurrentValue = "";
@@ -2479,20 +2460,16 @@
             settlementAddBtn.addEventListener("click", function () {
               if (!confirmLeaveIfDirty(settlementIsDirty)) return;
               discardUnsavedNewSettlement();
-              var settlements = loadSettlements();
-              var newSettlement = {
+              pendingNewSettlement = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
                 name: "", size: "", gpValue: "",
                 definingTrait: "", claimToFame: "", currentCalamity: "", localLeader: "",
                 noteworthyPeople: "", noteworthyPlaces: "",
               };
-              settlements.push(newSettlement);
-              saveSettlements(settlements);
-              renderSettlementSelect();
-              settlementSelect.value = newSettlement.id;
-              settlementCurrentValue = newSettlement.id;
-              renderSettlementForm(newSettlement.id, true);
+              settlementSelect.value = "";
+              settlementCurrentValue = "";
+              renderSettlementForm(pendingNewSettlement.id, true);
             });
           }
 
@@ -2511,6 +2488,7 @@
             var journalCurrentValue = "";
             var journalIsDirty = function () { return journalDirty || Boolean(unsavedNewJournalId); };
             registerDirtyTracker(journalIsDirty, function () { cancelJournalForm(); });
+            registerSectionResetHook(function () { cancelJournalForm(); });
 
             var loadJournalEntries = function () {
               try {
@@ -2548,11 +2526,6 @@
 
             var journalLabel = function (entry) {
               return entry.title || "Untitled Session";
-            };
-
-            var updateJournalOptionLabel = function (entry) {
-              var option = journalSelect.querySelector('option[value="' + entry.id + '"]');
-              if (option) option.textContent = journalLabel(entry);
             };
 
             var journalEditInput = function (labelText, value, dataAttrs) {
@@ -2613,13 +2586,14 @@
             };
 
             var unsavedNewJournalId = null;
+            var pendingNewJournalEntry = null;
 
+            {{/* A "+ Add"ed entry is never written to storage until its
+              first valid Save — nothing to discard here but the in-memory
+              draft. */}}
             var discardUnsavedNewJournal = function () {
-              if (!unsavedNewJournalId) return;
-              var remaining = loadJournalEntries().filter(function (e) { return e.id !== unsavedNewJournalId; });
-              saveJournalEntries(remaining);
               unsavedNewJournalId = null;
-              renderJournalSelect();
+              pendingNewJournalEntry = null;
             };
 
             var cancelJournalForm = function () {
@@ -2632,8 +2606,7 @@
 
             var renderJournalForm = function (entryId, isNew) {
               if (isNew) unsavedNewJournalId = entryId;
-              var entries = loadJournalEntries();
-              var entry = entries.filter(function (e) { return e.id === entryId; })[0];
+              var entry = isNew ? pendingNewJournalEntry : loadJournalEntries().filter(function (e) { return e.id === entryId; })[0];
               journalDetail.innerHTML = "";
               if (!entry) return;
               journalDirty = false;
@@ -2692,11 +2665,12 @@
                 var allEntries = loadJournalEntries();
                 var idx = -1;
                 allEntries.forEach(function (e, eIdx) { if (e.id === entry.id) idx = eIdx; });
-                if (idx !== -1) allEntries[idx] = updated;
+                if (idx !== -1) { allEntries[idx] = updated; } else { allEntries.push(updated); }
                 saveJournalEntries(allEntries);
-                updateJournalOptionLabel(updated);
                 unsavedNewJournalId = null;
+                pendingNewJournalEntry = null;
                 journalDirty = false;
+                renderJournalSelect();
                 journalSelect.value = "";
                 journalCurrentValue = "";
                 clearJournalDetail();
@@ -2705,10 +2679,13 @@
               cancelBtn.addEventListener("click", cancelJournalForm);
 
               wireConfirmDelete(deleteBtn, function () {
-                if (entryId === unsavedNewJournalId) unsavedNewJournalId = null;
-                var remaining = loadJournalEntries().filter(function (e) { return e.id !== entry.id; });
-                saveJournalEntries(remaining);
-                renderJournalSelect();
+                if (entryId === unsavedNewJournalId) {
+                  discardUnsavedNewJournal();
+                } else {
+                  var remaining = loadJournalEntries().filter(function (e) { return e.id !== entry.id; });
+                  saveJournalEntries(remaining);
+                  renderJournalSelect();
+                }
                 journalDirty = false;
                 journalSelect.value = "";
                 journalCurrentValue = "";
@@ -2755,22 +2732,18 @@
             journalAddBtn.addEventListener("click", function () {
               if (!confirmLeaveIfDirty(journalIsDirty)) return;
               discardUnsavedNewJournal();
-              var entries = loadJournalEntries();
-              var newEntry = {
+              pendingNewJournalEntry = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
                 {{/* Auto-filled but still editable — same plain text
                   fields as before, just prefilled with a sensible
                   default at creation time. */}}
-                sessionNumber: nextJournalSessionNumber(entries), sessionDate: todayForJournal(), title: "",
+                sessionNumber: nextJournalSessionNumber(loadJournalEntries()), sessionDate: todayForJournal(), title: "",
                 priorEvents: "", plannedSummary: "", notes: "",
               };
-              entries.push(newEntry);
-              saveJournalEntries(entries);
-              renderJournalSelect();
-              journalSelect.value = newEntry.id;
-              journalCurrentValue = newEntry.id;
-              renderJournalForm(newEntry.id, true);
+              journalSelect.value = "";
+              journalCurrentValue = "";
+              renderJournalForm(pendingNewJournalEntry.id, true);
             });
           }
 
@@ -2789,6 +2762,7 @@
             var conflictCurrentValue = "";
             var conflictIsDirty = function () { return conflictDirty || Boolean(unsavedNewConflictId); };
             registerDirtyTracker(conflictIsDirty, function () { cancelConflictForm(); });
+            registerSectionResetHook(function () { cancelConflictForm(); });
 
             var loadConflicts = function () {
               try {
@@ -2847,11 +2821,6 @@
                 if (names.length) return "Adventurers vs. " + names.join(", ");
               }
               return conflict.adversary ? "Adventurers vs. " + conflict.adversary : "Unnamed Conflict";
-            };
-
-            var updateConflictOptionLabel = function (conflict) {
-              var option = conflictSelect.querySelector('option[value="' + conflict.id + '"]');
-              if (option) option.textContent = conflictLabel(conflict);
             };
 
             var conflictEditInput = function (labelText, value, dataAttrs) {
@@ -2981,13 +2950,15 @@
             };
 
             var unsavedNewConflictId = null;
+            var pendingNewConflict = null;
 
+            {{/* A "+ Add"ed record is never written to storage until its
+              first valid Save — nothing to discard here but the in-memory
+              draft, so it can never linger as a picklist-visible "Unnamed
+              Conflict" the way an eagerly-persisted placeholder used to. */}}
             var discardUnsavedNewConflict = function () {
-              if (!unsavedNewConflictId) return;
-              var remaining = loadConflicts().filter(function (c) { return c.id !== unsavedNewConflictId; });
-              saveConflicts(remaining);
               unsavedNewConflictId = null;
-              renderConflictSelect();
+              pendingNewConflict = null;
             };
 
             var cancelConflictForm = function () {
@@ -3000,8 +2971,7 @@
 
             var renderConflictForm = function (conflictId, isNew) {
               if (isNew) unsavedNewConflictId = conflictId;
-              var conflicts = loadConflicts();
-              var conflict = conflicts.filter(function (c) { return c.id === conflictId; })[0];
+              var conflict = isNew ? pendingNewConflict : loadConflicts().filter(function (c) { return c.id === conflictId; })[0];
               conflictDetail.innerHTML = "";
               if (!conflict) return;
               conflictDirty = false;
@@ -3053,11 +3023,12 @@
                 var allConflicts = loadConflicts();
                 var idx = -1;
                 allConflicts.forEach(function (c, cIdx) { if (c.id === conflict.id) idx = cIdx; });
-                if (idx !== -1) allConflicts[idx] = updated;
+                if (idx !== -1) { allConflicts[idx] = updated; } else { allConflicts.push(updated); }
                 saveConflicts(allConflicts);
-                updateConflictOptionLabel(updated);
                 unsavedNewConflictId = null;
+                pendingNewConflict = null;
                 conflictDirty = false;
+                renderConflictSelect();
                 conflictSelect.value = "";
                 conflictCurrentValue = "";
                 clearConflictDetail();
@@ -3066,10 +3037,13 @@
               cancelBtn.addEventListener("click", cancelConflictForm);
 
               wireConfirmDelete(deleteBtn, function () {
-                if (conflictId === unsavedNewConflictId) unsavedNewConflictId = null;
-                var remaining = loadConflicts().filter(function (c) { return c.id !== conflict.id; });
-                saveConflicts(remaining);
-                renderConflictSelect();
+                if (conflictId === unsavedNewConflictId) {
+                  discardUnsavedNewConflict();
+                } else {
+                  var remaining = loadConflicts().filter(function (c) { return c.id !== conflict.id; });
+                  saveConflicts(remaining);
+                  renderConflictSelect();
+                }
                 conflictDirty = false;
                 conflictSelect.value = "";
                 conflictCurrentValue = "";
@@ -3101,18 +3075,14 @@
             conflictAddBtn.addEventListener("click", function () {
               if (!confirmLeaveIfDirty(conflictIsDirty)) return;
               discardUnsavedNewConflict();
-              var conflicts = loadConflicts();
-              var newConflict = {
+              pendingNewConflict = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
                 adversaryNpcIds: [], sessionId: "", notes: "",
               };
-              conflicts.push(newConflict);
-              saveConflicts(conflicts);
-              renderConflictSelect();
-              conflictSelect.value = newConflict.id;
-              conflictCurrentValue = newConflict.id;
-              renderConflictForm(newConflict.id, true);
+              conflictSelect.value = "";
+              conflictCurrentValue = "";
+              renderConflictForm(pendingNewConflict.id, true);
             });
           }
 
@@ -3259,6 +3229,7 @@
             var bastionCurrentValue = "";
             var bastionIsDirty = function () { return bastionDirty || Boolean(unsavedNewBastionId); };
             registerDirtyTracker(bastionIsDirty, function () { cancelBastionForm(); });
+            registerSectionResetHook(function () { cancelBastionForm(); });
 
             var loadBastions = function () {
               try {
@@ -3300,11 +3271,6 @@
 
             var blankFacility = function () {
               return { name: "", space: "", order: "", hirelings: "", notes: "" };
-            };
-
-            var updateBastionOptionLabel = function (bastion) {
-              var option = bastionSelect.querySelector('option[value="' + bastion.id + '"]');
-              if (option) option.textContent = bastionLabel(bastion);
             };
 
             var bastionEditInput = function (labelText, value, dataAttrs) {
@@ -3376,13 +3342,14 @@
             };
 
             var unsavedNewBastionId = null;
+            var pendingNewBastion = null;
 
+            {{/* A "+ Add"ed bastion is never written to storage until its
+              first valid Save — nothing to discard here but the in-memory
+              draft. */}}
             var discardUnsavedNewBastion = function () {
-              if (!unsavedNewBastionId) return;
-              var remaining = loadBastions().filter(function (b) { return b.id !== unsavedNewBastionId; });
-              saveBastions(remaining);
               unsavedNewBastionId = null;
-              renderBastionSelect();
+              pendingNewBastion = null;
             };
 
             var cancelBastionForm = function () {
@@ -3395,8 +3362,7 @@
 
             var renderBastionForm = function (bastionId, isNew) {
               if (isNew) unsavedNewBastionId = bastionId;
-              var bastions = loadBastions();
-              var bastion = bastions.filter(function (b) { return b.id === bastionId; })[0];
+              var bastion = isNew ? pendingNewBastion : loadBastions().filter(function (b) { return b.id === bastionId; })[0];
               bastionDetail.innerHTML = "";
               if (!bastion) return;
               bastionDirty = false;
@@ -3474,11 +3440,12 @@
                 var allBastions = loadBastions();
                 var idx = -1;
                 allBastions.forEach(function (b, bIdx) { if (b.id === bastion.id) idx = bIdx; });
-                if (idx !== -1) allBastions[idx] = updated;
+                if (idx !== -1) { allBastions[idx] = updated; } else { allBastions.push(updated); }
                 saveBastions(allBastions);
-                updateBastionOptionLabel(updated);
                 unsavedNewBastionId = null;
+                pendingNewBastion = null;
                 bastionDirty = false;
+                renderBastionSelect();
                 bastionSelect.value = "";
                 bastionCurrentValue = "";
                 clearBastionDetail();
@@ -3487,10 +3454,13 @@
               cancelBtn.addEventListener("click", cancelBastionForm);
 
               wireConfirmDelete(deleteBtn, function () {
-                if (bastionId === unsavedNewBastionId) unsavedNewBastionId = null;
-                var remaining = loadBastions().filter(function (b) { return b.id !== bastion.id; });
-                saveBastions(remaining);
-                renderBastionSelect();
+                if (bastionId === unsavedNewBastionId) {
+                  discardUnsavedNewBastion();
+                } else {
+                  var remaining = loadBastions().filter(function (b) { return b.id !== bastion.id; });
+                  saveBastions(remaining);
+                  renderBastionSelect();
+                }
                 bastionDirty = false;
                 bastionSelect.value = "";
                 bastionCurrentValue = "";
@@ -3522,19 +3492,15 @@
             bastionAddBtn.addEventListener("click", function () {
               if (!confirmLeaveIfDirty(bastionIsDirty)) return;
               discardUnsavedNewBastion();
-              var bastions = loadBastions();
-              var newBastion = {
+              pendingNewBastion = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
                 bastionName: "", characterName: "", level: "", basicFacilities: "", bastionDefenders: "",
                 facilities: [blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility()],
               };
-              bastions.push(newBastion);
-              saveBastions(bastions);
-              renderBastionSelect();
-              bastionSelect.value = newBastion.id;
-              bastionCurrentValue = newBastion.id;
-              renderBastionForm(newBastion.id, true);
+              bastionSelect.value = "";
+              bastionCurrentValue = "";
+              renderBastionForm(pendingNewBastion.id, true);
             });
           }
 
@@ -3564,6 +3530,7 @@
             var flCurrentId = "";
             var flIsDirty = function () { return flDirty; };
             registerDirtyTracker(flIsDirty, function () { cancelFileLibraryForm(); });
+            registerSectionResetHook(function () { cancelFileLibraryForm(); });
 
             {{/* Matches the Worker's own MAX_FILE_BYTES — fails fast
               client-side instead of wasting a full upload attempt, but
