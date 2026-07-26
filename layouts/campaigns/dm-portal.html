@@ -112,7 +112,14 @@
                 (reference/tracking_sheets/npc-tracker-sheet.pdf) — one
                 record per NPC, picked via the same select+add-button
                 pattern as Travel Planner. */}}
-              <div class="npc-tracker" id="npc-tracker" data-storage-key="dm-portal-npcs-{{ $slug }}" data-monsters="{{ $monsters | jsonify }}">
+              <div class="npc-tracker" id="npc-tracker" data-storage-key="dm-portal-npcs-{{ $slug }}" data-monsters="{{ $monsters | jsonify }}" data-proxy-url="{{ $proxyURL }}">
+                {{ if eq $proxyURL "" }}
+                  <p class="entry-date">
+                    Monster Manual picks link out to aidedd.org only. Deploy <code>worker/ddb-character-proxy.js</code>
+                    (with its new <code>/monster</code> route) to Cloudflare Workers and set <code>ddb_proxy_url</code>
+                    in <code>hugo.toml</code> to also show the full stat block inline here.
+                  </p>
+                {{ end }}
                 <div class="npc-tracker-controls">
                   <select class="npc-tracker-select" id="npc-tracker-select">
                     <option value="">&mdash; Select an NPC &mdash;</option>
@@ -1336,8 +1343,23 @@
                 return [];
               }
             })();
-            var npcMonsterLinkByName = {};
-            NPC_MONSTERS.forEach(function (m) { npcMonsterLinkByName[m.name] = m.link; });
+            var NPC_MONSTER_EDITIONS = ["2024", "2014"];
+            {{/* Keyed by edition since the same name (e.g. "Aboleth") can
+              exist in both editions with a different link. */}}
+            var npcMonsterLinkByEditionName = {};
+            NPC_MONSTERS.forEach(function (m) {
+              npcMonsterLinkByEditionName[m.edition] = npcMonsterLinkByEditionName[m.edition] || {};
+              npcMonsterLinkByEditionName[m.edition][m.name] = m.link;
+            });
+
+            {{/* Full stat blocks aren't stored anywhere in this repo — they're
+              fetched live from aidedd.org (the same site $monsters already
+              links out to) through the Worker's /monster proxy route, the
+              moment a DM picks a monster, then parsed client-side. Caching
+              here is just per-page-load, to avoid re-fetching the same
+              monster every time its dropdown re-renders. */}}
+            var NPC_PROXY_URL = npcTracker.dataset.proxyUrl || "";
+            var npcStatBlockCache = {};
 
             var loadNpcs = function () {
               try {
@@ -1413,46 +1435,79 @@
               sibling fields is visible; "statBlock" is left as the exact
               field name it always was so older, already-saved custom
               entries keep working with no migration. */}}
-            {{/* The Monster Manual/Custom choice is made once, up front, at
-              "+ Add NPC" time (see npcAddBtn below) rather than being an
-              always-visible toggle inside the form — once an NPC exists,
-              its statBlockSource is fixed, so the form just renders
-              whichever of the two field layouts matches it. */}}
-            var npcMonsterField = function (value) {
+            {{/* Both the Custom/Monster Manual choice and, if Monster
+              Manual, the 2014/2024 edition choice are made once, up
+              front, via the chooser screens at "+ Add NPC" time (see
+              npcAddBtn below) rather than as always-visible toggles
+              inside the form — once an NPC exists, statBlockSource and
+              statBlockEdition are both fixed, so the form just renders
+              whichever single field layout matches them. */}}
+            var npcMonsterField = function (edition, nameValue) {
               var wrap = document.createElement("div");
               wrap.className = "npc-field";
               var label = document.createElement("label");
               label.textContent = "Monster";
               wrap.appendChild(label);
+
               var select = document.createElement("select");
               select.dataset.field = "statBlockName";
               var placeholder = document.createElement("option");
               placeholder.value = "";
               placeholder.textContent = "— Select a monster —";
               select.appendChild(placeholder);
-              NPC_MONSTERS.forEach(function (m) {
+              var names = NPC_MONSTERS.filter(function (m) { return m.edition === edition; });
+              names.forEach(function (m) {
                 var option = document.createElement("option");
                 option.value = m.name;
                 option.textContent = m.name;
                 select.appendChild(option);
               });
-              select.value = NPC_MONSTERS.some(function (m) { return m.name === value; }) ? value : "";
+              select.value = names.some(function (m) { return m.name === nameValue; }) ? nameValue : "";
               wrap.appendChild(select);
 
               var link = document.createElement("a");
               link.className = "npc-monster-link";
               link.target = "_blank";
               link.rel = "noopener";
-              npcUpdateMonsterLink(link, select.value);
+              npcUpdateMonsterLink(link, edition, select.value);
               wrap.appendChild(link);
 
-              select.addEventListener("change", function () { npcUpdateMonsterLink(link, select.value); });
+              {{/* Full-width sibling of the narrow "Monster" field above, so
+                it wraps onto its own row inside the flex-wrap header (see
+                .npc-statblock in style.css) rather than being squeezed into
+                a 14rem column. Empty/hidden unless the Worker proxy is
+                configured (see NPC_PROXY_URL) — otherwise the aidedd.org
+                link above is all there is, same as before this feature. */}}
+              var statblockPanel = document.createElement("div");
+              statblockPanel.className = "npc-statblock";
+              npcFetchAndRenderMonsterStatBlock(statblockPanel, edition, select.value);
 
-              return wrap;
+              select.addEventListener("change", function () {
+                npcUpdateMonsterLink(link, edition, select.value);
+                npcFetchAndRenderMonsterStatBlock(statblockPanel, edition, select.value);
+              });
+
+              var fragment = document.createDocumentFragment();
+              fragment.appendChild(wrap);
+              fragment.appendChild(statblockPanel);
+              return fragment;
             };
 
-            var npcUpdateMonsterLink = function (link, name) {
-              var href = npcMonsterLinkByName[name];
+            {{/* Reads statBlockEdition if present; falls back to parsing
+              a leading "2014 - "/"2024 - " off statBlockName for NPCs
+              saved before the edition became its own field. */}}
+            var npcNormalizedEdition = function (npc) {
+              if (npc.statBlockEdition) return npc.statBlockEdition;
+              var match = /^(\d{4}) - /.exec(npc.statBlockName || "");
+              return match ? match[1] : NPC_MONSTER_EDITIONS[0];
+            };
+
+            var npcNormalizedMonsterName = function (npc) {
+              return (npc.statBlockName || "").replace(/^\d{4} - /, "");
+            };
+
+            var npcUpdateMonsterLink = function (link, edition, name) {
+              var href = (npcMonsterLinkByEditionName[edition] || {})[name];
               if (href) {
                 link.href = href;
                 link.textContent = "View stat block on aidedd.org ↗";
@@ -1464,11 +1519,311 @@
               }
             };
 
+            var npcTextOf = function (el) {
+              return el ? el.textContent.replace(/\s+/g, " ").trim() : "";
+            };
+
+            var npcHasClass = function (el, cls) {
+              return Boolean(el.classList) && el.classList.contains(cls);
+            };
+
+            {{/* Generic parser for aidedd.org's monster page markup — built
+              against the actual HTML of both the 2014 and 2024 stat-block
+              layouts (fetched and inspected directly), not a predicted
+              schema. One parser covers every entry in $monsters (930 at
+              the time this was written) and any future ones aidedd.org
+              adds, since nothing here is hand-authored per monster. */}}
+            var npcParseMonsterHtml = function (html) {
+              var doc = new DOMParser().parseFromString(html, "text/html");
+              var redEl = doc.querySelector(".red");
+              if (!redEl) return null;
+
+              var sb = {
+                name: npcTextOf(doc.querySelector("h1")),
+                typeLine: npcTextOf(doc.querySelector(".type")),
+                initiative: "",
+                linesBefore: [],
+                linesAfter: [],
+                abilities: [],
+                sections: [],
+                flavorText: npcTextOf(doc.querySelector(".description")),
+                footerLines: Array.prototype.map.call(doc.querySelectorAll(".habitat"), npcTextOf),
+              };
+
+              var initEl = doc.querySelector(".init");
+              if (initEl) sb.initiative = npcTextOf(initEl).replace(/^Initiative\s*/, "");
+
+              {{/* Single forward pass over .red's children — classifies
+                each into the ability grid (2024's car1..car6 grid of
+                4-per-ability divs, or 2014's carac divs with no separate
+                save column) or a <strong>Label</strong> value<br> line,
+                tagged by whether it came before or after the grid so
+                render order (AC/HP/Speed, then the table, then
+                Skills/Senses/Languages/CR/etc.) can be reconstructed. */}}
+              var beforeAbilities = true;
+              var carBuffer = [];
+              var walkRed = function (node) {
+                Array.prototype.forEach.call(node.childNodes, function (child) {
+                  if (child.nodeType !== 1) return;
+                  if (npcHasClass(child, "type") || npcHasClass(child, "init") || npcHasClass(child, "car")) return;
+                  if (npcHasClass(child, "carac")) {
+                    beforeAbilities = false;
+                    var abilName = npcTextOf(child.querySelector("strong"));
+                    var rest = npcTextOf(child).replace(abilName, "").trim();
+                    var m = /^(\d+)\s*\(([+\-]?\d+)\)$/.exec(rest);
+                    sb.abilities.push({ name: abilName, score: m ? m[1] : rest, mod: m ? m[2] : "", save: m ? m[2] : "" });
+                    return;
+                  }
+                  if (npcHasClass(child, "car1") || npcHasClass(child, "car2") || npcHasClass(child, "car3") ||
+                    npcHasClass(child, "car4") || npcHasClass(child, "car5") || npcHasClass(child, "car6")) {
+                    beforeAbilities = false;
+                    carBuffer.push(npcTextOf(child));
+                    if (carBuffer.length === 4) {
+                      sb.abilities.push({ name: carBuffer[0], score: carBuffer[1], mod: carBuffer[2], save: carBuffer[3] });
+                      carBuffer = [];
+                    }
+                    return;
+                  }
+                  if (child.tagName === "STRONG") {
+                    var label = npcTextOf(child);
+                    if (!label) return;
+                    var value = "";
+                    var sib = child.nextSibling;
+                    {{/* 2024 always has a <br> right before the ability grid,
+                      but 2014 doesn't — Speed's value would otherwise run
+                      straight into the "carac" divs' own text. Stop at
+                      either boundary, not just <br>. */}}
+                    while (sib && !(sib.nodeType === 1 && sib.tagName === "STRONG")) {
+                      if (sib.nodeType === 1 && (sib.tagName === "BR" || npcHasClass(sib, "car") ||
+                        npcHasClass(sib, "car1") || npcHasClass(sib, "car2") || npcHasClass(sib, "car3") ||
+                        npcHasClass(sib, "car4") || npcHasClass(sib, "car5") || npcHasClass(sib, "car6") ||
+                        npcHasClass(sib, "carac"))) break;
+                      value += sib.textContent;
+                      sib = sib.nextSibling;
+                    }
+                    value = value.replace(/\s+/g, " ").trim();
+                    if (value) (beforeAbilities ? sb.linesBefore : sb.linesAfter).push({ label: label, value: value });
+                    return;
+                  }
+                  if (child.tagName === "BR" || child.tagName === "SVG") return;
+                  walkRed(child);
+                });
+              };
+              walkRed(redEl);
+
+              {{/* Sections (Traits/Actions/Bonus Actions/Reactions/Legendary
+                Actions/Lair Actions/...) are whatever .rub-headed groups
+                follow .red inside .sansSerif — 2014 has no heading before
+                its first trait, so one is created lazily on first content
+                instead of assuming a heading always comes first. Loose
+                text/inline nodes between <p> entries (e.g. a spellcasting
+                monster's "At Will: ..." list) attach to the entry before
+                them rather than being dropped. */}}
+              var sansSerif = doc.querySelector(".sansSerif");
+              var current = null;
+              var ensureSection = function () {
+                if (!current) {
+                  current = { heading: "Traits", intro: "", entries: [] };
+                  sb.sections.push(current);
+                }
+                return current;
+              };
+              var appendLoose = function (text) {
+                if (!text || !current || !current.entries.length) return;
+                var last = current.entries[current.entries.length - 1];
+                last.description = (last.description + " " + text).trim();
+              };
+              if (sansSerif) {
+                var afterRed = false;
+                Array.prototype.forEach.call(sansSerif.childNodes, function (child) {
+                  if (child === redEl) { afterRed = true; return; }
+                  if (!afterRed) return;
+                  if (child.nodeType === 3) { appendLoose(npcTextOf(child)); return; }
+                  if (child.nodeType !== 1) return;
+                  if (npcHasClass(child, "rub")) {
+                    current = { heading: npcTextOf(child), intro: "", entries: [] };
+                    sb.sections.push(current);
+                    return;
+                  }
+                  if (npcHasClass(child, "legend")) { ensureSection().intro = npcTextOf(child); return; }
+                  if (child.tagName === "P") {
+                    var section = ensureSection();
+                    var entryName = npcTextOf(child.querySelector("strong"));
+                    var fullText = npcTextOf(child);
+                    var description = entryName && fullText.indexOf(entryName) === 0
+                      ? fullText.slice(entryName.length).replace(/^\.\s*/, "")
+                      : fullText;
+                    section.entries.push({ name: entryName, description: description });
+                    return;
+                  }
+                  if (child.tagName === "BR") return;
+                  appendLoose(npcTextOf(child));
+                });
+              }
+
+              return sb.name ? sb : null;
+            };
+
+            var npcStatBlockLine = function (label, value) {
+              var p = document.createElement("p");
+              var strong = document.createElement("strong");
+              strong.textContent = label + " ";
+              p.appendChild(strong);
+              p.appendChild(document.createTextNode(value));
+              return p;
+            };
+
+            var npcStatBlockAbilityRow = function (labelText, valueGetter, abilities) {
+              var row = document.createElement("tr");
+              var th = document.createElement("th");
+              th.textContent = labelText;
+              row.appendChild(th);
+              abilities.forEach(function (a) {
+                var td = document.createElement("td");
+                td.textContent = valueGetter(a);
+                row.appendChild(td);
+              });
+              return row;
+            };
+
+            var npcRenderStatBlockPanel = function (container, sb, edition) {
+              container.innerHTML = "";
+
+              var title = document.createElement("h4");
+              title.textContent = sb.name;
+              container.appendChild(title);
+
+              if (sb.typeLine) {
+                var meta = document.createElement("p");
+                meta.className = "npc-statblock-meta";
+                meta.textContent = sb.typeLine;
+                container.appendChild(meta);
+              }
+
+              if (sb.initiative) container.appendChild(npcStatBlockLine("Initiative", sb.initiative));
+              sb.linesBefore.forEach(function (line) { container.appendChild(npcStatBlockLine(line.label, line.value)); });
+
+              if (sb.abilities.length) {
+                var table = document.createElement("table");
+                table.className = "npc-statblock-abilities";
+                var headRow = document.createElement("tr");
+                headRow.appendChild(document.createElement("th"));
+                sb.abilities.forEach(function (a) {
+                  var th = document.createElement("th");
+                  th.textContent = a.name;
+                  headRow.appendChild(th);
+                });
+                table.appendChild(headRow);
+                table.appendChild(npcStatBlockAbilityRow("Score", function (a) { return a.score; }, sb.abilities));
+                table.appendChild(npcStatBlockAbilityRow("Mod", function (a) { return a.mod; }, sb.abilities));
+                {{/* 2014's compact block has no separate save column — save
+                  always equals mod there (see the "carac" branch above), so
+                  showing it would misleadingly imply proficiency. Only 2024
+                  computes a real save value distinct from the flat mod. */}}
+                if (edition === "2024") {
+                  table.appendChild(npcStatBlockAbilityRow("Save", function (a) { return a.save; }, sb.abilities));
+                }
+                container.appendChild(table);
+              }
+
+              sb.linesAfter.forEach(function (line) { container.appendChild(npcStatBlockLine(line.label, line.value)); });
+
+              sb.sections.forEach(function (section) {
+                if (!section.entries.length && !section.intro) return;
+                var heading = document.createElement("h5");
+                heading.textContent = section.heading;
+                container.appendChild(heading);
+                if (section.intro) {
+                  var introP = document.createElement("p");
+                  introP.className = "npc-statblock-intro";
+                  introP.textContent = section.intro;
+                  container.appendChild(introP);
+                }
+                section.entries.forEach(function (entry) {
+                  var p = document.createElement("p");
+                  if (entry.name) {
+                    var nameSpan = document.createElement("span");
+                    nameSpan.className = "npc-statblock-action-name";
+                    nameSpan.textContent = entry.name + ". ";
+                    p.appendChild(nameSpan);
+                  }
+                  p.appendChild(document.createTextNode(entry.description));
+                  container.appendChild(p);
+                });
+              });
+
+              if (sb.flavorText) {
+                var flavor = document.createElement("p");
+                flavor.className = "npc-statblock-flavor";
+                flavor.textContent = sb.flavorText;
+                container.appendChild(flavor);
+              }
+
+              if (sb.footerLines.length) {
+                var footer = document.createElement("p");
+                footer.className = "npc-statblock-footer";
+                footer.textContent = sb.footerLines.join("    ");
+                container.appendChild(footer);
+              }
+            };
+
+            {{/* Fetches (through the Worker's /monster CORS proxy — aidedd.org
+              itself doesn't send Access-Control-Allow-Origin) and parses a
+              monster's stat block the moment it's picked, rather than
+              storing any of this in the repo. Cached per page load only, so
+              re-selecting the same monster (or re-rendering the dropdown)
+              doesn't re-fetch it. */}}
+            var npcFetchAndRenderMonsterStatBlock = function (container, edition, name) {
+              container.innerHTML = "";
+              container.hidden = true;
+              if (!name || !NPC_PROXY_URL) return;
+              var href = (npcMonsterLinkByEditionName[edition] || {})[name];
+              if (!href) return;
+
+              var cacheKey = edition + "|" + name;
+              container.dataset.pendingKey = cacheKey;
+              container.hidden = false;
+
+              if (npcStatBlockCache[cacheKey]) {
+                npcRenderStatBlockPanel(container, npcStatBlockCache[cacheKey], edition);
+                return;
+              }
+
+              var loading = document.createElement("p");
+              loading.className = "npc-statblock-loading";
+              loading.textContent = "Loading stat block…";
+              container.appendChild(loading);
+
+              fetch(NPC_PROXY_URL + "/monster?url=" + encodeURIComponent(href))
+                .then(function (res) {
+                  if (!res.ok) throw new Error("fetch failed");
+                  return res.text();
+                })
+                .then(function (html) {
+                  var sb = npcParseMonsterHtml(html);
+                  if (!sb) throw new Error("parse failed");
+                  npcStatBlockCache[cacheKey] = sb;
+                  if (container.dataset.pendingKey !== cacheKey) return;
+                  npcRenderStatBlockPanel(container, sb, edition);
+                })
+                .catch(function (err) {
+                  console.error("Stat block fetch/parse failed for " + name + " (" + edition + "):", err);
+                  if (container.dataset.pendingKey !== cacheKey) return;
+                  container.innerHTML = "";
+                  container.hidden = true;
+                });
+            };
+
             var collectNpcFromForm = function (form, originalNpc) {
-              {{/* statBlockSource is never a form field (it's fixed at
-                creation, see above) — seed it from the original record so
-                Save doesn't drop it. */}}
-              var npc = { id: originalNpc.id, createdAt: originalNpc.createdAt, statBlockSource: originalNpc.statBlockSource };
+              {{/* statBlockSource and statBlockEdition are never form
+                fields (both fixed at creation, see above) — seed them
+                from the original record so Save doesn't drop them. */}}
+              var npc = {
+                id: originalNpc.id,
+                createdAt: originalNpc.createdAt,
+                statBlockSource: originalNpc.statBlockSource,
+                statBlockEdition: originalNpc.statBlockEdition,
+              };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 npc[el.dataset.field] = el.value;
               });
@@ -1560,7 +1915,7 @@
                 the field layout that matches how it was created. */}}
               header.appendChild(
                 npc.statBlockSource === "monster-manual"
-                  ? npcMonsterField(npc.statBlockName)
+                  ? npcMonsterField(npcNormalizedEdition(npc), npcNormalizedMonsterName(npc))
                   : npcEditInput("Stat Block", npc.statBlock, { field: "statBlock" })
               );
               header.appendChild(npcEditInput("MM Page", npc.mmPage, { field: "mmPage" }));
@@ -1651,19 +2006,51 @@
                 btn.type = "button";
                 btn.className = "npc-source-chooser-btn";
                 btn.textContent = opt.label;
-                btn.addEventListener("click", function () { createNpcWithSource(opt.source); });
+                btn.addEventListener("click", function () {
+                  if (opt.source === "monster-manual") {
+                    renderNpcEditionChooser();
+                  } else {
+                    createNpcWithSource(opt.source);
+                  }
+                });
                 choices.appendChild(btn);
               });
               wrap.appendChild(choices);
               npcDetail.appendChild(wrap);
             };
 
-            var createNpcWithSource = function (source) {
+            {{/* Second chooser step, only reached from "Monster Manual"
+              above — styled identically (same classes) so it reads as a
+              continuation of the same choice rather than a new kind of
+              prompt. */}}
+            var renderNpcEditionChooser = function () {
+              npcDetail.innerHTML = "";
+              var wrap = document.createElement("div");
+              wrap.className = "npc-source-chooser";
+              var prompt = document.createElement("p");
+              prompt.className = "npc-source-chooser-prompt";
+              prompt.textContent = "Which Monster Manual edition?";
+              wrap.appendChild(prompt);
+              var choices = document.createElement("div");
+              choices.className = "npc-source-chooser-choices";
+              NPC_MONSTER_EDITIONS.forEach(function (edition) {
+                var btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "npc-source-chooser-btn";
+                btn.textContent = edition;
+                btn.addEventListener("click", function () { createNpcWithSource("monster-manual", edition); });
+                choices.appendChild(btn);
+              });
+              wrap.appendChild(choices);
+              npcDetail.appendChild(wrap);
+            };
+
+            var createNpcWithSource = function (source, edition) {
               var npcs = loadNpcs();
               var newNpc = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
-                name: "", statBlockSource: source, statBlock: "", statBlockName: "", mmPage: "",
+                name: "", statBlockSource: source, statBlock: "", statBlockEdition: edition || NPC_MONSTER_EDITIONS[0], statBlockName: "", mmPage: "",
                 statBlockAlterations: "", alignment: "", personality: "", appearance: "", secret: "",
               };
               npcs.push(newNpc);
