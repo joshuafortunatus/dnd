@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker, two jobs:
+ * Cloudflare Worker, three jobs:
  *
  * 1) CORS proxy for D&D Beyond's public character JSON endpoint, so the DM
  *    portal (a static site with no backend of its own) can fetch a
@@ -15,6 +15,16 @@
  *    gives away this Worker's URL to anyone reading the source), the sync
  *    endpoints require a shared secret — otherwise anyone who found the URL
  *    could read or overwrite this data.
+ *
+ * 3) CORS proxy for aidedd.org monster stat block pages, so the NPC
+ *    Tracker's Monster Manual field can fetch and render a full stat block
+ *    live the moment a DM picks a monster, instead of only linking out.
+ *    Nothing from aidedd.org is stored anywhere (not in KV, not in this
+ *    repo) — this just forwards a GET for one of $monsters' existing links
+ *    (data/monsters.json) so the browser can read it despite aidedd.org
+ *    not sending CORS headers of its own. Restricted to that one host and
+ *    to the two URL shapes aidedd.org actually uses for monster pages, so
+ *    this can't be turned into an open proxy for arbitrary URLs.
  *
  *    There's no separate sync passphrase to invent or type in anywhere:
  *    the DM portal page's own password (whatever you set password_hash to,
@@ -50,18 +60,28 @@
  *   <slug> is a campaign slug; <key> is one of: characters, pc-manager,
  *     travel-plans, npcs, settlements, journal, conflicts, magic-items,
  *     bastions
+ *   GET  /monster?url=<aidedd.org monster page URL>  — aidedd.org proxy (no auth), url must be
+ *                                             https://www.aidedd.org/monster/<slug> (2024) or
+ *                                             https://www.aidedd.org/dnd/monstres.php?vo=<slug> (2014)
  */
 
-const ALLOWED_ORIGIN = "https://joshuafortunatus.github.io";
+/* localhost:1313 is Hugo's default `hugo server -D` port (see README) —
+ * included so this Worker is testable locally, not just against the
+ * deployed GitHub Pages origin. The first entry is the fallback used when
+ * the request's Origin doesn't match either (e.g. no Origin header at
+ * all, as with a direct curl). */
+const ALLOWED_ORIGINS = ["https://joshuafortunatus.github.io", "http://localhost:1313"];
 const ALLOWED_SYNC_KEYS = [
   "characters", "pc-manager", "travel-plans", "npcs", "settlements",
   "journal", "conflicts", "magic-items", "bastions",
 ];
 
-function corsHeaders(extra) {
+function corsHeaders(request, extra) {
+  const origin = request.headers.get("Origin") || "";
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return Object.assign(
     {
-      "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+      "Access-Control-Allow-Origin": allowOrigin,
       "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
       "Access-Control-Allow-Headers": "Authorization, Content-Type",
     },
@@ -74,12 +94,27 @@ function authorized(request, env) {
   return Boolean(env.SYNC_SECRET) && auth === "Bearer " + env.SYNC_SECRET;
 }
 
+const ALLOWED_MONSTER_URL = /^https:\/\/www\.aidedd\.org\/(monster\/[a-z0-9-]+|dnd\/monstres\.php\?vo=[a-z0-9-]+)$/i;
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders() });
+      return new Response(null, { headers: corsHeaders(request) });
+    }
+
+    if (url.pathname === "/monster") {
+      const target = url.searchParams.get("url") || "";
+      if (!ALLOWED_MONSTER_URL.test(target)) {
+        return new Response("url must be an aidedd.org monster page.", { status: 400, headers: corsHeaders(request) });
+      }
+      const upstream = await fetch(target, { headers: { "User-Agent": "Mozilla/5.0" } });
+      const body = await upstream.text();
+      return new Response(body, {
+        status: upstream.status,
+        headers: corsHeaders(request, { "Content-Type": "text/html; charset=utf-8" }),
+      });
     }
 
     const characterMatch = url.pathname.match(/^\/character\/(\d+)$/);
@@ -91,7 +126,7 @@ export default {
       const body = await upstream.text();
       return new Response(body, {
         status: upstream.status,
-        headers: corsHeaders({ "Content-Type": "application/json" }),
+        headers: corsHeaders(request, { "Content-Type": "application/json" }),
       });
     }
 
@@ -101,7 +136,7 @@ export default {
       const key = syncMatch[2];
 
       if (!ALLOWED_SYNC_KEYS.includes(key)) {
-        return new Response("Unknown sync key.", { status: 404, headers: corsHeaders() });
+        return new Response("Unknown sync key.", { status: 404, headers: corsHeaders(request) });
       }
       // The character roster is the one exception to auth-required reads —
       // the public campaign hub page displays it (name/class/level/species
@@ -109,12 +144,12 @@ export default {
       // always require the secret.
       const isPublicRosterRead = key === "characters" && request.method === "GET";
       if (!isPublicRosterRead && !authorized(request, env)) {
-        return new Response("Unauthorized.", { status: 401, headers: corsHeaders() });
+        return new Response("Unauthorized.", { status: 401, headers: corsHeaders(request) });
       }
       if (!env.PORTAL_DATA) {
         return new Response("PORTAL_DATA KV binding is not configured on this Worker.", {
           status: 500,
-          headers: corsHeaders(),
+          headers: corsHeaders(request),
         });
       }
 
@@ -124,7 +159,7 @@ export default {
         const stored = await env.PORTAL_DATA.get(storageKey);
         return new Response(stored || "null", {
           status: 200,
-          headers: corsHeaders({ "Content-Type": "application/json" }),
+          headers: corsHeaders(request, { "Content-Type": "application/json" }),
         });
       }
 
@@ -133,18 +168,18 @@ export default {
         try {
           JSON.parse(body);
         } catch (e) {
-          return new Response("Body must be valid JSON.", { status: 400, headers: corsHeaders() });
+          return new Response("Body must be valid JSON.", { status: 400, headers: corsHeaders(request) });
         }
         await env.PORTAL_DATA.put(storageKey, body);
-        return new Response("OK", { status: 200, headers: corsHeaders() });
+        return new Response("OK", { status: 200, headers: corsHeaders(request) });
       }
 
-      return new Response("Method not allowed.", { status: 405, headers: corsHeaders() });
+      return new Response("Method not allowed.", { status: 405, headers: corsHeaders(request) });
     }
 
-    return new Response("Not found. Use /character/<numeric id> or /sync/<slug>/<key>.", {
+    return new Response("Not found. Use /character/<numeric id>, /sync/<slug>/<key>, or /monster?url=<aidedd.org URL>.", {
       status: 404,
-      headers: corsHeaders(),
+      headers: corsHeaders(request),
     });
   },
 };
