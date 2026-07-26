@@ -10,6 +10,8 @@
 
 * { box-sizing: border-box; }
 
+.required-star { color: #d16a6a; }
+
 select, input, button, textarea {
   font-family: inherit;
 }

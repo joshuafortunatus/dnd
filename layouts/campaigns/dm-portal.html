@@ -76,7 +76,7 @@
                   </p>
                 {{ else }}
                   <form class="pc-manager-form" id="pc-manager-form">
-                    <label for="pc-manager-link">D&amp;D Beyond character link</label>
+                    <label for="pc-manager-link">D&amp;D Beyond character link <span class="required-star" aria-hidden="true">*</span></label>
                     <input type="text" id="pc-manager-link" placeholder="https://www.dndbeyond.com/characters/12345678" required>
                     <button type="submit">Import Character</button>
                     <p class="pc-manager-error" id="pc-manager-error" hidden></p>
@@ -256,6 +256,47 @@
             });
           };
 
+          {{/* Shared dirty-tracking so an in-progress, unsaved edit in any
+            of the Save/Cancel/Delete-style sections (Travel Planner, NPC
+            Tracker, Settlement Tracker, Campaign Journal, Campaign
+            Conflicts, Bastion Tracker) can't be silently lost by switching
+            records, switching portal sections, or leaving the page. PC
+            Manager and Magic Item Tracker autosave instead, so they never
+            have an unsaved state to guard. */}}
+          var dirtyTrackers = [];
+          var registerDirtyTracker = function (isDirtyFn) {
+            dirtyTrackers.push(isDirtyFn);
+          };
+          var isAnyFormDirty = function () {
+            return dirtyTrackers.some(function (fn) { return fn(); });
+          };
+          var confirmLeaveIfDirty = function (isDirtyFn) {
+            if (!isDirtyFn()) return true;
+            return window.confirm("You have unsaved changes. Leave without saving?");
+          };
+          window.addEventListener("beforeunload", function (e) {
+            if (isAnyFormDirty()) {
+              e.preventDefault();
+              e.returnValue = "";
+            }
+          });
+
+          {{/* Appends a "*" marker to a field's label. Applied at each
+            required field's call site rather than built into the shared
+            editInput/editTextarea helpers, since those helpers render both
+            required and optional fields within the same section. */}}
+          var markRequired = function (fieldWrap) {
+            var label = fieldWrap.querySelector("label");
+            if (label) {
+              var star = document.createElement("span");
+              star.className = "required-star";
+              star.textContent = " *";
+              star.setAttribute("aria-hidden", "true");
+              label.appendChild(star);
+            }
+            return fieldWrap;
+          };
+
           {{/*
             Cross-device sync: portal data (Character Importer roster,
             Expectations edits, Travel Planner plans) otherwise lives only
@@ -329,6 +370,7 @@
           var sectionButtons = sectionNav.querySelectorAll(".dm-section-btn");
           var sectionPanels = document.querySelectorAll(".dm-section-panel");
           var knownSections = Array.prototype.map.call(sectionPanels, function (p) { return p.dataset.section; });
+          var currentSection = knownSections.length ? knownSections[0] : "";
 
           function selectSection(section) {
             Array.prototype.forEach.call(sectionButtons, function (b) {
@@ -338,6 +380,7 @@
               p.hidden = p.dataset.section !== section;
             });
             sectionSelect.value = section;
+            currentSection = section;
           }
 
           // Always land on the first section (Character Importer) on a
@@ -346,10 +389,23 @@
           // whichever section happened to be open last time.
           if (knownSections.length) selectSection(knownSections[0]);
 
+          {{/* Switching sections mid-edit would otherwise silently discard
+            whatever's typed into the currently-open record (its detail
+            panel just gets hidden, not saved) — guard it the same as
+            switching records within a section. */}}
+          var goToSection = function (section) {
+            if (section === currentSection) return;
+            if (!confirmLeaveIfDirty(isAnyFormDirty)) {
+              sectionSelect.value = currentSection;
+              return;
+            }
+            selectSection(section);
+          };
+
           Array.prototype.forEach.call(sectionButtons, function (b) {
-            b.addEventListener("click", function () { selectSection(b.dataset.section); });
+            b.addEventListener("click", function () { goToSection(b.dataset.section); });
           });
-          sectionSelect.addEventListener("change", function () { selectSection(sectionSelect.value); });
+          sectionSelect.addEventListener("change", function () { goToSection(sectionSelect.value); });
 
           {{/* PC Manager combines what used to be three separate
             sections — Character Importer, Game Expectations, Character
@@ -877,6 +933,9 @@
             var tpSelect = document.getElementById("travel-planner-select");
             var tpDetail = document.getElementById("travel-planner-detail");
             var tpAddBtn = document.getElementById("travel-planner-add-btn");
+            var tpDirty = false;
+            var tpCurrentValue = "";
+            registerDirtyTracker(function () { return tpDirty; });
 
             var loadPlans = function () {
               try {
@@ -1018,6 +1077,7 @@
               var plan = plans.filter(function (p) { return p.id === planId; })[0];
               tpDetail.innerHTML = "";
               if (!plan) return;
+              tpDirty = false;
 
               var actions = document.createElement("div");
               actions.className = "travel-form-actions";
@@ -1049,8 +1109,8 @@
 
               var header = document.createElement("div");
               header.className = "travel-header-fields";
-              header.appendChild(editInput("Origin", plan.origin, { field: "origin" }));
-              header.appendChild(editInput("Destination", plan.destination, { field: "destination" }));
+              header.appendChild(markRequired(editInput("Origin", plan.origin, { field: "origin" })));
+              header.appendChild(markRequired(editInput("Destination", plan.destination, { field: "destination" })));
               form.appendChild(header);
 
               plan.stages.forEach(function (stage, i) {
@@ -1107,6 +1167,9 @@
 
               tpDetail.appendChild(form);
 
+              form.addEventListener("input", function () { tpDirty = true; });
+              form.addEventListener("change", function () { tpDirty = true; });
+
               saveBtn.addEventListener("click", function () {
                 var updated = collectPlanFromForm(form, plan);
                 if (!updated.origin.trim() || !updated.destination.trim()) {
@@ -1121,14 +1184,17 @@
                 savePlans(allPlans);
                 updateOptionLabel(updated);
                 unsavedNewPlanId = null;
+                tpDirty = false;
                 var originalText = saveBtn.textContent;
                 saveBtn.textContent = "Saved";
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
               cancelBtn.addEventListener("click", function () {
+                tpDirty = false;
                 discardUnsavedNewPlan();
                 tpSelect.value = "";
+                tpCurrentValue = "";
                 clearDetail();
               });
 
@@ -1137,7 +1203,9 @@
                 var remaining = loadPlans().filter(function (p) { return p.id !== plan.id; });
                 savePlans(remaining);
                 renderSelect();
+                tpDirty = false;
                 tpSelect.value = "";
+                tpCurrentValue = "";
                 clearDetail();
               });
             };
@@ -1146,15 +1214,22 @@
             pullTravelPlans();
 
             tpSelect.addEventListener("change", function () {
+              var nextValue = tpSelect.value;
+              if (!confirmLeaveIfDirty(function () { return tpDirty; })) {
+                tpSelect.value = tpCurrentValue;
+                return;
+              }
+              tpCurrentValue = nextValue;
               discardUnsavedNewPlan();
-              if (tpSelect.value) {
-                renderForm(tpSelect.value);
+              if (nextValue) {
+                renderForm(nextValue);
               } else {
                 clearDetail();
               }
             });
 
             tpAddBtn.addEventListener("click", function () {
+              if (!confirmLeaveIfDirty(function () { return tpDirty; })) return;
               discardUnsavedNewPlan();
               var plans = loadPlans();
               var newPlan = {
@@ -1168,6 +1243,7 @@
               savePlans(plans);
               renderSelect();
               tpSelect.value = newPlan.id;
+              tpCurrentValue = newPlan.id;
               renderForm(newPlan.id, true);
             });
           }
@@ -1186,6 +1262,9 @@
             var npcSelect = document.getElementById("npc-tracker-select");
             var npcDetail = document.getElementById("npc-tracker-detail");
             var npcAddBtn = document.getElementById("npc-tracker-add-btn");
+            var npcDirty = false;
+            var npcCurrentValue = "";
+            registerDirtyTracker(function () { return npcDirty; });
 
             var loadNpcs = function () {
               try {
@@ -1299,6 +1378,7 @@
               var npc = npcs.filter(function (n) { return n.id === npcId; })[0];
               npcDetail.innerHTML = "";
               if (!npc) return;
+              npcDirty = false;
 
               var actions = document.createElement("div");
               actions.className = "npc-form-actions";
@@ -1330,7 +1410,7 @@
 
               var header = document.createElement("div");
               header.className = "npc-header-fields";
-              header.appendChild(npcEditInput("NPC Name", npc.name, { field: "name" }));
+              header.appendChild(markRequired(npcEditInput("NPC Name", npc.name, { field: "name" })));
               header.appendChild(npcEditInput("Stat Block", npc.statBlock, { field: "statBlock" }));
               header.appendChild(npcEditInput("MM Page", npc.mmPage, { field: "mmPage" }));
               form.appendChild(header);
@@ -1342,6 +1422,9 @@
               form.appendChild(npcEditTextarea("Secret", npc.secret, { field: "secret" }));
 
               npcDetail.appendChild(form);
+
+              form.addEventListener("input", function () { npcDirty = true; });
+              form.addEventListener("change", function () { npcDirty = true; });
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectNpcFromForm(form, npc);
@@ -1357,14 +1440,17 @@
                 saveNpcs(allNpcs);
                 updateNpcOptionLabel(updated);
                 unsavedNewNpcId = null;
+                npcDirty = false;
                 var originalText = saveBtn.textContent;
                 saveBtn.textContent = "Saved";
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
               cancelBtn.addEventListener("click", function () {
+                npcDirty = false;
                 discardUnsavedNewNpc();
                 npcSelect.value = "";
+                npcCurrentValue = "";
                 clearNpcDetail();
               });
 
@@ -1373,7 +1459,9 @@
                 var remaining = loadNpcs().filter(function (n) { return n.id !== npc.id; });
                 saveNpcs(remaining);
                 renderNpcSelect();
+                npcDirty = false;
                 npcSelect.value = "";
+                npcCurrentValue = "";
                 clearNpcDetail();
               });
             };
@@ -1382,15 +1470,22 @@
             pullNpcs();
 
             npcSelect.addEventListener("change", function () {
+              var nextValue = npcSelect.value;
+              if (!confirmLeaveIfDirty(function () { return npcDirty; })) {
+                npcSelect.value = npcCurrentValue;
+                return;
+              }
+              npcCurrentValue = nextValue;
               discardUnsavedNewNpc();
-              if (npcSelect.value) {
-                renderNpcForm(npcSelect.value);
+              if (nextValue) {
+                renderNpcForm(nextValue);
               } else {
                 clearNpcDetail();
               }
             });
 
             npcAddBtn.addEventListener("click", function () {
+              if (!confirmLeaveIfDirty(function () { return npcDirty; })) return;
               discardUnsavedNewNpc();
               var npcs = loadNpcs();
               var newNpc = {
@@ -1403,6 +1498,7 @@
               saveNpcs(npcs);
               renderNpcSelect();
               npcSelect.value = newNpc.id;
+              npcCurrentValue = newNpc.id;
               renderNpcForm(newNpc.id, true);
             });
           }
@@ -1418,6 +1514,9 @@
             var settlementSelect = document.getElementById("settlement-tracker-select");
             var settlementDetail = document.getElementById("settlement-tracker-detail");
             var settlementAddBtn = document.getElementById("settlement-tracker-add-btn");
+            var settlementDirty = false;
+            var settlementCurrentValue = "";
+            registerDirtyTracker(function () { return settlementDirty; });
 
             var loadSettlements = function () {
               try {
@@ -1563,6 +1662,7 @@
               var settlement = settlements.filter(function (s) { return s.id === settlementId; })[0];
               settlementDetail.innerHTML = "";
               if (!settlement) return;
+              settlementDirty = false;
 
               var actions = document.createElement("div");
               actions.className = "settlement-form-actions";
@@ -1594,7 +1694,7 @@
 
               var header = document.createElement("div");
               header.className = "settlement-header-fields";
-              header.appendChild(settlementEditInput("Settlement Name", settlement.name, { field: "name" }));
+              header.appendChild(markRequired(settlementEditInput("Settlement Name", settlement.name, { field: "name" })));
               header.appendChild(settlementEditInput("GP Value of Most Expensive Item for Sale", settlement.gpValue, { field: "gpValue" }));
               form.appendChild(header);
 
@@ -1607,6 +1707,9 @@
               form.appendChild(settlementEditTextarea("Noteworthy Places", settlement.noteworthyPlaces, { field: "noteworthyPlaces" }));
 
               settlementDetail.appendChild(form);
+
+              form.addEventListener("input", function () { settlementDirty = true; });
+              form.addEventListener("change", function () { settlementDirty = true; });
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectSettlementFromForm(form, settlement);
@@ -1622,14 +1725,17 @@
                 saveSettlements(allSettlements);
                 updateSettlementOptionLabel(updated);
                 unsavedNewSettlementId = null;
+                settlementDirty = false;
                 var originalText = saveBtn.textContent;
                 saveBtn.textContent = "Saved";
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
               cancelBtn.addEventListener("click", function () {
+                settlementDirty = false;
                 discardUnsavedNewSettlement();
                 settlementSelect.value = "";
+                settlementCurrentValue = "";
                 clearSettlementDetail();
               });
 
@@ -1638,7 +1744,9 @@
                 var remaining = loadSettlements().filter(function (s) { return s.id !== settlement.id; });
                 saveSettlements(remaining);
                 renderSettlementSelect();
+                settlementDirty = false;
                 settlementSelect.value = "";
+                settlementCurrentValue = "";
                 clearSettlementDetail();
               });
             };
@@ -1647,15 +1755,22 @@
             pullSettlements();
 
             settlementSelect.addEventListener("change", function () {
+              var nextValue = settlementSelect.value;
+              if (!confirmLeaveIfDirty(function () { return settlementDirty; })) {
+                settlementSelect.value = settlementCurrentValue;
+                return;
+              }
+              settlementCurrentValue = nextValue;
               discardUnsavedNewSettlement();
-              if (settlementSelect.value) {
-                renderSettlementForm(settlementSelect.value);
+              if (nextValue) {
+                renderSettlementForm(nextValue);
               } else {
                 clearSettlementDetail();
               }
             });
 
             settlementAddBtn.addEventListener("click", function () {
+              if (!confirmLeaveIfDirty(function () { return settlementDirty; })) return;
               discardUnsavedNewSettlement();
               var settlements = loadSettlements();
               var newSettlement = {
@@ -1669,6 +1784,7 @@
               saveSettlements(settlements);
               renderSettlementSelect();
               settlementSelect.value = newSettlement.id;
+              settlementCurrentValue = newSettlement.id;
               renderSettlementForm(newSettlement.id, true);
             });
           }
@@ -1684,6 +1800,9 @@
             var journalSelect = document.getElementById("campaign-journal-select");
             var journalDetail = document.getElementById("campaign-journal-detail");
             var journalAddBtn = document.getElementById("campaign-journal-add-btn");
+            var journalDirty = false;
+            var journalCurrentValue = "";
+            registerDirtyTracker(function () { return journalDirty; });
 
             var loadJournalEntries = function () {
               try {
@@ -1797,6 +1916,7 @@
               var entry = entries.filter(function (e) { return e.id === entryId; })[0];
               journalDetail.innerHTML = "";
               if (!entry) return;
+              journalDirty = false;
 
               var actions = document.createElement("div");
               actions.className = "journal-form-actions";
@@ -1830,7 +1950,7 @@
               header.className = "journal-header-fields";
               header.appendChild(journalEditInput("Session Number", entry.sessionNumber, { field: "sessionNumber" }));
               header.appendChild(journalEditInput("Session Date", entry.sessionDate, { field: "sessionDate" }));
-              header.appendChild(journalEditInput("Session/Adventure Title", entry.title, { field: "title" }));
+              header.appendChild(markRequired(journalEditInput("Session/Adventure Title", entry.title, { field: "title" })));
               form.appendChild(header);
 
               form.appendChild(journalEditTextarea("Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
@@ -1838,6 +1958,9 @@
               form.appendChild(journalEditTextarea("Additional Notes", entry.notes, { field: "notes" }));
 
               journalDetail.appendChild(form);
+
+              form.addEventListener("input", function () { journalDirty = true; });
+              form.addEventListener("change", function () { journalDirty = true; });
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectJournalFromForm(form, entry);
@@ -1853,14 +1976,17 @@
                 saveJournalEntries(allEntries);
                 updateJournalOptionLabel(updated);
                 unsavedNewJournalId = null;
+                journalDirty = false;
                 var originalText = saveBtn.textContent;
                 saveBtn.textContent = "Saved";
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
               cancelBtn.addEventListener("click", function () {
+                journalDirty = false;
                 discardUnsavedNewJournal();
                 journalSelect.value = "";
+                journalCurrentValue = "";
                 clearJournalDetail();
               });
 
@@ -1869,7 +1995,9 @@
                 var remaining = loadJournalEntries().filter(function (e) { return e.id !== entry.id; });
                 saveJournalEntries(remaining);
                 renderJournalSelect();
+                journalDirty = false;
                 journalSelect.value = "";
+                journalCurrentValue = "";
                 clearJournalDetail();
               });
             };
@@ -1878,9 +2006,15 @@
             pullJournalEntries();
 
             journalSelect.addEventListener("change", function () {
+              var nextValue = journalSelect.value;
+              if (!confirmLeaveIfDirty(function () { return journalDirty; })) {
+                journalSelect.value = journalCurrentValue;
+                return;
+              }
+              journalCurrentValue = nextValue;
               discardUnsavedNewJournal();
-              if (journalSelect.value) {
-                renderJournalForm(journalSelect.value);
+              if (nextValue) {
+                renderJournalForm(nextValue);
               } else {
                 clearJournalDetail();
               }
@@ -1902,6 +2036,7 @@
             };
 
             journalAddBtn.addEventListener("click", function () {
+              if (!confirmLeaveIfDirty(function () { return journalDirty; })) return;
               discardUnsavedNewJournal();
               var entries = loadJournalEntries();
               var newEntry = {
@@ -1917,6 +2052,7 @@
               saveJournalEntries(entries);
               renderJournalSelect();
               journalSelect.value = newEntry.id;
+              journalCurrentValue = newEntry.id;
               renderJournalForm(newEntry.id, true);
             });
           }
@@ -1932,6 +2068,9 @@
             var conflictSelect = document.getElementById("campaign-conflicts-select");
             var conflictDetail = document.getElementById("campaign-conflicts-detail");
             var conflictAddBtn = document.getElementById("campaign-conflicts-add-btn");
+            var conflictDirty = false;
+            var conflictCurrentValue = "";
+            registerDirtyTracker(function () { return conflictDirty; });
 
             var loadConflicts = function () {
               try {
@@ -1999,6 +2138,38 @@
               return wrap;
             };
 
+            {{/* Ties a conflict to a Campaign Journal session by that
+              session's id, so the label here (and the tie itself) stays
+              correct even if the session's title is edited later. Reads
+              loadJournalEntries — defined above in the Campaign Journal
+              block, which always exists on the page since every DM
+              portal renders the full fixed section list. */}}
+            var conflictSessionSelect = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "conflict-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              wrap.appendChild(label);
+              var select = document.createElement("select");
+              Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Not tied to a session —";
+              select.appendChild(placeholder);
+              var sessions = loadJournalEntries().slice().sort(function (a, b) {
+                return (parseInt(a.sessionNumber, 10) || 0) - (parseInt(b.sessionNumber, 10) || 0);
+              });
+              sessions.forEach(function (session) {
+                var option = document.createElement("option");
+                option.value = session.id;
+                option.textContent = (session.sessionNumber || "?") + " - " + (session.title || "Untitled Session");
+                select.appendChild(option);
+              });
+              select.value = sessions.some(function (s) { return s.id === value; }) ? value : "";
+              wrap.appendChild(select);
+              return wrap;
+            };
+
             var collectConflictFromForm = function (form, originalConflict) {
               var conflict = { id: originalConflict.id, createdAt: originalConflict.createdAt };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
@@ -2045,6 +2216,7 @@
               var conflict = conflicts.filter(function (c) { return c.id === conflictId; })[0];
               conflictDetail.innerHTML = "";
               if (!conflict) return;
+              conflictDirty = false;
 
               var actions = document.createElement("div");
               actions.className = "conflict-form-actions";
@@ -2074,10 +2246,14 @@
               var form = document.createElement("div");
               form.className = "conflict-edit-form";
 
-              form.appendChild(conflictEditInput("Adventurers vs.", conflict.adversary, { field: "adversary" }));
+              form.appendChild(markRequired(conflictEditInput("Adventurers vs.", conflict.adversary, { field: "adversary" })));
+              form.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
               form.appendChild(conflictEditTextarea("Notes", conflict.notes, { field: "notes" }));
 
               conflictDetail.appendChild(form);
+
+              form.addEventListener("input", function () { conflictDirty = true; });
+              form.addEventListener("change", function () { conflictDirty = true; });
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectConflictFromForm(form, conflict);
@@ -2093,14 +2269,17 @@
                 saveConflicts(allConflicts);
                 updateConflictOptionLabel(updated);
                 unsavedNewConflictId = null;
+                conflictDirty = false;
                 var originalText = saveBtn.textContent;
                 saveBtn.textContent = "Saved";
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
               cancelBtn.addEventListener("click", function () {
+                conflictDirty = false;
                 discardUnsavedNewConflict();
                 conflictSelect.value = "";
+                conflictCurrentValue = "";
                 clearConflictDetail();
               });
 
@@ -2109,7 +2288,9 @@
                 var remaining = loadConflicts().filter(function (c) { return c.id !== conflict.id; });
                 saveConflicts(remaining);
                 renderConflictSelect();
+                conflictDirty = false;
                 conflictSelect.value = "";
+                conflictCurrentValue = "";
                 clearConflictDetail();
               });
             };
@@ -2118,26 +2299,34 @@
             pullConflicts();
 
             conflictSelect.addEventListener("change", function () {
+              var nextValue = conflictSelect.value;
+              if (!confirmLeaveIfDirty(function () { return conflictDirty; })) {
+                conflictSelect.value = conflictCurrentValue;
+                return;
+              }
+              conflictCurrentValue = nextValue;
               discardUnsavedNewConflict();
-              if (conflictSelect.value) {
-                renderConflictForm(conflictSelect.value);
+              if (nextValue) {
+                renderConflictForm(nextValue);
               } else {
                 clearConflictDetail();
               }
             });
 
             conflictAddBtn.addEventListener("click", function () {
+              if (!confirmLeaveIfDirty(function () { return conflictDirty; })) return;
               discardUnsavedNewConflict();
               var conflicts = loadConflicts();
               var newConflict = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
-                adversary: "", notes: "",
+                adversary: "", sessionId: "", notes: "",
               };
               conflicts.push(newConflict);
               saveConflicts(conflicts);
               renderConflictSelect();
               conflictSelect.value = newConflict.id;
+              conflictCurrentValue = newConflict.id;
               renderConflictForm(newConflict.id, true);
             });
           }
@@ -2281,6 +2470,9 @@
             var bastionSelect = document.getElementById("bastion-tracker-select");
             var bastionDetail = document.getElementById("bastion-tracker-detail");
             var bastionAddBtn = document.getElementById("bastion-tracker-add-btn");
+            var bastionDirty = false;
+            var bastionCurrentValue = "";
+            registerDirtyTracker(function () { return bastionDirty; });
 
             var loadBastions = function () {
               try {
@@ -2409,6 +2601,7 @@
               var bastion = bastions.filter(function (b) { return b.id === bastionId; })[0];
               bastionDetail.innerHTML = "";
               if (!bastion) return;
+              bastionDirty = false;
 
               var actions = document.createElement("div");
               actions.className = "bastion-form-actions";
@@ -2440,7 +2633,7 @@
 
               var header = document.createElement("div");
               header.className = "bastion-header-fields";
-              header.appendChild(bastionEditInput("Bastion's Name", bastion.bastionName, { field: "bastionName" }));
+              header.appendChild(markRequired(bastionEditInput("Bastion's Name", bastion.bastionName, { field: "bastionName" })));
               header.appendChild(bastionEditInput("Character's Name", bastion.characterName, { field: "characterName" }));
               header.appendChild(bastionEditInput("Level", bastion.level, { field: "level" }));
               header.appendChild(bastionEditInput("Bastion Defenders", bastion.bastionDefenders, { field: "bastionDefenders" }));
@@ -2470,6 +2663,9 @@
 
               bastionDetail.appendChild(form);
 
+              form.addEventListener("input", function () { bastionDirty = true; });
+              form.addEventListener("change", function () { bastionDirty = true; });
+
               saveBtn.addEventListener("click", function () {
                 var updated = collectBastionFromForm(form, bastion);
                 if (!updated.bastionName || !updated.bastionName.trim()) {
@@ -2484,14 +2680,17 @@
                 saveBastions(allBastions);
                 updateBastionOptionLabel(updated);
                 unsavedNewBastionId = null;
+                bastionDirty = false;
                 var originalText = saveBtn.textContent;
                 saveBtn.textContent = "Saved";
                 setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
               });
 
               cancelBtn.addEventListener("click", function () {
+                bastionDirty = false;
                 discardUnsavedNewBastion();
                 bastionSelect.value = "";
+                bastionCurrentValue = "";
                 clearBastionDetail();
               });
 
@@ -2500,7 +2699,9 @@
                 var remaining = loadBastions().filter(function (b) { return b.id !== bastion.id; });
                 saveBastions(remaining);
                 renderBastionSelect();
+                bastionDirty = false;
                 bastionSelect.value = "";
+                bastionCurrentValue = "";
                 clearBastionDetail();
               });
             };
@@ -2509,15 +2710,22 @@
             pullBastions();
 
             bastionSelect.addEventListener("change", function () {
+              var nextValue = bastionSelect.value;
+              if (!confirmLeaveIfDirty(function () { return bastionDirty; })) {
+                bastionSelect.value = bastionCurrentValue;
+                return;
+              }
+              bastionCurrentValue = nextValue;
               discardUnsavedNewBastion();
-              if (bastionSelect.value) {
-                renderBastionForm(bastionSelect.value);
+              if (nextValue) {
+                renderBastionForm(nextValue);
               } else {
                 clearBastionDetail();
               }
             });
 
             bastionAddBtn.addEventListener("click", function () {
+              if (!confirmLeaveIfDirty(function () { return bastionDirty; })) return;
               discardUnsavedNewBastion();
               var bastions = loadBastions();
               var newBastion = {
@@ -2530,6 +2738,7 @@
               saveBastions(bastions);
               renderBastionSelect();
               bastionSelect.value = newBastion.id;
+              bastionCurrentValue = newBastion.id;
               renderBastionForm(newBastion.id, true);
             });
           }
