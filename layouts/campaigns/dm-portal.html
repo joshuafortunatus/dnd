@@ -2850,7 +2850,14 @@
               return wrap;
             };
 
-            var conflictAdversarySelect = function (labelText, selectedIds, dataAttrs) {
+            {{/* A native <select multiple> requires ctrl/cmd-click to add to
+              the selection — a plain click replaces it, which reads as "this
+              is broken, it acts like a single-select" (real bug the user
+              hit: clicking a second NPC silently dropped the first). A
+              checkbox list has no hidden modifier-key requirement, so every
+              click is unambiguously additive — same pattern as PC Manager's
+              motivations checkbox group above. */}}
+            var conflictAdversarySelect = function (labelText, selectedIds) {
               var wrap = document.createElement("div");
               wrap.className = "conflict-field conflict-field-wide";
               var label = document.createElement("label");
@@ -2866,19 +2873,22 @@
                 wrap.appendChild(empty);
                 return wrap;
               }
-              var select = document.createElement("select");
-              select.multiple = true;
-              select.size = Math.min(npcs.length, 6);
-              Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+              var group = document.createElement("div");
+              group.className = "pc-checkbox-group conflict-adversary-checkboxes";
               var selected = selectedIds || [];
               npcs.forEach(function (npc) {
-                var option = document.createElement("option");
-                option.value = npc.id;
-                option.textContent = npcLabel(npc);
-                option.selected = selected.indexOf(npc.id) !== -1;
-                select.appendChild(option);
+                var optLabel = document.createElement("label");
+                optLabel.className = "pc-checkbox-option";
+                var input = document.createElement("input");
+                input.type = "checkbox";
+                input.dataset.checkboxGroup = "adversaryNpcIds";
+                input.value = npc.id;
+                input.checked = selected.indexOf(npc.id) !== -1;
+                optLabel.appendChild(input);
+                optLabel.appendChild(document.createTextNode(" " + npcLabel(npc)));
+                group.appendChild(optLabel);
               });
-              wrap.appendChild(select);
+              wrap.appendChild(group);
               return wrap;
             };
 
@@ -2917,13 +2927,10 @@
             var collectConflictFromForm = function (form, originalConflict) {
               var conflict = { id: originalConflict.id, createdAt: originalConflict.createdAt };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
-                var field = el.dataset.field;
-                if (field === "adversaryNpcIds") {
-                  conflict.adversaryNpcIds = Array.prototype.map.call(el.selectedOptions, function (o) { return o.value; });
-                } else {
-                  conflict[field] = el.value;
-                }
+                conflict[el.dataset.field] = el.value;
               });
+              var checkedAdversaries = form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]:checked');
+              conflict.adversaryNpcIds = Array.prototype.map.call(checkedAdversaries, function (el) { return el.value; });
               return conflict;
             };
 
@@ -3004,7 +3011,7 @@
               var form = document.createElement("div");
               form.className = "conflict-edit-form";
 
-              form.appendChild(markRequired(conflictAdversarySelect("Adventurers vs.", conflict.adversaryNpcIds, { field: "adversaryNpcIds" })));
+              form.appendChild(markRequired(conflictAdversarySelect("Adventurers vs.", conflict.adversaryNpcIds)));
               form.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
               form.appendChild(conflictEditTextarea("Notes", conflict.notes, { field: "notes" }));
 
