@@ -837,10 +837,16 @@ body.is-home {
   font-size: 1rem;
   font-family: inherit;
 }
-.conflict-field select[multiple] { padding: 0.35rem; }
 .journal-field textarea, .pc-field textarea, .conflict-field textarea, .bastion-field textarea {
   min-height: 5rem;
   resize: vertical;
+}
+.conflict-adversary-checkboxes {
+  max-height: 12rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
 }
 .journal-field-wide, .pc-field-wide, .conflict-field-wide, .bastion-field-wide {
   margin-bottom: 1.25rem;
