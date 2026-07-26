@@ -1,2030 +1,3722 @@
 [
   {
-    "name": "Aarakocra Aeromancer",
+    "name": "2014 - Aarakocra",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=aarakocra"
+  },
+  {
+    "name": "2014 - Aboleth",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=aboleth"
+  },
+  {
+    "name": "2014 - Abominable Yeti",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=abominable-yeti"
+  },
+  {
+    "name": "2014 - Acolyte",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=acolyte"
+  },
+  {
+    "name": "2014 - Adult Black Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-black-dragon"
+  },
+  {
+    "name": "2014 - Adult Blue Dracolich",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-blue-dracolich"
+  },
+  {
+    "name": "2014 - Adult Blue Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-blue-dragon"
+  },
+  {
+    "name": "2014 - Adult Brass Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-brass-dragon"
+  },
+  {
+    "name": "2014 - Adult Bronze Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-bronze-dragon"
+  },
+  {
+    "name": "2014 - Adult Copper Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-copper-dragon"
+  },
+  {
+    "name": "2014 - Adult Gold Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-gold-dragon"
+  },
+  {
+    "name": "2014 - Adult Green Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-green-dragon"
+  },
+  {
+    "name": "2014 - Adult Red Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-red-dragon"
+  },
+  {
+    "name": "2014 - Adult Silver Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-silver-dragon"
+  },
+  {
+    "name": "2014 - Adult White Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=adult-white-dragon"
+  },
+  {
+    "name": "2014 - Air Elemental",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=air-elemental"
+  },
+  {
+    "name": "2014 - Allosaurus",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=allosaurus"
+  },
+  {
+    "name": "2014 - Ancient Black Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-black-dragon"
+  },
+  {
+    "name": "2014 - Ancient Blue Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-blue-dragon"
+  },
+  {
+    "name": "2014 - Ancient Brass Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-brass-dragon"
+  },
+  {
+    "name": "2014 - Ancient Bronze Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-bronze-dragon"
+  },
+  {
+    "name": "2014 - Ancient Copper Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-copper-dragon"
+  },
+  {
+    "name": "2014 - Ancient Gold Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-gold-dragon"
+  },
+  {
+    "name": "2014 - Ancient Green Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-green-dragon"
+  },
+  {
+    "name": "2014 - Ancient Red Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-red-dragon"
+  },
+  {
+    "name": "2014 - Ancient Silver Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-silver-dragon"
+  },
+  {
+    "name": "2014 - Ancient White Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ancient-white-dragon"
+  },
+  {
+    "name": "2014 - Androsphinx",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=androsphinx"
+  },
+  {
+    "name": "2014 - Animated Armor",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=animated-armor"
+  },
+  {
+    "name": "2014 - Ankheg",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ankheg"
+  },
+  {
+    "name": "2014 - Ankylosaurus",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ankylosaurus"
+  },
+  {
+    "name": "2014 - Ape",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ape"
+  },
+  {
+    "name": "2014 - Arcanaloth",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=arcanaloth"
+  },
+  {
+    "name": "2014 - Archmage",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=archmage"
+  },
+  {
+    "name": "2014 - Assassin",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=assassin"
+  },
+  {
+    "name": "2014 - Awakened Shrub",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=awakened-shrub"
+  },
+  {
+    "name": "2014 - Awakened Tree",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=awakened-tree"
+  },
+  {
+    "name": "2014 - Axe Beak",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=axe-beak"
+  },
+  {
+    "name": "2014 - Azer",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=azer"
+  },
+  {
+    "name": "2014 - Baboon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=baboon"
+  },
+  {
+    "name": "2014 - Badger",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=badger"
+  },
+  {
+    "name": "2014 - Balor",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=balor"
+  },
+  {
+    "name": "2014 - Bandit",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bandit"
+  },
+  {
+    "name": "2014 - Bandit Captain",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bandit-captain"
+  },
+  {
+    "name": "2014 - Banshee",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=banshee"
+  },
+  {
+    "name": "2014 - Barbed Devil",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=barbed-devil"
+  },
+  {
+    "name": "2014 - Barlgura",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=barlgura"
+  },
+  {
+    "name": "2014 - Basilisk",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=basilisk"
+  },
+  {
+    "name": "2014 - Bat",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bat"
+  },
+  {
+    "name": "2014 - Bearded Devil",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bearded-devil"
+  },
+  {
+    "name": "2014 - Behir",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=behir"
+  },
+  {
+    "name": "2014 - Beholder",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=beholder"
+  },
+  {
+    "name": "2014 - Beholder Zombie",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=beholder-zombie"
+  },
+  {
+    "name": "2014 - Berserker",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=berserker"
+  },
+  {
+    "name": "2014 - Black Bear",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=black-bear"
+  },
+  {
+    "name": "2014 - Black Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=black-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Black Pudding",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=black-pudding"
+  },
+  {
+    "name": "2014 - Blink Dog",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=blink-dog"
+  },
+  {
+    "name": "2014 - Blood Hawk",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=blood-hawk"
+  },
+  {
+    "name": "2014 - Blue Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=blue-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Blue Slaad",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=blue-slaad"
+  },
+  {
+    "name": "2014 - Boar",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=boar"
+  },
+  {
+    "name": "2014 - Bone Devil",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bone-devil"
+  },
+  {
+    "name": "2014 - Bone Naga",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bone-naga"
+  },
+  {
+    "name": "2014 - Brass Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=brass-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Bronze Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bronze-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Brown Bear",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=brown-bear"
+  },
+  {
+    "name": "2014 - Bugbear",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bugbear"
+  },
+  {
+    "name": "2014 - Bugbear Chief",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bugbear-chief"
+  },
+  {
+    "name": "2014 - Bulette",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bulette"
+  },
+  {
+    "name": "2014 - Bullywug",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=bullywug"
+  },
+  {
+    "name": "2014 - Cambion",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=cambion"
+  },
+  {
+    "name": "2014 - Camel",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=camel"
+  },
+  {
+    "name": "2014 - Carrion Crawler",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=carrion-crawler"
+  },
+  {
+    "name": "2014 - Cat",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=cat"
+  },
+  {
+    "name": "2014 - Centaur",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=centaur"
+  },
+  {
+    "name": "2014 - Chain Devil",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=chain-devil"
+  },
+  {
+    "name": "2014 - Chasme",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=chasme"
+  },
+  {
+    "name": "2014 - Chimera",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=chimera"
+  },
+  {
+    "name": "2014 - Chuul",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=chuul"
+  },
+  {
+    "name": "2014 - Clay Golem",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=clay-golem"
+  },
+  {
+    "name": "2014 - Cloaker",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=cloaker"
+  },
+  {
+    "name": "2014 - Cloud Giant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=cloud-giant"
+  },
+  {
+    "name": "2014 - Cockatrice",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=cockatrice"
+  },
+  {
+    "name": "2014 - Commoner",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=commoner"
+  },
+  {
+    "name": "2014 - Constrictor Snake",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=constrictor-snake"
+  },
+  {
+    "name": "2014 - Copper Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=copper-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Couatl",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=couatl"
+  },
+  {
+    "name": "2014 - Crab",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=crab"
+  },
+  {
+    "name": "2014 - Crawling Claw",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=crawling-claw"
+  },
+  {
+    "name": "2014 - Crocodile",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=crocodile"
+  },
+  {
+    "name": "2014 - Cult Fanatic",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=cult-fanatic"
+  },
+  {
+    "name": "2014 - Cultist",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=cultist"
+  },
+  {
+    "name": "2014 - Cyclops",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=cyclops"
+  },
+  {
+    "name": "2014 - Dao",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=dao"
+  },
+  {
+    "name": "2014 - Darkmantle",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=darkmantle"
+  },
+  {
+    "name": "2014 - Death Dog",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=death-dog"
+  },
+  {
+    "name": "2014 - Death Knight",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=death-knight"
+  },
+  {
+    "name": "2014 - Death Slaad",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=death-slaad"
+  },
+  {
+    "name": "2014 - Death Tyrant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=death-tyrant"
+  },
+  {
+    "name": "2014 - Deep Gnome (Svirfneblin)",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=deep-gnome-svirfneblin"
+  },
+  {
+    "name": "2014 - Deer",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=deer"
+  },
+  {
+    "name": "2014 - Demilich",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=demilich"
+  },
+  {
+    "name": "2014 - Deva",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=deva"
+  },
+  {
+    "name": "2014 - Dire Wolf",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=dire-wolf"
+  },
+  {
+    "name": "2014 - Displacer Beast",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=displacer-beast"
+  },
+  {
+    "name": "2014 - Djinni",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=djinni"
+  },
+  {
+    "name": "2014 - Doppelganger",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=doppelganger"
+  },
+  {
+    "name": "2014 - Draft Horse",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=draft-horse"
+  },
+  {
+    "name": "2014 - Dragon Turtle",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=dragon-turtle"
+  },
+  {
+    "name": "2014 - Dretch",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=dretch"
+  },
+  {
+    "name": "2014 - Drider",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=drider"
+  },
+  {
+    "name": "2014 - Drow",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=drow"
+  },
+  {
+    "name": "2014 - Drow Elite Warrior",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=drow-elite-warrior"
+  },
+  {
+    "name": "2014 - Drow Mage",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=drow-mage"
+  },
+  {
+    "name": "2014 - Drow Priestess of Lolth",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=drow-priestess-of-lolth"
+  },
+  {
+    "name": "2014 - Druid",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=druid"
+  },
+  {
+    "name": "2014 - Dryad",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=dryad"
+  },
+  {
+    "name": "2014 - Duergar",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=duergar"
+  },
+  {
+    "name": "2014 - Dust Mephit",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=dust-mephit"
+  },
+  {
+    "name": "2014 - Eagle",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=eagle"
+  },
+  {
+    "name": "2014 - Earth Elemental",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=earth-elemental"
+  },
+  {
+    "name": "2014 - Efreeti",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=efreeti"
+  },
+  {
+    "name": "2014 - Elephant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=elephant"
+  },
+  {
+    "name": "2014 - Elk",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=elk"
+  },
+  {
+    "name": "2014 - Empyrean",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=empyrean"
+  },
+  {
+    "name": "2014 - Erinyes",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=erinyes"
+  },
+  {
+    "name": "2014 - Ettercap",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ettercap"
+  },
+  {
+    "name": "2014 - Ettin",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ettin"
+  },
+  {
+    "name": "2014 - Faerie Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=faerie-dragon"
+  },
+  {
+    "name": "2014 - Fire Elemental",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=fire-elemental"
+  },
+  {
+    "name": "2014 - Fire Giant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=fire-giant"
+  },
+  {
+    "name": "2014 - Fire Snake",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=fire-snake"
+  },
+  {
+    "name": "2014 - Flameskull",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=flameskull"
+  },
+  {
+    "name": "2014 - Flesh Golem",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=flesh-golem"
+  },
+  {
+    "name": "2014 - Flumph",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=flumph"
+  },
+  {
+    "name": "2014 - Flying Snake",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=flying-snake"
+  },
+  {
+    "name": "2014 - Flying Sword",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=flying-sword"
+  },
+  {
+    "name": "2014 - Fomorian",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=fomorian"
+  },
+  {
+    "name": "2014 - Frog",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=frog"
+  },
+  {
+    "name": "2014 - Frost Giant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=frost-giant"
+  },
+  {
+    "name": "2014 - Galeb Duhr",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=galeb-duhr"
+  },
+  {
+    "name": "2014 - Gargoyle",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gargoyle"
+  },
+  {
+    "name": "2014 - Gas Spore",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gas-spore"
+  },
+  {
+    "name": "2014 - Gelatinous Cube",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gelatinous-cube"
+  },
+  {
+    "name": "2014 - Ghast",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ghast"
+  },
+  {
+    "name": "2014 - Ghost",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ghost"
+  },
+  {
+    "name": "2014 - Ghoul",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ghoul"
+  },
+  {
+    "name": "2014 - Giant Ape",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-ape"
+  },
+  {
+    "name": "2014 - Giant Badger",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-badger"
+  },
+  {
+    "name": "2014 - Giant Bat",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-bat"
+  },
+  {
+    "name": "2014 - Giant Boar",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-boar"
+  },
+  {
+    "name": "2014 - Giant Centipede",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-centipede"
+  },
+  {
+    "name": "2014 - Giant Constrictor Snake",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-constrictor-snake"
+  },
+  {
+    "name": "2014 - Giant Crab",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-crab"
+  },
+  {
+    "name": "2014 - Giant Crocodile",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-crocodile"
+  },
+  {
+    "name": "2014 - Giant Eagle",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-eagle"
+  },
+  {
+    "name": "2014 - Giant Elk",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-elk"
+  },
+  {
+    "name": "2014 - Giant Fire Beetle",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-fire-beetle"
+  },
+  {
+    "name": "2014 - Giant Frog",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-frog"
+  },
+  {
+    "name": "2014 - Giant Goat",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-goat"
+  },
+  {
+    "name": "2014 - Giant Hyena",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-hyena"
+  },
+  {
+    "name": "2014 - Giant Lizard",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-lizard"
+  },
+  {
+    "name": "2014 - Giant Octopus",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-octopus"
+  },
+  {
+    "name": "2014 - Giant Owl",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-owl"
+  },
+  {
+    "name": "2014 - Giant Poisonous Snake",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-poisonous-snake"
+  },
+  {
+    "name": "2014 - Giant Rat",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-rat"
+  },
+  {
+    "name": "2014 - Giant Scorpion",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-scorpion"
+  },
+  {
+    "name": "2014 - Giant Sea Horse",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-sea-horse"
+  },
+  {
+    "name": "2014 - Giant Shark",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-shark"
+  },
+  {
+    "name": "2014 - Giant Spider",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-spider"
+  },
+  {
+    "name": "2014 - Giant Toad",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-toad"
+  },
+  {
+    "name": "2014 - Giant Vulture",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-vulture"
+  },
+  {
+    "name": "2014 - Giant Wasp",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-wasp"
+  },
+  {
+    "name": "2014 - Giant Weasel",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-weasel"
+  },
+  {
+    "name": "2014 - Giant Wolf Spider",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=giant-wolf-spider"
+  },
+  {
+    "name": "2014 - Gibbering Mouther",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gibbering-mouther"
+  },
+  {
+    "name": "2014 - Githyanki Knight",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=githyanki-knight"
+  },
+  {
+    "name": "2014 - Githyanki Warrior",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=githyanki-warrior"
+  },
+  {
+    "name": "2014 - Githzerai Monk",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=githzerai-monk"
+  },
+  {
+    "name": "2014 - Githzerai Zerth",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=githzerai-zerth"
+  },
+  {
+    "name": "2014 - Glabrezu",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=glabrezu"
+  },
+  {
+    "name": "2014 - Gladiator",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gladiator"
+  },
+  {
+    "name": "2014 - Gnoll",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gnoll"
+  },
+  {
+    "name": "2014 - Gnoll Fang of Yeenoghu",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gnoll-fang-of-yeenoghu"
+  },
+  {
+    "name": "2014 - Gnoll Pack Lord",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gnoll-pack-lord"
+  },
+  {
+    "name": "2014 - Goat",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=goat"
+  },
+  {
+    "name": "2014 - Goblin",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=goblin"
+  },
+  {
+    "name": "2014 - Goblin Boss",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=goblin-boss"
+  },
+  {
+    "name": "2014 - Gold Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gold-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Gorgon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gorgon"
+  },
+  {
+    "name": "2014 - Goristro",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=goristro"
+  },
+  {
+    "name": "2014 - Gray Ooze",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gray-ooze"
+  },
+  {
+    "name": "2014 - Gray Slaad",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gray-slaad"
+  },
+  {
+    "name": "2014 - Green Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=green-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Green Hag",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=green-hag"
+  },
+  {
+    "name": "2014 - Green Slaad",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=green-slaad"
+  },
+  {
+    "name": "2014 - Grell",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=grell"
+  },
+  {
+    "name": "2014 - Grick",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=grick"
+  },
+  {
+    "name": "2014 - Grick alpha",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=grick-alpha"
+  },
+  {
+    "name": "2014 - Griffon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=griffon"
+  },
+  {
+    "name": "2014 - Grimlock",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=grimlock"
+  },
+  {
+    "name": "2014 - Guard",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=guard"
+  },
+  {
+    "name": "2014 - Guardian Naga",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=guardian-naga"
+  },
+  {
+    "name": "2014 - Gynosphinx",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=gynosphinx"
+  },
+  {
+    "name": "2014 - Half-Ogre",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=half-ogre"
+  },
+  {
+    "name": "2014 - Half-Red Dragon Veteran",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=half-red-dragon-veteran"
+  },
+  {
+    "name": "2014 - Harpy",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=harpy"
+  },
+  {
+    "name": "2014 - Hawk",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hawk"
+  },
+  {
+    "name": "2014 - Hell Hound",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hell-hound"
+  },
+  {
+    "name": "2014 - Helmed Horror",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=helmed-horror"
+  },
+  {
+    "name": "2014 - Hezrou",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hezrou"
+  },
+  {
+    "name": "2014 - Hill Giant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hill-giant"
+  },
+  {
+    "name": "2014 - Hippogriff",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hippogriff"
+  },
+  {
+    "name": "2014 - Hobgoblin",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hobgoblin"
+  },
+  {
+    "name": "2014 - Hobgoblin Captain",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hobgoblin-captain"
+  },
+  {
+    "name": "2014 - Hobgoblin Warlord",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hobgoblin-warlord"
+  },
+  {
+    "name": "2014 - Homunculus",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=homunculus"
+  },
+  {
+    "name": "2014 - Hook Horror",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hook-horror"
+  },
+  {
+    "name": "2014 - Horned Devil",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=horned-devil"
+  },
+  {
+    "name": "2014 - Hunter Shark",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hunter-shark"
+  },
+  {
+    "name": "2014 - Hydra",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hydra"
+  },
+  {
+    "name": "2014 - Hyena",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=hyena"
+  },
+  {
+    "name": "2014 - Ice Devil",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ice-devil"
+  },
+  {
+    "name": "2014 - Ice Mephit",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ice-mephit"
+  },
+  {
+    "name": "2014 - Imp",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=imp"
+  },
+  {
+    "name": "2014 - Intellect Devourer",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=intellect-devourer"
+  },
+  {
+    "name": "2014 - Invisible Stalker",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=invisible-stalker"
+  },
+  {
+    "name": "2014 - Iron Golem",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=iron-golem"
+  },
+  {
+    "name": "2014 - Jackal",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=jackal"
+  },
+  {
+    "name": "2014 - Jackalwere",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=jackalwere"
+  },
+  {
+    "name": "2014 - Kenku",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=kenku"
+  },
+  {
+    "name": "2014 - Killer Whale",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=killer-whale"
+  },
+  {
+    "name": "2014 - Knight",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=knight"
+  },
+  {
+    "name": "2014 - Kobold",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=kobold"
+  },
+  {
+    "name": "2014 - Kraken",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=kraken"
+  },
+  {
+    "name": "2014 - Kuo-toa",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=kuo-toa"
+  },
+  {
+    "name": "2014 - Kuo-toa Archpriest",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=kuo-toa-archpriest"
+  },
+  {
+    "name": "2014 - Kuo-toa Whip",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=kuo-toa-whip"
+  },
+  {
+    "name": "2014 - Lamia",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=lamia"
+  },
+  {
+    "name": "2014 - Lemure",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=lemure"
+  },
+  {
+    "name": "2014 - Lich",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=lich"
+  },
+  {
+    "name": "2014 - Lion",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=lion"
+  },
+  {
+    "name": "2014 - Lizard",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=lizard"
+  },
+  {
+    "name": "2014 - Lizard King/Queen",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=lizard-king-queen"
+  },
+  {
+    "name": "2014 - Lizardfolk",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=lizardfolk"
+  },
+  {
+    "name": "2014 - Lizardfolk Shaman",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=lizardfolk-shaman"
+  },
+  {
+    "name": "2014 - Mage",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mage"
+  },
+  {
+    "name": "2014 - Magma Mephit",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=magma-mephit"
+  },
+  {
+    "name": "2014 - Magmin",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=magmin"
+  },
+  {
+    "name": "2014 - Mammoth",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mammoth"
+  },
+  {
+    "name": "2014 - Manes",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=manes"
+  },
+  {
+    "name": "2014 - Manticore",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=manticore"
+  },
+  {
+    "name": "2014 - Marid",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=marid"
+  },
+  {
+    "name": "2014 - Marilith",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=marilith"
+  },
+  {
+    "name": "2014 - Mastiff",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mastiff"
+  },
+  {
+    "name": "2014 - Medusa",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=medusa"
+  },
+  {
+    "name": "2014 - Merfolk",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=merfolk"
+  },
+  {
+    "name": "2014 - Merrow",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=merrow"
+  },
+  {
+    "name": "2014 - Mezzoloth",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mezzoloth"
+  },
+  {
+    "name": "2014 - Mimic",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mimic"
+  },
+  {
+    "name": "2014 - Mind Flayer",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mind-flayer"
+  },
+  {
+    "name": "2014 - Minotaur",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=minotaur"
+  },
+  {
+    "name": "2014 - Minotaur Skeleton",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=minotaur-skeleton"
+  },
+  {
+    "name": "2014 - Mud Mephit",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mud-mephit"
+  },
+  {
+    "name": "2014 - Mule",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mule"
+  },
+  {
+    "name": "2014 - Mummy",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mummy"
+  },
+  {
+    "name": "2014 - Mummy Lord",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=mummy-lord"
+  },
+  {
+    "name": "2014 - Myconid Adult",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=myconid-adult"
+  },
+  {
+    "name": "2014 - Myconid Sovereign",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=myconid-sovereign"
+  },
+  {
+    "name": "2014 - Myconid Sprout",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=myconid-sprout"
+  },
+  {
+    "name": "2014 - Nalfeshnee",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=nalfeshnee"
+  },
+  {
+    "name": "2014 - Needle Blight",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=needle-blight"
+  },
+  {
+    "name": "2014 - Night Hag",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=night-hag"
+  },
+  {
+    "name": "2014 - Nightmare",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=nightmare"
+  },
+  {
+    "name": "2014 - Noble",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=noble"
+  },
+  {
+    "name": "2014 - Nothic",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=nothic"
+  },
+  {
+    "name": "2014 - Nycaloth",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=nycaloth"
+  },
+  {
+    "name": "2014 - Ochre Jelly",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ochre-jelly"
+  },
+  {
+    "name": "2014 - Octopus",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=octopus"
+  },
+  {
+    "name": "2014 - Ogre",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ogre"
+  },
+  {
+    "name": "2014 - Ogre Zombie",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ogre-zombie"
+  },
+  {
+    "name": "2014 - Oni",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=oni"
+  },
+  {
+    "name": "2014 - Orc",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=orc"
+  },
+  {
+    "name": "2014 - Orc Eye of Gruumsh",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=orc-eye-of-gruumsh"
+  },
+  {
+    "name": "2014 - Orc War Chief",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=orc-war-chief"
+  },
+  {
+    "name": "2014 - Orog",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=orog"
+  },
+  {
+    "name": "2014 - Otyugh",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=otyugh"
+  },
+  {
+    "name": "2014 - Owl",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=owl"
+  },
+  {
+    "name": "2014 - Owlbear",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=owlbear"
+  },
+  {
+    "name": "2014 - Panther",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=panther"
+  },
+  {
+    "name": "2014 - Pegasus",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=pegasus"
+  },
+  {
+    "name": "2014 - Peryton",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=peryton"
+  },
+  {
+    "name": "2014 - Phase Spider",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=phase-spider"
+  },
+  {
+    "name": "2014 - Piercer",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=piercer"
+  },
+  {
+    "name": "2014 - Pit Fiend",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=pit-fiend"
+  },
+  {
+    "name": "2014 - Pixie",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=pixie"
+  },
+  {
+    "name": "2014 - Planetar",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=planetar"
+  },
+  {
+    "name": "2014 - Plesiosaurus",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=plesiosaurus"
+  },
+  {
+    "name": "2014 - Poisonous Snake",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=poisonous-snake"
+  },
+  {
+    "name": "2014 - Polar Bear",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=polar-bear"
+  },
+  {
+    "name": "2014 - Pony",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=pony"
+  },
+  {
+    "name": "2014 - Priest",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=priest"
+  },
+  {
+    "name": "2014 - Pseudodragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=pseudodragon"
+  },
+  {
+    "name": "2014 - Pteranodon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=pteranodon"
+  },
+  {
+    "name": "2014 - Purple Worm",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=purple-worm"
+  },
+  {
+    "name": "2014 - Quaggoth",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=quaggoth"
+  },
+  {
+    "name": "2014 - Quaggoth Spore Servant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=quaggoth-spore-servant"
+  },
+  {
+    "name": "2014 - Quasit",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=quasit"
+  },
+  {
+    "name": "2014 - Quipper",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=quipper"
+  },
+  {
+    "name": "2014 - Rakshasa",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=rakshasa"
+  },
+  {
+    "name": "2014 - Rat",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=rat"
+  },
+  {
+    "name": "2014 - Raven",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=raven"
+  },
+  {
+    "name": "2014 - Red Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=red-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Red Slaad",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=red-slaad"
+  },
+  {
+    "name": "2014 - Reef Shark",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=reef-shark"
+  },
+  {
+    "name": "2014 - Remorhaz",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=remorhaz"
+  },
+  {
+    "name": "2014 - Revenant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=revenant"
+  },
+  {
+    "name": "2014 - Rhinoceros",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=rhinoceros"
+  },
+  {
+    "name": "2014 - Riding Horse",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=riding-horse"
+  },
+  {
+    "name": "2014 - Roc",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=roc"
+  },
+  {
+    "name": "2014 - Roper",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=roper"
+  },
+  {
+    "name": "2014 - Rug of Smothering",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=rug-of-smothering"
+  },
+  {
+    "name": "2014 - Rust Monster",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=rust-monster"
+  },
+  {
+    "name": "2014 - Saber-Toothed Tiger",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=saber-toothed-tiger"
+  },
+  {
+    "name": "2014 - Sahuagin",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=sahuagin"
+  },
+  {
+    "name": "2014 - Sahuagin Baron",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=sahuagin-baron"
+  },
+  {
+    "name": "2014 - Sahuagin Priestess",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=sahuagin-priestess"
+  },
+  {
+    "name": "2014 - Salamander",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=salamander"
+  },
+  {
+    "name": "2014 - Satyr",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=satyr"
+  },
+  {
+    "name": "2014 - Scarecrow",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=scarecrow"
+  },
+  {
+    "name": "2014 - Scorpion",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=scorpion"
+  },
+  {
+    "name": "2014 - Scout",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=scout"
+  },
+  {
+    "name": "2014 - Sea Hag",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=sea-hag"
+  },
+  {
+    "name": "2014 - Sea Horse",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=sea-horse"
+  },
+  {
+    "name": "2014 - Shadow",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=shadow"
+  },
+  {
+    "name": "2014 - Shadow Demon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=shadow-demon"
+  },
+  {
+    "name": "2014 - Shambling Mound",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=shambling-mound"
+  },
+  {
+    "name": "2014 - Shield Guardian",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=shield-guardian"
+  },
+  {
+    "name": "2014 - Shrieker",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=shrieker"
+  },
+  {
+    "name": "2014 - Silver Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=silver-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Skeleton",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=skeleton"
+  },
+  {
+    "name": "2014 - Slaad Tadpole",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=slaad-tadpole"
+  },
+  {
+    "name": "2014 - Smoke Mephit",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=smoke-mephit"
+  },
+  {
+    "name": "2014 - Solar",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=solar"
+  },
+  {
+    "name": "2014 - Spectator",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=spectator"
+  },
+  {
+    "name": "2014 - Specter",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=specter"
+  },
+  {
+    "name": "2014 - Spider",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=spider"
+  },
+  {
+    "name": "2014 - Spined Devil",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=spined-devil"
+  },
+  {
+    "name": "2014 - Spirit Naga",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=spirit-naga"
+  },
+  {
+    "name": "2014 - Sprite",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=sprite"
+  },
+  {
+    "name": "2014 - Spy",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=spy"
+  },
+  {
+    "name": "2014 - Steam Mephit",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=steam-mephit"
+  },
+  {
+    "name": "2014 - Stirge",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=stirge"
+  },
+  {
+    "name": "2014 - Stone Giant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=stone-giant"
+  },
+  {
+    "name": "2014 - Stone Golem",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=stone-golem"
+  },
+  {
+    "name": "2014 - Storm Giant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=storm-giant"
+  },
+  {
+    "name": "2014 - Succubus",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=succubus"
+  },
+  {
+    "name": "2014 - Swarm of Bats",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=swarm-of-bats"
+  },
+  {
+    "name": "2014 - Swarm of Insects",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=swarm-of-insects"
+  },
+  {
+    "name": "2014 - Swarm of Poisonous Snakes",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=swarm-of-poisonous-snakes"
+  },
+  {
+    "name": "2014 - Swarm of Quippers",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=swarm-of-quippers"
+  },
+  {
+    "name": "2014 - Swarm of Rats",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=swarm-of-rats"
+  },
+  {
+    "name": "2014 - Swarm of Ravens",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=swarm-of-ravens"
+  },
+  {
+    "name": "2014 - Tarrasque",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=tarrasque"
+  },
+  {
+    "name": "2014 - Thri-kreen",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=thri-kreen"
+  },
+  {
+    "name": "2014 - Thug",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=thug"
+  },
+  {
+    "name": "2014 - Tiger",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=tiger"
+  },
+  {
+    "name": "2014 - Treant",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=treant"
+  },
+  {
+    "name": "2014 - Tribal Warrior",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=tribal-warrior"
+  },
+  {
+    "name": "2014 - Triceratops",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=triceratops"
+  },
+  {
+    "name": "2014 - Troglodyte",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=troglodyte"
+  },
+  {
+    "name": "2014 - Troll",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=troll"
+  },
+  {
+    "name": "2014 - Twig Blight",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=twig-blight"
+  },
+  {
+    "name": "2014 - Tyrannosaurus Rex",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=tyrannosaurus-rex"
+  },
+  {
+    "name": "2014 - Ultroloth",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=ultroloth"
+  },
+  {
+    "name": "2014 - Umber Hulk",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=umber-hulk"
+  },
+  {
+    "name": "2014 - Unicorn",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=unicorn"
+  },
+  {
+    "name": "2014 - Vampire",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=vampire"
+  },
+  {
+    "name": "2014 - Vampire Spawn",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=vampire-spawn"
+  },
+  {
+    "name": "2014 - Veteran",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=veteran"
+  },
+  {
+    "name": "2014 - Vine Blight",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=vine-blight"
+  },
+  {
+    "name": "2014 - Violet Fungus",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=violet-fungus"
+  },
+  {
+    "name": "2014 - Vrock",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=vrock"
+  },
+  {
+    "name": "2014 - Vulture",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=vulture"
+  },
+  {
+    "name": "2014 - Warhorse",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=warhorse"
+  },
+  {
+    "name": "2014 - Warhorse Skeleton",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=warhorse-skeleton"
+  },
+  {
+    "name": "2014 - Water Elemental",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=water-elemental"
+  },
+  {
+    "name": "2014 - Water Weird",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=water-weird"
+  },
+  {
+    "name": "2014 - Weasel",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=weasel"
+  },
+  {
+    "name": "2014 - Werebear",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=werebear"
+  },
+  {
+    "name": "2014 - Wereboar",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=wereboar"
+  },
+  {
+    "name": "2014 - Wererat",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=wererat"
+  },
+  {
+    "name": "2014 - Weretiger",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=weretiger"
+  },
+  {
+    "name": "2014 - Werewolf",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=werewolf"
+  },
+  {
+    "name": "2014 - White Dragon Wyrmling",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=white-dragon-wyrmling"
+  },
+  {
+    "name": "2014 - Wight",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=wight"
+  },
+  {
+    "name": "2014 - Will-o'-Wisp",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=will-o--wisp"
+  },
+  {
+    "name": "2014 - Winged Kobold",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=winged-kobold"
+  },
+  {
+    "name": "2014 - Winter Wolf",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=winter-wolf"
+  },
+  {
+    "name": "2014 - Wolf",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=wolf"
+  },
+  {
+    "name": "2014 - Worg",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=worg"
+  },
+  {
+    "name": "2014 - Wraith",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=wraith"
+  },
+  {
+    "name": "2014 - Wyvern",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=wyvern"
+  },
+  {
+    "name": "2014 - Xorn",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=xorn"
+  },
+  {
+    "name": "2014 - Yeti",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=yeti"
+  },
+  {
+    "name": "2014 - Yochlol",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=yochlol"
+  },
+  {
+    "name": "2014 - Young Black Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-black-dragon"
+  },
+  {
+    "name": "2014 - Young Blue Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-blue-dragon"
+  },
+  {
+    "name": "2014 - Young Brass Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-brass-dragon"
+  },
+  {
+    "name": "2014 - Young Bronze Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-bronze-dragon"
+  },
+  {
+    "name": "2014 - Young Copper Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-copper-dragon"
+  },
+  {
+    "name": "2014 - Young Gold Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-gold-dragon"
+  },
+  {
+    "name": "2014 - Young Green Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-green-dragon"
+  },
+  {
+    "name": "2014 - Young Red Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-red-dragon"
+  },
+  {
+    "name": "2014 - Young Red Shadow Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-red-shadow-dragon"
+  },
+  {
+    "name": "2014 - Young Remorhaz",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-remorhaz"
+  },
+  {
+    "name": "2014 - Young Silver Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-silver-dragon"
+  },
+  {
+    "name": "2014 - Young White Dragon",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=young-white-dragon"
+  },
+  {
+    "name": "2014 - Yuan-ti Abomination",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=yuan-ti-abomination"
+  },
+  {
+    "name": "2014 - Yuan-ti Malison",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=yuan-ti-malison"
+  },
+  {
+    "name": "2014 - Yuan-ti Pureblood",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=yuan-ti-pureblood"
+  },
+  {
+    "name": "2014 - Zombie",
+    "link": "https://www.aidedd.org/dnd/monstres.php?vo=zombie"
+  },
+  {
+    "name": "2024 - Aarakocra Aeromancer",
     "link": "https://www.aidedd.org/monster/aarakocra-aeromancer"
   },
   {
-    "name": "Aarakocra Skirmisher",
+    "name": "2024 - Aarakocra Skirmisher",
     "link": "https://www.aidedd.org/monster/aarakocra-skirmisher"
   },
   {
-    "name": "Aberrant Cultist",
+    "name": "2024 - Aberrant Cultist",
     "link": "https://www.aidedd.org/monster/aberrant-cultist"
   },
   {
-    "name": "Aberrant Spirit",
+    "name": "2024 - Aberrant Spirit",
     "link": "https://www.aidedd.org/monster/aberrant-spirit"
   },
   {
-    "name": "Aboleth",
+    "name": "2024 - Aboleth",
     "link": "https://www.aidedd.org/monster/aboleth"
   },
   {
-    "name": "Abominable Yeti",
+    "name": "2024 - Abominable Yeti",
     "link": "https://www.aidedd.org/monster/abominable-yeti"
   },
   {
-    "name": "Adult Black Dragon",
+    "name": "2024 - Adult Black Dragon",
     "link": "https://www.aidedd.org/monster/adult-black-dragon"
   },
   {
-    "name": "Adult Blue Dragon",
+    "name": "2024 - Adult Blue Dragon",
     "link": "https://www.aidedd.org/monster/adult-blue-dragon"
   },
   {
-    "name": "Adult Brass Dragon",
+    "name": "2024 - Adult Brass Dragon",
     "link": "https://www.aidedd.org/monster/adult-brass-dragon"
   },
   {
-    "name": "Adult Bronze Dragon",
+    "name": "2024 - Adult Bronze Dragon",
     "link": "https://www.aidedd.org/monster/adult-bronze-dragon"
   },
   {
-    "name": "Adult Copper Dragon",
+    "name": "2024 - Adult Copper Dragon",
     "link": "https://www.aidedd.org/monster/adult-copper-dragon"
   },
   {
-    "name": "Adult Gold Dragon",
+    "name": "2024 - Adult Gold Dragon",
     "link": "https://www.aidedd.org/monster/adult-gold-dragon"
   },
   {
-    "name": "Adult Green Dragon",
+    "name": "2024 - Adult Green Dragon",
     "link": "https://www.aidedd.org/monster/adult-green-dragon"
   },
   {
-    "name": "Adult Red Dragon",
+    "name": "2024 - Adult Red Dragon",
     "link": "https://www.aidedd.org/monster/adult-red-dragon"
   },
   {
-    "name": "Adult Silver Dragon",
+    "name": "2024 - Adult Silver Dragon",
     "link": "https://www.aidedd.org/monster/adult-silver-dragon"
   },
   {
-    "name": "Adult White Dragon",
+    "name": "2024 - Adult White Dragon",
     "link": "https://www.aidedd.org/monster/adult-white-dragon"
   },
   {
-    "name": "Air Elemental",
+    "name": "2024 - Air Elemental",
     "link": "https://www.aidedd.org/monster/air-elemental"
   },
   {
-    "name": "Allosaurus",
+    "name": "2024 - Allosaurus",
     "link": "https://www.aidedd.org/monster/allosaurus"
   },
   {
-    "name": "Ancient Black Dragon",
+    "name": "2024 - Ancient Black Dragon",
     "link": "https://www.aidedd.org/monster/ancient-black-dragon"
   },
   {
-    "name": "Ancient Blue Dragon",
+    "name": "2024 - Ancient Blue Dragon",
     "link": "https://www.aidedd.org/monster/ancient-blue-dragon"
   },
   {
-    "name": "Ancient Brass Dragon",
+    "name": "2024 - Ancient Brass Dragon",
     "link": "https://www.aidedd.org/monster/ancient-brass-dragon"
   },
   {
-    "name": "Ancient Bronze Dragon",
+    "name": "2024 - Ancient Bronze Dragon",
     "link": "https://www.aidedd.org/monster/ancient-bronze-dragon"
   },
   {
-    "name": "Ancient Copper Dragon",
+    "name": "2024 - Ancient Copper Dragon",
     "link": "https://www.aidedd.org/monster/ancient-copper-dragon"
   },
   {
-    "name": "Ancient Gold Dragon",
+    "name": "2024 - Ancient Gold Dragon",
     "link": "https://www.aidedd.org/monster/ancient-gold-dragon"
   },
   {
-    "name": "Ancient Green Dragon",
+    "name": "2024 - Ancient Green Dragon",
     "link": "https://www.aidedd.org/monster/ancient-green-dragon"
   },
   {
-    "name": "Ancient Red Dragon",
+    "name": "2024 - Ancient Red Dragon",
     "link": "https://www.aidedd.org/monster/ancient-red-dragon"
   },
   {
-    "name": "Ancient Silver Dragon",
+    "name": "2024 - Ancient Silver Dragon",
     "link": "https://www.aidedd.org/monster/ancient-silver-dragon"
   },
   {
-    "name": "Ancient White Dragon",
+    "name": "2024 - Ancient White Dragon",
     "link": "https://www.aidedd.org/monster/ancient-white-dragon"
   },
   {
-    "name": "Animated Armor",
+    "name": "2024 - Animated Armor",
     "link": "https://www.aidedd.org/monster/animated-armor"
   },
   {
-    "name": "Animated Broom",
+    "name": "2024 - Animated Broom",
     "link": "https://www.aidedd.org/monster/animated-broom"
   },
   {
-    "name": "Animated Flying Sword",
+    "name": "2024 - Animated Flying Sword",
     "link": "https://www.aidedd.org/monster/animated-flying-sword"
   },
   {
-    "name": "Animated Object",
+    "name": "2024 - Animated Object",
     "link": "https://www.aidedd.org/monster/animated-object"
   },
   {
-    "name": "Animated Rug of Smothering",
+    "name": "2024 - Animated Rug of Smothering",
     "link": "https://www.aidedd.org/monster/animated-rug-of-smothering"
   },
   {
-    "name": "Ankheg",
+    "name": "2024 - Ankheg",
     "link": "https://www.aidedd.org/monster/ankheg"
   },
   {
-    "name": "Ankylosaurus",
+    "name": "2024 - Ankylosaurus",
     "link": "https://www.aidedd.org/monster/ankylosaurus"
   },
   {
-    "name": "Ape",
+    "name": "2024 - Ape",
     "link": "https://www.aidedd.org/monster/ape"
   },
   {
-    "name": "Arcanaloth",
+    "name": "2024 - Arcanaloth",
     "link": "https://www.aidedd.org/monster/arcanaloth"
   },
   {
-    "name": "Arch-hag",
+    "name": "2024 - Arch-hag",
     "link": "https://www.aidedd.org/monster/arch-hag"
   },
   {
-    "name": "Archelon",
+    "name": "2024 - Archelon",
     "link": "https://www.aidedd.org/monster/archelon"
   },
   {
-    "name": "Archmage",
+    "name": "2024 - Archmage",
     "link": "https://www.aidedd.org/monster/archmage"
   },
   {
-    "name": "Archpriest",
+    "name": "2024 - Archpriest",
     "link": "https://www.aidedd.org/monster/archpriest"
   },
   {
-    "name": "Assassin",
+    "name": "2024 - Assassin",
     "link": "https://www.aidedd.org/monster/assassin"
   },
   {
-    "name": "Awakened Shrub",
+    "name": "2024 - Awakened Shrub",
     "link": "https://www.aidedd.org/monster/awakened-shrub"
   },
   {
-    "name": "Awakened Tree",
+    "name": "2024 - Awakened Tree",
     "link": "https://www.aidedd.org/monster/awakened-tree"
   },
   {
-    "name": "Axe Beak",
+    "name": "2024 - Axe Beak",
     "link": "https://www.aidedd.org/monster/axe-beak"
   },
   {
-    "name": "Azer Pyromancer",
+    "name": "2024 - Azer Pyromancer",
     "link": "https://www.aidedd.org/monster/azer-pyromancer"
   },
   {
-    "name": "Azer Sentinel",
+    "name": "2024 - Azer Sentinel",
     "link": "https://www.aidedd.org/monster/azer-sentinel"
   },
   {
-    "name": "Baboon",
+    "name": "2024 - Baboon",
     "link": "https://www.aidedd.org/monster/baboon"
   },
   {
-    "name": "Badger",
+    "name": "2024 - Badger",
     "link": "https://www.aidedd.org/monster/badger"
   },
   {
-    "name": "Balor",
+    "name": "2024 - Balor",
     "link": "https://www.aidedd.org/monster/balor"
   },
   {
-    "name": "Bandit",
+    "name": "2024 - Bandit",
     "link": "https://www.aidedd.org/monster/bandit"
   },
   {
-    "name": "Bandit Captain",
+    "name": "2024 - Bandit Captain",
     "link": "https://www.aidedd.org/monster/bandit-captain"
   },
   {
-    "name": "Bandit Crime Lord",
+    "name": "2024 - Bandit Crime Lord",
     "link": "https://www.aidedd.org/monster/bandit-crime-lord"
   },
   {
-    "name": "Bandit Deceiver",
+    "name": "2024 - Bandit Deceiver",
     "link": "https://www.aidedd.org/monster/bandit-deceiver"
   },
   {
-    "name": "Banshee",
+    "name": "2024 - Banshee",
     "link": "https://www.aidedd.org/monster/banshee"
   },
   {
-    "name": "Barbed Devil",
+    "name": "2024 - Barbed Devil",
     "link": "https://www.aidedd.org/monster/barbed-devil"
   },
   {
-    "name": "Barlgura",
+    "name": "2024 - Barlgura",
     "link": "https://www.aidedd.org/monster/barlgura"
   },
   {
-    "name": "Basilisk",
+    "name": "2024 - Basilisk",
     "link": "https://www.aidedd.org/monster/basilisk"
   },
   {
-    "name": "Bat",
+    "name": "2024 - Bat",
     "link": "https://www.aidedd.org/monster/bat"
   },
   {
-    "name": "Bearded Devil",
+    "name": "2024 - Bearded Devil",
     "link": "https://www.aidedd.org/monster/bearded-devil"
   },
   {
-    "name": "Beast of the Land",
+    "name": "2024 - Beast of the Land",
     "link": "https://www.aidedd.org/monster/beast-of-the-land"
   },
   {
-    "name": "Beast of the Sea",
+    "name": "2024 - Beast of the Sea",
     "link": "https://www.aidedd.org/monster/beast-of-the-sea"
   },
   {
-    "name": "Beast of the Sky",
+    "name": "2024 - Beast of the Sky",
     "link": "https://www.aidedd.org/monster/beast-of-the-sky"
   },
   {
-    "name": "Behir",
+    "name": "2024 - Behir",
     "link": "https://www.aidedd.org/monster/behir"
   },
   {
-    "name": "Beholder Zombie",
+    "name": "2024 - Beholder Zombie",
     "link": "https://www.aidedd.org/monster/beholder-zombie"
   },
   {
-    "name": "Berserker",
+    "name": "2024 - Berserker",
     "link": "https://www.aidedd.org/monster/berserker"
   },
   {
-    "name": "Berserker Commander",
+    "name": "2024 - Berserker Commander",
     "link": "https://www.aidedd.org/monster/berserker-commander"
   },
   {
-    "name": "Bestial Spirit",
+    "name": "2024 - Bestial Spirit",
     "link": "https://www.aidedd.org/monster/bestial-spirit"
   },
   {
-    "name": "Black Bear",
+    "name": "2024 - Black Bear",
     "link": "https://www.aidedd.org/monster/black-bear"
   },
   {
-    "name": "Black Dragon Wyrmling",
+    "name": "2024 - Black Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/black-dragon-wyrmling"
   },
   {
-    "name": "Black Pudding",
+    "name": "2024 - Black Pudding",
     "link": "https://www.aidedd.org/monster/black-pudding"
   },
   {
-    "name": "Blink Dog",
+    "name": "2024 - Blink Dog",
     "link": "https://www.aidedd.org/monster/blink-dog"
   },
   {
-    "name": "Blood Hawk",
+    "name": "2024 - Blood Hawk",
     "link": "https://www.aidedd.org/monster/blood-hawk"
   },
   {
-    "name": "Blue Dragon Wyrmling",
+    "name": "2024 - Blue Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/blue-dragon-wyrmling"
   },
   {
-    "name": "Blue Slaad",
+    "name": "2024 - Blue Slaad",
     "link": "https://www.aidedd.org/monster/blue-slaad"
   },
   {
-    "name": "Boar",
+    "name": "2024 - Boar",
     "link": "https://www.aidedd.org/monster/boar"
   },
   {
-    "name": "Bone Devil",
+    "name": "2024 - Bone Devil",
     "link": "https://www.aidedd.org/monster/bone-devil"
   },
   {
-    "name": "Bone Naga",
+    "name": "2024 - Bone Naga",
     "link": "https://www.aidedd.org/monster/bone-naga"
   },
   {
-    "name": "Brass Dragon Wyrmling",
+    "name": "2024 - Brass Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/brass-dragon-wyrmling"
   },
   {
-    "name": "Brazen Gorgon",
+    "name": "2024 - Brazen Gorgon",
     "link": "https://www.aidedd.org/monster/brazen-gorgon"
   },
   {
-    "name": "Bronze Dragon Wyrmling",
+    "name": "2024 - Bronze Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/bronze-dragon-wyrmling"
   },
   {
-    "name": "Brown Bear",
+    "name": "2024 - Brown Bear",
     "link": "https://www.aidedd.org/monster/brown-bear"
   },
   {
-    "name": "Bugbear Stalker",
+    "name": "2024 - Bugbear Stalker",
     "link": "https://www.aidedd.org/monster/bugbear-stalker"
   },
   {
-    "name": "Bugbear Warrior",
+    "name": "2024 - Bugbear Warrior",
     "link": "https://www.aidedd.org/monster/bugbear-warrior"
   },
   {
-    "name": "Bulette",
+    "name": "2024 - Bulette",
     "link": "https://www.aidedd.org/monster/bulette"
   },
   {
-    "name": "Bullywug Bog Sage",
+    "name": "2024 - Bullywug Bog Sage",
     "link": "https://www.aidedd.org/monster/bullywug-bog-sage"
   },
   {
-    "name": "Bullywug Warrior",
+    "name": "2024 - Bullywug Warrior",
     "link": "https://www.aidedd.org/monster/bullywug-warrior"
   },
   {
-    "name": "Cambion",
+    "name": "2024 - Cambion",
     "link": "https://www.aidedd.org/monster/cambion"
   },
   {
-    "name": "Camel",
+    "name": "2024 - Camel",
     "link": "https://www.aidedd.org/monster/camel"
   },
   {
-    "name": "Carrion Crawler",
+    "name": "2024 - Carrion Crawler",
     "link": "https://www.aidedd.org/monster/carrion-crawler"
   },
   {
-    "name": "Cat",
+    "name": "2024 - Cat",
     "link": "https://www.aidedd.org/monster/cat"
   },
   {
-    "name": "Celestial Spirit",
+    "name": "2024 - Celestial Spirit",
     "link": "https://www.aidedd.org/monster/celestial-spirit"
   },
   {
-    "name": "Centaur Trooper",
+    "name": "2024 - Centaur Trooper",
     "link": "https://www.aidedd.org/monster/centaur-trooper"
   },
   {
-    "name": "Centaur Warden",
+    "name": "2024 - Centaur Warden",
     "link": "https://www.aidedd.org/monster/centaur-warden"
   },
   {
-    "name": "Chain Devil",
+    "name": "2024 - Chain Devil",
     "link": "https://www.aidedd.org/monster/chain-devil"
   },
   {
-    "name": "Chasme",
+    "name": "2024 - Chasme",
     "link": "https://www.aidedd.org/monster/chasme"
   },
   {
-    "name": "Chimera",
+    "name": "2024 - Chimera",
     "link": "https://www.aidedd.org/monster/chimera"
   },
   {
-    "name": "Chuul",
+    "name": "2024 - Chuul",
     "link": "https://www.aidedd.org/monster/chuul"
   },
   {
-    "name": "Clay Golem",
+    "name": "2024 - Clay Golem",
     "link": "https://www.aidedd.org/monster/clay-golem"
   },
   {
-    "name": "Cloaker",
+    "name": "2024 - Cloaker",
     "link": "https://www.aidedd.org/monster/cloaker"
   },
   {
-    "name": "Cloud Giant",
+    "name": "2024 - Cloud Giant",
     "link": "https://www.aidedd.org/monster/cloud-giant"
   },
   {
-    "name": "Cockatrice",
+    "name": "2024 - Cockatrice",
     "link": "https://www.aidedd.org/monster/cockatrice"
   },
   {
-    "name": "Cockatrice Regent",
+    "name": "2024 - Cockatrice Regent",
     "link": "https://www.aidedd.org/monster/cockatrice-regent"
   },
   {
-    "name": "Colossus",
+    "name": "2024 - Colossus",
     "link": "https://www.aidedd.org/monster/colossus"
   },
   {
-    "name": "Commoner",
+    "name": "2024 - Commoner",
     "link": "https://www.aidedd.org/monster/commoner"
   },
   {
-    "name": "Constrictor Snake",
+    "name": "2024 - Constrictor Snake",
     "link": "https://www.aidedd.org/monster/constrictor-snake"
   },
   {
-    "name": "Construct Spirit",
+    "name": "2024 - Construct Spirit",
     "link": "https://www.aidedd.org/monster/construct-spirit"
   },
   {
-    "name": "Copper Dragon Wyrmling",
+    "name": "2024 - Copper Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/copper-dragon-wyrmling"
   },
   {
-    "name": "Couatl",
+    "name": "2024 - Couatl",
     "link": "https://www.aidedd.org/monster/couatl"
   },
   {
-    "name": "Crab",
+    "name": "2024 - Crab",
     "link": "https://www.aidedd.org/monster/crab"
   },
   {
-    "name": "Crawling Claw",
+    "name": "2024 - Crawling Claw",
     "link": "https://www.aidedd.org/monster/crawling-claw"
   },
   {
-    "name": "Crocodile",
+    "name": "2024 - Crocodile",
     "link": "https://www.aidedd.org/monster/crocodile"
   },
   {
-    "name": "Cultist",
+    "name": "2024 - Cultist",
     "link": "https://www.aidedd.org/monster/cultist"
   },
   {
-    "name": "Cultist Fanatic",
+    "name": "2024 - Cultist Fanatic",
     "link": "https://www.aidedd.org/monster/cultist-fanatic"
   },
   {
-    "name": "Cultist Hierophant",
+    "name": "2024 - Cultist Hierophant",
     "link": "https://www.aidedd.org/monster/cultist-hierophant"
   },
   {
-    "name": "Cyclops Oracle",
+    "name": "2024 - Cyclops Oracle",
     "link": "https://www.aidedd.org/monster/cyclops-oracle"
   },
   {
-    "name": "Cyclops Sentry",
+    "name": "2024 - Cyclops Sentry",
     "link": "https://www.aidedd.org/monster/cyclops-sentry"
   },
   {
-    "name": "Dao",
+    "name": "2024 - Dao",
     "link": "https://www.aidedd.org/monster/dao"
   },
   {
-    "name": "Darkmantle",
+    "name": "2024 - Darkmantle",
     "link": "https://www.aidedd.org/monster/darkmantle"
   },
   {
-    "name": "Death Cultist",
+    "name": "2024 - Death Cultist",
     "link": "https://www.aidedd.org/monster/death-cultist"
   },
   {
-    "name": "Death Dog",
+    "name": "2024 - Death Dog",
     "link": "https://www.aidedd.org/monster/death-dog"
   },
   {
-    "name": "Death Knight",
+    "name": "2024 - Death Knight",
     "link": "https://www.aidedd.org/monster/death-knight"
   },
   {
-    "name": "Death Knight Aspirant",
+    "name": "2024 - Death Knight Aspirant",
     "link": "https://www.aidedd.org/monster/death-knight-aspirant"
   },
   {
-    "name": "Death Slaad",
+    "name": "2024 - Death Slaad",
     "link": "https://www.aidedd.org/monster/death-slaad"
   },
   {
-    "name": "Death Tyrant",
+    "name": "2024 - Death Tyrant",
     "link": "https://www.aidedd.org/monster/death-tyrant"
   },
   {
-    "name": "Deer",
+    "name": "2024 - Deer",
     "link": "https://www.aidedd.org/monster/deer"
   },
   {
-    "name": "Demilich",
+    "name": "2024 - Demilich",
     "link": "https://www.aidedd.org/monster/demilich"
   },
   {
-    "name": "Deva",
+    "name": "2024 - Deva",
     "link": "https://www.aidedd.org/monster/deva"
   },
   {
-    "name": "Dire Wolf",
+    "name": "2024 - Dire Wolf",
     "link": "https://www.aidedd.org/monster/dire-wolf"
   },
   {
-    "name": "Dire Worg",
+    "name": "2024 - Dire Worg",
     "link": "https://www.aidedd.org/monster/dire-worg"
   },
   {
-    "name": "Displacer Beast",
+    "name": "2024 - Displacer Beast",
     "link": "https://www.aidedd.org/monster/displacer-beast"
   },
   {
-    "name": "Djinni",
+    "name": "2024 - Djinni",
     "link": "https://www.aidedd.org/monster/djinni"
   },
   {
-    "name": "Doppelganger",
+    "name": "2024 - Doppelganger",
     "link": "https://www.aidedd.org/monster/doppelganger"
   },
   {
-    "name": "Dracolich",
+    "name": "2024 - Dracolich",
     "link": "https://www.aidedd.org/monster/dracolich"
   },
   {
-    "name": "Draconic Spirit",
+    "name": "2024 - Draconic Spirit",
     "link": "https://www.aidedd.org/monster/draconic-spirit"
   },
   {
-    "name": "Draft Horse",
+    "name": "2024 - Draft Horse",
     "link": "https://www.aidedd.org/monster/draft-horse"
   },
   {
-    "name": "Dragon Turtle",
+    "name": "2024 - Dragon Turtle",
     "link": "https://www.aidedd.org/monster/dragon-turtle"
   },
   {
-    "name": "Dretch",
+    "name": "2024 - Dretch",
     "link": "https://www.aidedd.org/monster/dretch"
   },
   {
-    "name": "Drider",
+    "name": "2024 - Drider",
     "link": "https://www.aidedd.org/monster/drider"
   },
   {
-    "name": "Druid",
+    "name": "2024 - Druid",
     "link": "https://www.aidedd.org/monster/druid"
   },
   {
-    "name": "Dryad",
+    "name": "2024 - Dryad",
     "link": "https://www.aidedd.org/monster/dryad"
   },
   {
-    "name": "Dust Mephit",
+    "name": "2024 - Dust Mephit",
     "link": "https://www.aidedd.org/monster/dust-mephit"
   },
   {
-    "name": "Eagle",
+    "name": "2024 - Eagle",
     "link": "https://www.aidedd.org/monster/eagle"
   },
   {
-    "name": "Earth Elemental",
+    "name": "2024 - Earth Elemental",
     "link": "https://www.aidedd.org/monster/earth-elemental"
   },
   {
-    "name": "Efreeti",
+    "name": "2024 - Efreeti",
     "link": "https://www.aidedd.org/monster/efreeti"
   },
   {
-    "name": "Elemental Cultist",
+    "name": "2024 - Elemental Cultist",
     "link": "https://www.aidedd.org/monster/elemental-cultist"
   },
   {
-    "name": "Elemental Spirit",
+    "name": "2024 - Elemental Spirit",
     "link": "https://www.aidedd.org/monster/elemental-spirit"
   },
   {
-    "name": "Elephant",
+    "name": "2024 - Elephant",
     "link": "https://www.aidedd.org/monster/elephant"
   },
   {
-    "name": "Elk",
+    "name": "2024 - Elk",
     "link": "https://www.aidedd.org/monster/elk"
   },
   {
-    "name": "Empyrean",
+    "name": "2024 - Empyrean",
     "link": "https://www.aidedd.org/monster/empyrean"
   },
   {
-    "name": "Empyrean Iota",
+    "name": "2024 - Empyrean Iota",
     "link": "https://www.aidedd.org/monster/empyrean-iota"
   },
   {
-    "name": "Erinyes",
+    "name": "2024 - Erinyes",
     "link": "https://www.aidedd.org/monster/erinyes"
   },
   {
-    "name": "Ettercap",
+    "name": "2024 - Ettercap",
     "link": "https://www.aidedd.org/monster/ettercap"
   },
   {
-    "name": "Ettin",
+    "name": "2024 - Ettin",
     "link": "https://www.aidedd.org/monster/ettin"
   },
   {
-    "name": "Faerie Dragon Adult",
+    "name": "2024 - Faerie Dragon Adult",
     "link": "https://www.aidedd.org/monster/faerie-dragon-adult"
   },
   {
-    "name": "Faerie Dragon Youth",
+    "name": "2024 - Faerie Dragon Youth",
     "link": "https://www.aidedd.org/monster/faerie-dragon-youth"
   },
   {
-    "name": "Fey Spirit",
+    "name": "2024 - Fey Spirit",
     "link": "https://www.aidedd.org/monster/fey-spirit"
   },
   {
-    "name": "Fiend Cultist",
+    "name": "2024 - Fiend Cultist",
     "link": "https://www.aidedd.org/monster/fiend-cultist"
   },
   {
-    "name": "Fiendish Spirit",
+    "name": "2024 - Fiendish Spirit",
     "link": "https://www.aidedd.org/monster/fiendish-spirit"
   },
   {
-    "name": "Fire Elemental",
+    "name": "2024 - Fire Elemental",
     "link": "https://www.aidedd.org/monster/fire-elemental"
   },
   {
-    "name": "Fire Giant",
+    "name": "2024 - Fire Giant",
     "link": "https://www.aidedd.org/monster/fire-giant"
   },
   {
-    "name": "Flameskull",
+    "name": "2024 - Flameskull",
     "link": "https://www.aidedd.org/monster/flameskull"
   },
   {
-    "name": "Flaming Skeleton",
+    "name": "2024 - Flaming Skeleton",
     "link": "https://www.aidedd.org/monster/flaming-skeleton"
   },
   {
-    "name": "Flesh Golem",
+    "name": "2024 - Flesh Golem",
     "link": "https://www.aidedd.org/monster/flesh-golem"
   },
   {
-    "name": "Flumph",
+    "name": "2024 - Flumph",
     "link": "https://www.aidedd.org/monster/flumph"
   },
   {
-    "name": "Flying Snake",
+    "name": "2024 - Flying Snake",
     "link": "https://www.aidedd.org/monster/flying-snake"
   },
   {
-    "name": "Fomorian",
+    "name": "2024 - Fomorian",
     "link": "https://www.aidedd.org/monster/fomorian"
   },
   {
-    "name": "Frog",
+    "name": "2024 - Frog",
     "link": "https://www.aidedd.org/monster/frog"
   },
   {
-    "name": "Frost Giant",
+    "name": "2024 - Frost Giant",
     "link": "https://www.aidedd.org/monster/frost-giant"
   },
   {
-    "name": "Galeb Duhr",
+    "name": "2024 - Galeb Duhr",
     "link": "https://www.aidedd.org/monster/galeb-duhr"
   },
   {
-    "name": "Gargoyle",
+    "name": "2024 - Gargoyle",
     "link": "https://www.aidedd.org/monster/gargoyle"
   },
   {
-    "name": "Gas Spore Fungus",
+    "name": "2024 - Gas Spore Fungus",
     "link": "https://www.aidedd.org/monster/gas-spore-fungus"
   },
   {
-    "name": "Gelatinous Cube",
+    "name": "2024 - Gelatinous Cube",
     "link": "https://www.aidedd.org/monster/gelatinous-cube"
   },
   {
-    "name": "Ghast",
+    "name": "2024 - Ghast",
     "link": "https://www.aidedd.org/monster/ghast"
   },
   {
-    "name": "Ghast Gravecaller",
+    "name": "2024 - Ghast Gravecaller",
     "link": "https://www.aidedd.org/monster/ghast-gravecaller"
   },
   {
-    "name": "Ghost",
+    "name": "2024 - Ghost",
     "link": "https://www.aidedd.org/monster/ghost"
   },
   {
-    "name": "Ghoul",
+    "name": "2024 - Ghoul",
     "link": "https://www.aidedd.org/monster/ghoul"
   },
   {
-    "name": "Giant Ape",
+    "name": "2024 - Giant Ape",
     "link": "https://www.aidedd.org/monster/giant-ape"
   },
   {
-    "name": "Giant Axe Beak",
+    "name": "2024 - Giant Axe Beak",
     "link": "https://www.aidedd.org/monster/giant-axe-beak"
   },
   {
-    "name": "Giant Badger",
+    "name": "2024 - Giant Badger",
     "link": "https://www.aidedd.org/monster/giant-badger"
   },
   {
-    "name": "Giant Bat",
+    "name": "2024 - Giant Bat",
     "link": "https://www.aidedd.org/monster/giant-bat"
   },
   {
-    "name": "Giant Boar",
+    "name": "2024 - Giant Boar",
     "link": "https://www.aidedd.org/monster/giant-boar"
   },
   {
-    "name": "Giant Centipede",
+    "name": "2024 - Giant Centipede",
     "link": "https://www.aidedd.org/monster/giant-centipede"
   },
   {
-    "name": "Giant Constrictor Snake",
+    "name": "2024 - Giant Constrictor Snake",
     "link": "https://www.aidedd.org/monster/giant-constrictor-snake"
   },
   {
-    "name": "Giant Crab",
+    "name": "2024 - Giant Crab",
     "link": "https://www.aidedd.org/monster/giant-crab"
   },
   {
-    "name": "Giant Crocodile",
+    "name": "2024 - Giant Crocodile",
     "link": "https://www.aidedd.org/monster/giant-crocodile"
   },
   {
-    "name": "Giant Eagle",
+    "name": "2024 - Giant Eagle",
     "link": "https://www.aidedd.org/monster/giant-eagle"
   },
   {
-    "name": "Giant Elk",
+    "name": "2024 - Giant Elk",
     "link": "https://www.aidedd.org/monster/giant-elk"
   },
   {
-    "name": "Giant Fire Beetle",
+    "name": "2024 - Giant Fire Beetle",
     "link": "https://www.aidedd.org/monster/giant-fire-beetle"
   },
   {
-    "name": "Giant Frog",
+    "name": "2024 - Giant Frog",
     "link": "https://www.aidedd.org/monster/giant-frog"
   },
   {
-    "name": "Giant Goat",
+    "name": "2024 - Giant Goat",
     "link": "https://www.aidedd.org/monster/giant-goat"
   },
   {
-    "name": "Giant Hyena",
+    "name": "2024 - Giant Hyena",
     "link": "https://www.aidedd.org/monster/giant-hyena"
   },
   {
-    "name": "Giant Insect",
+    "name": "2024 - Giant Insect",
     "link": "https://www.aidedd.org/monster/giant-insect"
   },
   {
-    "name": "Giant Lizard",
+    "name": "2024 - Giant Lizard",
     "link": "https://www.aidedd.org/monster/giant-lizard"
   },
   {
-    "name": "Giant Octopus",
+    "name": "2024 - Giant Octopus",
     "link": "https://www.aidedd.org/monster/giant-octopus"
   },
   {
-    "name": "Giant Owl",
+    "name": "2024 - Giant Owl",
     "link": "https://www.aidedd.org/monster/giant-owl"
   },
   {
-    "name": "Giant Rat",
+    "name": "2024 - Giant Rat",
     "link": "https://www.aidedd.org/monster/giant-rat"
   },
   {
-    "name": "Giant Scorpion",
+    "name": "2024 - Giant Scorpion",
     "link": "https://www.aidedd.org/monster/giant-scorpion"
   },
   {
-    "name": "Giant Seahorse",
+    "name": "2024 - Giant Seahorse",
     "link": "https://www.aidedd.org/monster/giant-seahorse"
   },
   {
-    "name": "Giant Shark",
+    "name": "2024 - Giant Shark",
     "link": "https://www.aidedd.org/monster/giant-shark"
   },
   {
-    "name": "Giant Spider",
+    "name": "2024 - Giant Spider",
     "link": "https://www.aidedd.org/monster/giant-spider"
   },
   {
-    "name": "Giant Squid",
+    "name": "2024 - Giant Squid",
     "link": "https://www.aidedd.org/monster/giant-squid"
   },
   {
-    "name": "Giant Toad",
+    "name": "2024 - Giant Toad",
     "link": "https://www.aidedd.org/monster/giant-toad"
   },
   {
-    "name": "Giant Venomous Snake",
+    "name": "2024 - Giant Venomous Snake",
     "link": "https://www.aidedd.org/monster/giant-venomous-snake"
   },
   {
-    "name": "Giant Vulture",
+    "name": "2024 - Giant Vulture",
     "link": "https://www.aidedd.org/monster/giant-vulture"
   },
   {
-    "name": "Giant Wasp",
+    "name": "2024 - Giant Wasp",
     "link": "https://www.aidedd.org/monster/giant-wasp"
   },
   {
-    "name": "Giant Weasel",
+    "name": "2024 - Giant Weasel",
     "link": "https://www.aidedd.org/monster/giant-weasel"
   },
   {
-    "name": "Giant Wolf Spider",
+    "name": "2024 - Giant Wolf Spider",
     "link": "https://www.aidedd.org/monster/giant-wolf-spider"
   },
   {
-    "name": "Gibbering Mouther",
+    "name": "2024 - Gibbering Mouther",
     "link": "https://www.aidedd.org/monster/gibbering-mouther"
   },
   {
-    "name": "Githyanki Dracomancer",
+    "name": "2024 - Githyanki Dracomancer",
     "link": "https://www.aidedd.org/monster/githyanki-dracomancer"
   },
   {
-    "name": "Githyanki Knight",
+    "name": "2024 - Githyanki Knight",
     "link": "https://www.aidedd.org/monster/githyanki-knight"
   },
   {
-    "name": "Githyanki Warrior",
+    "name": "2024 - Githyanki Warrior",
     "link": "https://www.aidedd.org/monster/githyanki-warrior"
   },
   {
-    "name": "Githzerai Monk",
+    "name": "2024 - Githzerai Monk",
     "link": "https://www.aidedd.org/monster/githzerai-monk"
   },
   {
-    "name": "Githzerai Psion",
+    "name": "2024 - Githzerai Psion",
     "link": "https://www.aidedd.org/monster/githzerai-psion"
   },
   {
-    "name": "Githzerai Zerth",
+    "name": "2024 - Githzerai Zerth",
     "link": "https://www.aidedd.org/monster/githzerai-zerth"
   },
   {
-    "name": "Glabrezu",
+    "name": "2024 - Glabrezu",
     "link": "https://www.aidedd.org/monster/glabrezu"
   },
   {
-    "name": "Gladiator",
+    "name": "2024 - Gladiator",
     "link": "https://www.aidedd.org/monster/gladiator"
   },
   {
-    "name": "Gnoll Demoniac",
+    "name": "2024 - Gnoll Demoniac",
     "link": "https://www.aidedd.org/monster/gnoll-demoniac"
   },
   {
-    "name": "Gnoll Fang of Yeenoghu",
+    "name": "2024 - Gnoll Fang of Yeenoghu",
     "link": "https://www.aidedd.org/monster/gnoll-fang-of-yeenoghu"
   },
   {
-    "name": "Gnoll Pack Lord",
+    "name": "2024 - Gnoll Pack Lord",
     "link": "https://www.aidedd.org/monster/gnoll-pack-lord"
   },
   {
-    "name": "Gnoll Warrior",
+    "name": "2024 - Gnoll Warrior",
     "link": "https://www.aidedd.org/monster/gnoll-warrior"
   },
   {
-    "name": "Goat",
+    "name": "2024 - Goat",
     "link": "https://www.aidedd.org/monster/goat"
   },
   {
-    "name": "Goblin Boss",
+    "name": "2024 - Goblin Boss",
     "link": "https://www.aidedd.org/monster/goblin-boss"
   },
   {
-    "name": "Goblin Hexer",
+    "name": "2024 - Goblin Hexer",
     "link": "https://www.aidedd.org/monster/goblin-hexer"
   },
   {
-    "name": "Goblin Minion",
+    "name": "2024 - Goblin Minion",
     "link": "https://www.aidedd.org/monster/goblin-minion"
   },
   {
-    "name": "Goblin Warrior",
+    "name": "2024 - Goblin Warrior",
     "link": "https://www.aidedd.org/monster/goblin-warrior"
   },
   {
-    "name": "Gold Dragon Wyrmling",
+    "name": "2024 - Gold Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/gold-dragon-wyrmling"
   },
   {
-    "name": "Gorgon",
+    "name": "2024 - Gorgon",
     "link": "https://www.aidedd.org/monster/gorgon"
   },
   {
-    "name": "Goristro",
+    "name": "2024 - Goristro",
     "link": "https://www.aidedd.org/monster/goristro"
   },
   {
-    "name": "Graveyard Revenant",
+    "name": "2024 - Graveyard Revenant",
     "link": "https://www.aidedd.org/monster/graveyard-revenant"
   },
   {
-    "name": "Gray Ooze",
+    "name": "2024 - Gray Ooze",
     "link": "https://www.aidedd.org/monster/gray-ooze"
   },
   {
-    "name": "Gray Slaad",
+    "name": "2024 - Gray Slaad",
     "link": "https://www.aidedd.org/monster/gray-slaad"
   },
   {
-    "name": "Green Dragon Wyrmling",
+    "name": "2024 - Green Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/green-dragon-wyrmling"
   },
   {
-    "name": "Green Hag",
+    "name": "2024 - Green Hag",
     "link": "https://www.aidedd.org/monster/green-hag"
   },
   {
-    "name": "Green Slaad",
+    "name": "2024 - Green Slaad",
     "link": "https://www.aidedd.org/monster/green-slaad"
   },
   {
-    "name": "Grell",
+    "name": "2024 - Grell",
     "link": "https://www.aidedd.org/monster/grell"
   },
   {
-    "name": "Grick",
+    "name": "2024 - Grick",
     "link": "https://www.aidedd.org/monster/grick"
   },
   {
-    "name": "Grick Ancient",
+    "name": "2024 - Grick Ancient",
     "link": "https://www.aidedd.org/monster/grick-ancient"
   },
   {
-    "name": "Griffon",
+    "name": "2024 - Griffon",
     "link": "https://www.aidedd.org/monster/griffon"
   },
   {
-    "name": "Grimlock",
+    "name": "2024 - Grimlock",
     "link": "https://www.aidedd.org/monster/grimlock"
   },
   {
-    "name": "Guard",
+    "name": "2024 - Guard",
     "link": "https://www.aidedd.org/monster/guard"
   },
   {
-    "name": "Guard Captain",
+    "name": "2024 - Guard Captain",
     "link": "https://www.aidedd.org/monster/guard-captain"
   },
   {
-    "name": "Guardian Naga",
+    "name": "2024 - Guardian Naga",
     "link": "https://www.aidedd.org/monster/guardian-naga"
   },
   {
-    "name": "Gulthias Blight",
+    "name": "2024 - Gulthias Blight",
     "link": "https://www.aidedd.org/monster/gulthias-blight"
   },
   {
-    "name": "Half-Dragon",
+    "name": "2024 - Half-Dragon",
     "link": "https://www.aidedd.org/monster/half-dragon"
   },
   {
-    "name": "Harpy",
+    "name": "2024 - Harpy",
     "link": "https://www.aidedd.org/monster/harpy"
   },
   {
-    "name": "Haunting Revenant",
+    "name": "2024 - Haunting Revenant",
     "link": "https://www.aidedd.org/monster/haunting-revenant"
   },
   {
-    "name": "Hawk",
+    "name": "2024 - Hawk",
     "link": "https://www.aidedd.org/monster/hawk"
   },
   {
-    "name": "Hell Hound",
+    "name": "2024 - Hell Hound",
     "link": "https://www.aidedd.org/monster/hell-hound"
   },
   {
-    "name": "Helmed Horror",
+    "name": "2024 - Helmed Horror",
     "link": "https://www.aidedd.org/monster/helmed-horror"
   },
   {
-    "name": "Hezrou",
+    "name": "2024 - Hezrou",
     "link": "https://www.aidedd.org/monster/hezrou"
   },
   {
-    "name": "Hill Giant",
+    "name": "2024 - Hill Giant",
     "link": "https://www.aidedd.org/monster/hill-giant"
   },
   {
-    "name": "Hippogriff",
+    "name": "2024 - Hippogriff",
     "link": "https://www.aidedd.org/monster/hippogriff"
   },
   {
-    "name": "Hippopotamus",
+    "name": "2024 - Hippopotamus",
     "link": "https://www.aidedd.org/monster/hippopotamus"
   },
   {
-    "name": "Hobgoblin Captain",
+    "name": "2024 - Hobgoblin Captain",
     "link": "https://www.aidedd.org/monster/hobgoblin-captain"
   },
   {
-    "name": "Hobgoblin Warlord",
+    "name": "2024 - Hobgoblin Warlord",
     "link": "https://www.aidedd.org/monster/hobgoblin-warlord"
   },
   {
-    "name": "Hobgoblin Warrior",
+    "name": "2024 - Hobgoblin Warrior",
     "link": "https://www.aidedd.org/monster/hobgoblin-warrior"
   },
   {
-    "name": "Homunculus",
+    "name": "2024 - Homunculus",
     "link": "https://www.aidedd.org/monster/homunculus"
   },
   {
-    "name": "Hook Horror",
+    "name": "2024 - Hook Horror",
     "link": "https://www.aidedd.org/monster/hook-horror"
   },
   {
-    "name": "Horned Devil",
+    "name": "2024 - Horned Devil",
     "link": "https://www.aidedd.org/monster/horned-devil"
   },
   {
-    "name": "Hunter Shark",
+    "name": "2024 - Hunter Shark",
     "link": "https://www.aidedd.org/monster/hunter-shark"
   },
   {
-    "name": "Hydra",
+    "name": "2024 - Hydra",
     "link": "https://www.aidedd.org/monster/hydra"
   },
   {
-    "name": "Hyena",
+    "name": "2024 - Hyena",
     "link": "https://www.aidedd.org/monster/hyena"
   },
   {
-    "name": "Ice Devil",
+    "name": "2024 - Ice Devil",
     "link": "https://www.aidedd.org/monster/ice-devil"
   },
   {
-    "name": "Ice Mephit",
+    "name": "2024 - Ice Mephit",
     "link": "https://www.aidedd.org/monster/ice-mephit"
   },
   {
-    "name": "Imp",
+    "name": "2024 - Imp",
     "link": "https://www.aidedd.org/monster/imp"
   },
   {
-    "name": "Incubus",
+    "name": "2024 - Incubus",
     "link": "https://www.aidedd.org/monster/incubus"
   },
   {
-    "name": "Intellect Devourer",
+    "name": "2024 - Intellect Devourer",
     "link": "https://www.aidedd.org/monster/intellect-devourer"
   },
   {
-    "name": "Invisible Stalker",
+    "name": "2024 - Invisible Stalker",
     "link": "https://www.aidedd.org/monster/invisible-stalker"
   },
   {
-    "name": "Iron Golem",
+    "name": "2024 - Iron Golem",
     "link": "https://www.aidedd.org/monster/iron-golem"
   },
   {
-    "name": "Jackal",
+    "name": "2024 - Jackal",
     "link": "https://www.aidedd.org/monster/jackal"
   },
   {
-    "name": "Jackalwere",
+    "name": "2024 - Jackalwere",
     "link": "https://www.aidedd.org/monster/jackalwere"
   },
   {
-    "name": "Juvenile Shadow Dragon",
+    "name": "2024 - Juvenile Shadow Dragon",
     "link": "https://www.aidedd.org/monster/juvenile-shadow-dragon"
   },
   {
-    "name": "Kenku",
+    "name": "2024 - Kenku",
     "link": "https://www.aidedd.org/monster/kenku"
   },
   {
-    "name": "Killer Whale",
+    "name": "2024 - Killer Whale",
     "link": "https://www.aidedd.org/monster/killer-whale"
   },
   {
-    "name": "Knight",
+    "name": "2024 - Knight",
     "link": "https://www.aidedd.org/monster/knight"
   },
   {
-    "name": "Kobold Warrior",
+    "name": "2024 - Kobold Warrior",
     "link": "https://www.aidedd.org/monster/kobold-warrior"
   },
   {
-    "name": "Kraken",
+    "name": "2024 - Kraken",
     "link": "https://www.aidedd.org/monster/kraken"
   },
   {
-    "name": "Kuo-toa",
+    "name": "2024 - Kuo-toa",
     "link": "https://www.aidedd.org/monster/kuo-toa"
   },
   {
-    "name": "Kuo-toa Archpriest",
+    "name": "2024 - Kuo-toa Archpriest",
     "link": "https://www.aidedd.org/monster/kuo-toa-archpriest"
   },
   {
-    "name": "Kuo-toa Monitor",
+    "name": "2024 - Kuo-toa Monitor",
     "link": "https://www.aidedd.org/monster/kuo-toa-monitor"
   },
   {
-    "name": "Kuo-toa Whip",
+    "name": "2024 - Kuo-toa Whip",
     "link": "https://www.aidedd.org/monster/kuo-toa-whip"
   },
   {
-    "name": "Lacedon Ghoul",
+    "name": "2024 - Lacedon Ghoul",
     "link": "https://www.aidedd.org/monster/lacedon-ghoul"
   },
   {
-    "name": "Lamia",
+    "name": "2024 - Lamia",
     "link": "https://www.aidedd.org/monster/lamia"
   },
   {
-    "name": "Larva",
+    "name": "2024 - Larva",
     "link": "https://www.aidedd.org/monster/larva"
   },
   {
-    "name": "Lemure",
+    "name": "2024 - Lemure",
     "link": "https://www.aidedd.org/monster/lemure"
   },
   {
-    "name": "Lich",
+    "name": "2024 - Lich",
     "link": "https://www.aidedd.org/monster/lich"
   },
   {
-    "name": "Lion",
+    "name": "2024 - Lion",
     "link": "https://www.aidedd.org/monster/lion"
   },
   {
-    "name": "Lizard",
+    "name": "2024 - Lizard",
     "link": "https://www.aidedd.org/monster/lizard"
   },
   {
-    "name": "Lizardfolk Geomancer",
+    "name": "2024 - Lizardfolk Geomancer",
     "link": "https://www.aidedd.org/monster/lizardfolk-geomancer"
   },
   {
-    "name": "Lizardfolk Sovereign",
+    "name": "2024 - Lizardfolk Sovereign",
     "link": "https://www.aidedd.org/monster/lizardfolk-sovereign"
   },
   {
-    "name": "Mage",
+    "name": "2024 - Mage",
     "link": "https://www.aidedd.org/monster/mage"
   },
   {
-    "name": "Mage Apprentice",
+    "name": "2024 - Mage Apprentice",
     "link": "https://www.aidedd.org/monster/mage-apprentice"
   },
   {
-    "name": "Magma Mephit",
+    "name": "2024 - Magma Mephit",
     "link": "https://www.aidedd.org/monster/magma-mephit"
   },
   {
-    "name": "Magmin",
+    "name": "2024 - Magmin",
     "link": "https://www.aidedd.org/monster/magmin"
   },
   {
-    "name": "Mammoth",
+    "name": "2024 - Mammoth",
     "link": "https://www.aidedd.org/monster/mammoth"
   },
   {
-    "name": "Manes",
+    "name": "2024 - Manes",
     "link": "https://www.aidedd.org/monster/manes"
   },
   {
-    "name": "Manes Vaporspawn",
+    "name": "2024 - Manes Vaporspawn",
     "link": "https://www.aidedd.org/monster/manes-vaporspawn"
   },
   {
-    "name": "Manticore",
+    "name": "2024 - Manticore",
     "link": "https://www.aidedd.org/monster/manticore"
   },
   {
-    "name": "Marid",
+    "name": "2024 - Marid",
     "link": "https://www.aidedd.org/monster/marid"
   },
   {
-    "name": "Marilith",
+    "name": "2024 - Marilith",
     "link": "https://www.aidedd.org/monster/marilith"
   },
   {
-    "name": "Mastiff",
+    "name": "2024 - Mastiff",
     "link": "https://www.aidedd.org/monster/mastiff"
   },
   {
-    "name": "Medusa",
+    "name": "2024 - Medusa",
     "link": "https://www.aidedd.org/monster/medusa"
   },
   {
-    "name": "Merfolk Skirmisher",
+    "name": "2024 - Merfolk Skirmisher",
     "link": "https://www.aidedd.org/monster/merfolk-skirmisher"
   },
   {
-    "name": "Merfolk Wavebender",
+    "name": "2024 - Merfolk Wavebender",
     "link": "https://www.aidedd.org/monster/merfolk-wavebender"
   },
   {
-    "name": "Merrow",
+    "name": "2024 - Merrow",
     "link": "https://www.aidedd.org/monster/merrow"
   },
   {
-    "name": "Mezzoloth",
+    "name": "2024 - Mezzoloth",
     "link": "https://www.aidedd.org/monster/mezzoloth"
   },
   {
-    "name": "Mimic",
+    "name": "2024 - Mimic",
     "link": "https://www.aidedd.org/monster/mimic"
   },
   {
-    "name": "Mind Flayer",
+    "name": "2024 - Mind Flayer",
     "link": "https://www.aidedd.org/monster/mind-flayer"
   },
   {
-    "name": "Mind Flayer Arcanist",
+    "name": "2024 - Mind Flayer Arcanist",
     "link": "https://www.aidedd.org/monster/mind-flayer-arcanist"
   },
   {
-    "name": "Minotaur of Baphomet",
+    "name": "2024 - Minotaur of Baphomet",
     "link": "https://www.aidedd.org/monster/minotaur-of-baphomet"
   },
   {
-    "name": "Minotaur Skeleton",
+    "name": "2024 - Minotaur Skeleton",
     "link": "https://www.aidedd.org/monster/minotaur-skeleton"
   },
   {
-    "name": "Mud Mephit",
+    "name": "2024 - Mud Mephit",
     "link": "https://www.aidedd.org/monster/mud-mephit"
   },
   {
-    "name": "Mule",
+    "name": "2024 - Mule",
     "link": "https://www.aidedd.org/monster/mule"
   },
   {
-    "name": "Mummy",
+    "name": "2024 - Mummy",
     "link": "https://www.aidedd.org/monster/mummy"
   },
   {
-    "name": "Mummy Lord",
+    "name": "2024 - Mummy Lord",
     "link": "https://www.aidedd.org/monster/mummy-lord"
   },
   {
-    "name": "Myconid Adult",
+    "name": "2024 - Myconid Adult",
     "link": "https://www.aidedd.org/monster/myconid-adult"
   },
   {
-    "name": "Myconid Sovereign",
+    "name": "2024 - Myconid Sovereign",
     "link": "https://www.aidedd.org/monster/myconid-sovereign"
   },
   {
-    "name": "Myconid Spore Servant",
+    "name": "2024 - Myconid Spore Servant",
     "link": "https://www.aidedd.org/monster/myconid-spore-servant"
   },
   {
-    "name": "Myconid Sprout",
+    "name": "2024 - Myconid Sprout",
     "link": "https://www.aidedd.org/monster/myconid-sprout"
   },
   {
-    "name": "Nalfeshnee",
+    "name": "2024 - Nalfeshnee",
     "link": "https://www.aidedd.org/monster/nalfeshnee"
   },
   {
-    "name": "Needle Blight",
+    "name": "2024 - Needle Blight",
     "link": "https://www.aidedd.org/monster/needle-blight"
   },
   {
-    "name": "Night Hag",
+    "name": "2024 - Night Hag",
     "link": "https://www.aidedd.org/monster/night-hag"
   },
   {
-    "name": "Nightmare",
+    "name": "2024 - Nightmare",
     "link": "https://www.aidedd.org/monster/nightmare"
   },
   {
-    "name": "Noble",
+    "name": "2024 - Noble",
     "link": "https://www.aidedd.org/monster/noble"
   },
   {
-    "name": "Noble Prodigy",
+    "name": "2024 - Noble Prodigy",
     "link": "https://www.aidedd.org/monster/noble-prodigy"
   },
   {
-    "name": "Nothic",
+    "name": "2024 - Nothic",
     "link": "https://www.aidedd.org/monster/nothic"
   },
   {
-    "name": "Nycaloth",
+    "name": "2024 - Nycaloth",
     "link": "https://www.aidedd.org/monster/nycaloth"
   },
   {
-    "name": "Ochre Jelly",
+    "name": "2024 - Ochre Jelly",
     "link": "https://www.aidedd.org/monster/ochre-jelly"
   },
   {
-    "name": "Octopus",
+    "name": "2024 - Octopus",
     "link": "https://www.aidedd.org/monster/octopus"
   },
   {
-    "name": "Ogre",
+    "name": "2024 - Ogre",
     "link": "https://www.aidedd.org/monster/ogre"
   },
   {
-    "name": "Ogre Zombie",
+    "name": "2024 - Ogre Zombie",
     "link": "https://www.aidedd.org/monster/ogre-zombie"
   },
   {
-    "name": "Ogrillon Ogre",
+    "name": "2024 - Ogrillon Ogre",
     "link": "https://www.aidedd.org/monster/ogrillon-ogre"
   },
   {
-    "name": "Oni",
+    "name": "2024 - Oni",
     "link": "https://www.aidedd.org/monster/oni"
   },
   {
-    "name": "Otherworldly Steed",
+    "name": "2024 - Otherworldly Steed",
     "link": "https://www.aidedd.org/monster/otherworldly-steed"
   },
   {
-    "name": "Otyugh",
+    "name": "2024 - Otyugh",
     "link": "https://www.aidedd.org/monster/otyugh"
   },
   {
-    "name": "Owl",
+    "name": "2024 - Owl",
     "link": "https://www.aidedd.org/monster/owl"
   },
   {
-    "name": "Owlbear",
+    "name": "2024 - Owlbear",
     "link": "https://www.aidedd.org/monster/owlbear"
   },
   {
-    "name": "Panther",
+    "name": "2024 - Panther",
     "link": "https://www.aidedd.org/monster/panther"
   },
   {
-    "name": "Pegasus",
+    "name": "2024 - Pegasus",
     "link": "https://www.aidedd.org/monster/pegasus"
   },
   {
-    "name": "Performer",
+    "name": "2024 - Performer",
     "link": "https://www.aidedd.org/monster/performer"
   },
   {
-    "name": "Performer Legend",
+    "name": "2024 - Performer Legend",
     "link": "https://www.aidedd.org/monster/performer-legend"
   },
   {
-    "name": "Performer Maestro",
+    "name": "2024 - Performer Maestro",
     "link": "https://www.aidedd.org/monster/performer-maestro"
   },
   {
-    "name": "Peryton",
+    "name": "2024 - Peryton",
     "link": "https://www.aidedd.org/monster/peryton"
   },
   {
-    "name": "Phase Spider",
+    "name": "2024 - Phase Spider",
     "link": "https://www.aidedd.org/monster/phase-spider"
   },
   {
-    "name": "Piercer",
+    "name": "2024 - Piercer",
     "link": "https://www.aidedd.org/monster/piercer"
   },
   {
-    "name": "Piranha",
+    "name": "2024 - Piranha",
     "link": "https://www.aidedd.org/monster/piranha"
   },
   {
-    "name": "Pirate",
+    "name": "2024 - Pirate",
     "link": "https://www.aidedd.org/monster/pirate"
   },
   {
-    "name": "Pirate Admiral",
+    "name": "2024 - Pirate Admiral",
     "link": "https://www.aidedd.org/monster/pirate-admiral"
   },
   {
-    "name": "Pirate Captain",
+    "name": "2024 - Pirate Captain",
     "link": "https://www.aidedd.org/monster/pirate-captain"
   },
   {
-    "name": "Pit Fiend",
+    "name": "2024 - Pit Fiend",
     "link": "https://www.aidedd.org/monster/pit-fiend"
   },
   {
-    "name": "Pixie",
+    "name": "2024 - Pixie",
     "link": "https://www.aidedd.org/monster/pixie"
   },
   {
-    "name": "Pixie Wonderbringer",
+    "name": "2024 - Pixie Wonderbringer",
     "link": "https://www.aidedd.org/monster/pixie-wonderbringer"
   },
   {
-    "name": "Planetar",
+    "name": "2024 - Planetar",
     "link": "https://www.aidedd.org/monster/planetar"
   },
   {
-    "name": "Plesiosaurus",
+    "name": "2024 - Plesiosaurus",
     "link": "https://www.aidedd.org/monster/plesiosaurus"
   },
   {
-    "name": "Polar Bear",
+    "name": "2024 - Polar Bear",
     "link": "https://www.aidedd.org/monster/polar-bear"
   },
   {
-    "name": "Poltergeist",
+    "name": "2024 - Poltergeist",
     "link": "https://www.aidedd.org/monster/poltergeist"
   },
   {
-    "name": "Pony",
+    "name": "2024 - Pony",
     "link": "https://www.aidedd.org/monster/pony"
   },
   {
-    "name": "Priest",
+    "name": "2024 - Priest",
     "link": "https://www.aidedd.org/monster/priest"
   },
   {
-    "name": "Priest Acolyte",
+    "name": "2024 - Priest Acolyte",
     "link": "https://www.aidedd.org/monster/priest-acolyte"
   },
   {
-    "name": "Pseudodragon",
+    "name": "2024 - Pseudodragon",
     "link": "https://www.aidedd.org/monster/pseudodragon"
   },
   {
-    "name": "Psychic Gray Ooze",
+    "name": "2024 - Psychic Gray Ooze",
     "link": "https://www.aidedd.org/monster/psychic-gray-ooze"
   },
   {
-    "name": "Pteranodon",
+    "name": "2024 - Pteranodon",
     "link": "https://www.aidedd.org/monster/pteranodon"
   },
   {
-    "name": "Purple Worm",
+    "name": "2024 - Purple Worm",
     "link": "https://www.aidedd.org/monster/purple-worm"
   },
   {
-    "name": "Quaggoth",
+    "name": "2024 - Quaggoth",
     "link": "https://www.aidedd.org/monster/quaggoth"
   },
   {
-    "name": "Quaggoth Thonot",
+    "name": "2024 - Quaggoth Thonot",
     "link": "https://www.aidedd.org/monster/quaggoth-thonot"
   },
   {
-    "name": "Quasit",
+    "name": "2024 - Quasit",
     "link": "https://www.aidedd.org/monster/quasit"
   },
   {
-    "name": "Questing Knight",
+    "name": "2024 - Questing Knight",
     "link": "https://www.aidedd.org/monster/questing-knight"
   },
   {
-    "name": "Rakshasa",
+    "name": "2024 - Rakshasa",
     "link": "https://www.aidedd.org/monster/rakshasa"
   },
   {
-    "name": "Rat",
+    "name": "2024 - Rat",
     "link": "https://www.aidedd.org/monster/rat"
   },
   {
-    "name": "Raven",
+    "name": "2024 - Raven",
     "link": "https://www.aidedd.org/monster/raven"
   },
   {
-    "name": "Red Dragon Wyrmling",
+    "name": "2024 - Red Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/red-dragon-wyrmling"
   },
   {
-    "name": "Red Slaad",
+    "name": "2024 - Red Slaad",
     "link": "https://www.aidedd.org/monster/red-slaad"
   },
   {
-    "name": "Reef Shark",
+    "name": "2024 - Reef Shark",
     "link": "https://www.aidedd.org/monster/reef-shark"
   },
   {
-    "name": "Remorhaz",
+    "name": "2024 - Remorhaz",
     "link": "https://www.aidedd.org/monster/remorhaz"
   },
   {
-    "name": "Revenant",
+    "name": "2024 - Revenant",
     "link": "https://www.aidedd.org/monster/revenant"
   },
   {
-    "name": "Rhinoceros",
+    "name": "2024 - Rhinoceros",
     "link": "https://www.aidedd.org/monster/rhinoceros"
   },
   {
-    "name": "Riding Horse",
+    "name": "2024 - Riding Horse",
     "link": "https://www.aidedd.org/monster/riding-horse"
   },
   {
-    "name": "Roc",
+    "name": "2024 - Roc",
     "link": "https://www.aidedd.org/monster/roc"
   },
   {
-    "name": "Roper",
+    "name": "2024 - Roper",
     "link": "https://www.aidedd.org/monster/roper"
   },
   {
-    "name": "Rust Monster",
+    "name": "2024 - Rust Monster",
     "link": "https://www.aidedd.org/monster/rust-monster"
   },
   {
-    "name": "Saber-Toothed Tiger",
+    "name": "2024 - Saber-Toothed Tiger",
     "link": "https://www.aidedd.org/monster/saber-toothed-tiger"
   },
   {
-    "name": "Sahuagin Baron",
+    "name": "2024 - Sahuagin Baron",
     "link": "https://www.aidedd.org/monster/sahuagin-baron"
   },
   {
-    "name": "Sahuagin Priest",
+    "name": "2024 - Sahuagin Priest",
     "link": "https://www.aidedd.org/monster/sahuagin-priest"
   },
   {
-    "name": "Sahuagin Warrior",
+    "name": "2024 - Sahuagin Warrior",
     "link": "https://www.aidedd.org/monster/sahuagin-warrior"
   },
   {
-    "name": "Salamander",
+    "name": "2024 - Salamander",
     "link": "https://www.aidedd.org/monster/salamander"
   },
   {
-    "name": "Salamander Fire Snake",
+    "name": "2024 - Salamander Fire Snake",
     "link": "https://www.aidedd.org/monster/salamander-fire-snake"
   },
   {
-    "name": "Salamander Inferno Master",
+    "name": "2024 - Salamander Inferno Master",
     "link": "https://www.aidedd.org/monster/salamander-inferno-master"
   },
   {
-    "name": "Satyr",
+    "name": "2024 - Satyr",
     "link": "https://www.aidedd.org/monster/satyr"
   },
   {
-    "name": "Satyr Revelmaster",
+    "name": "2024 - Satyr Revelmaster",
     "link": "https://www.aidedd.org/monster/satyr-revelmaster"
   },
   {
-    "name": "Scarecrow",
+    "name": "2024 - Scarecrow",
     "link": "https://www.aidedd.org/monster/scarecrow"
   },
   {
-    "name": "Scorpion",
+    "name": "2024 - Scorpion",
     "link": "https://www.aidedd.org/monster/scorpion"
   },
   {
-    "name": "Scout",
+    "name": "2024 - Scout",
     "link": "https://www.aidedd.org/monster/scout"
   },
   {
-    "name": "Scout Captain",
+    "name": "2024 - Scout Captain",
     "link": "https://www.aidedd.org/monster/scout-captain"
   },
   {
-    "name": "Sea Hag",
+    "name": "2024 - Sea Hag",
     "link": "https://www.aidedd.org/monster/sea-hag"
   },
   {
-    "name": "Seahorse",
+    "name": "2024 - Seahorse",
     "link": "https://www.aidedd.org/monster/seahorse"
   },
   {
-    "name": "Shadow",
+    "name": "2024 - Shadow",
     "link": "https://www.aidedd.org/monster/shadow"
   },
   {
-    "name": "Shadow Demon",
+    "name": "2024 - Shadow Demon",
     "link": "https://www.aidedd.org/monster/shadow-demon"
   },
   {
-    "name": "Shadow Dragon",
+    "name": "2024 - Shadow Dragon",
     "link": "https://www.aidedd.org/monster/shadow-dragon"
   },
   {
-    "name": "Shambling Mound",
+    "name": "2024 - Shambling Mound",
     "link": "https://www.aidedd.org/monster/shambling-mound"
   },
   {
-    "name": "Shield Guardian",
+    "name": "2024 - Shield Guardian",
     "link": "https://www.aidedd.org/monster/shield-guardian"
   },
   {
-    "name": "Shrieker Fungus",
+    "name": "2024 - Shrieker Fungus",
     "link": "https://www.aidedd.org/monster/shrieker-fungus"
   },
   {
-    "name": "Silver Dragon Wyrmling",
+    "name": "2024 - Silver Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/silver-dragon-wyrmling"
   },
   {
-    "name": "Skeleton",
+    "name": "2024 - Skeleton",
     "link": "https://www.aidedd.org/monster/skeleton"
   },
   {
-    "name": "Slaad Tadpole",
+    "name": "2024 - Slaad Tadpole",
     "link": "https://www.aidedd.org/monster/slaad-tadpole"
   },
   {
-    "name": "Smoke Mephit",
+    "name": "2024 - Smoke Mephit",
     "link": "https://www.aidedd.org/monster/smoke-mephit"
   },
   {
-    "name": "Solar",
+    "name": "2024 - Solar",
     "link": "https://www.aidedd.org/monster/solar"
   },
   {
-    "name": "Spectator",
+    "name": "2024 - Spectator",
     "link": "https://www.aidedd.org/monster/spectator"
   },
   {
-    "name": "Specter",
+    "name": "2024 - Specter",
     "link": "https://www.aidedd.org/monster/specter"
   },
   {
-    "name": "Sphinx of Lore",
+    "name": "2024 - Sphinx of Lore",
     "link": "https://www.aidedd.org/monster/sphinx-of-lore"
   },
   {
-    "name": "Sphinx of Secrets",
+    "name": "2024 - Sphinx of Secrets",
     "link": "https://www.aidedd.org/monster/sphinx-of-secrets"
   },
   {
-    "name": "Sphinx of Valor",
+    "name": "2024 - Sphinx of Valor",
     "link": "https://www.aidedd.org/monster/sphinx-of-valor"
   },
   {
-    "name": "Sphinx of Wonder",
+    "name": "2024 - Sphinx of Wonder",
     "link": "https://www.aidedd.org/monster/sphinx-of-wonder"
   },
   {
-    "name": "Spider",
+    "name": "2024 - Spider",
     "link": "https://www.aidedd.org/monster/spider"
   },
   {
-    "name": "Spined Devil",
+    "name": "2024 - Spined Devil",
     "link": "https://www.aidedd.org/monster/spined-devil"
   },
   {
-    "name": "Spirit Naga",
+    "name": "2024 - Spirit Naga",
     "link": "https://www.aidedd.org/monster/spirit-naga"
   },
   {
-    "name": "Sprite",
+    "name": "2024 - Sprite",
     "link": "https://www.aidedd.org/monster/sprite"
   },
   {
-    "name": "Spy",
+    "name": "2024 - Spy",
     "link": "https://www.aidedd.org/monster/spy"
   },
   {
-    "name": "Spy Master",
+    "name": "2024 - Spy Master",
     "link": "https://www.aidedd.org/monster/spy-master"
   },
   {
-    "name": "Steam Mephit",
+    "name": "2024 - Steam Mephit",
     "link": "https://www.aidedd.org/monster/steam-mephit"
   },
   {
-    "name": "Stirge",
+    "name": "2024 - Stirge",
     "link": "https://www.aidedd.org/monster/stirge"
   },
   {
-    "name": "Stone Giant",
+    "name": "2024 - Stone Giant",
     "link": "https://www.aidedd.org/monster/stone-giant"
   },
   {
-    "name": "Stone Golem",
+    "name": "2024 - Stone Golem",
     "link": "https://www.aidedd.org/monster/stone-golem"
   },
   {
-    "name": "Storm Giant",
+    "name": "2024 - Storm Giant",
     "link": "https://www.aidedd.org/monster/storm-giant"
   },
   {
-    "name": "Succubus",
+    "name": "2024 - Succubus",
     "link": "https://www.aidedd.org/monster/succubus"
   },
   {
-    "name": "Swarm of Bats",
+    "name": "2024 - Swarm of Bats",
     "link": "https://www.aidedd.org/monster/swarm-of-bats"
   },
   {
-    "name": "Swarm of Crawling Claws",
+    "name": "2024 - Swarm of Crawling Claws",
     "link": "https://www.aidedd.org/monster/swarm-of-crawling-claws"
   },
   {
-    "name": "Swarm of Dretches",
+    "name": "2024 - Swarm of Dretches",
     "link": "https://www.aidedd.org/monster/swarm-of-dretches"
   },
   {
-    "name": "Swarm of Insects",
+    "name": "2024 - Swarm of Insects",
     "link": "https://www.aidedd.org/monster/swarm-of-insects"
   },
   {
-    "name": "Swarm of Larvae",
+    "name": "2024 - Swarm of Larvae",
     "link": "https://www.aidedd.org/monster/swarm-of-larvae"
   },
   {
-    "name": "Swarm of Lemures",
+    "name": "2024 - Swarm of Lemures",
     "link": "https://www.aidedd.org/monster/swarm-of-lemures"
   },
   {
-    "name": "Swarm of Piranhas",
+    "name": "2024 - Swarm of Piranhas",
     "link": "https://www.aidedd.org/monster/swarm-of-piranhas"
   },
   {
-    "name": "Swarm of Rats",
+    "name": "2024 - Swarm of Rats",
     "link": "https://www.aidedd.org/monster/swarm-of-rats"
   },
   {
-    "name": "Swarm of Ravens",
+    "name": "2024 - Swarm of Ravens",
     "link": "https://www.aidedd.org/monster/swarm-of-ravens"
   },
   {
-    "name": "Swarm of Stirges",
+    "name": "2024 - Swarm of Stirges",
     "link": "https://www.aidedd.org/monster/swarm-of-stirges"
   },
   {
-    "name": "Swarm of Venomous Snakes",
+    "name": "2024 - Swarm of Venomous Snakes",
     "link": "https://www.aidedd.org/monster/swarm-of-venomous-snakes"
   },
   {
-    "name": "Tarrasque",
+    "name": "2024 - Tarrasque",
     "link": "https://www.aidedd.org/monster/tarrasque"
   },
   {
-    "name": "Thri-kreen Marauder",
+    "name": "2024 - Thri-kreen Marauder",
     "link": "https://www.aidedd.org/monster/thri-kreen-marauder"
   },
   {
-    "name": "Thri-kreen Psion",
+    "name": "2024 - Thri-kreen Psion",
     "link": "https://www.aidedd.org/monster/thri-kreen-psion"
   },
   {
-    "name": "Tiger",
+    "name": "2024 - Tiger",
     "link": "https://www.aidedd.org/monster/tiger"
   },
   {
-    "name": "Tough",
+    "name": "2024 - Tough",
     "link": "https://www.aidedd.org/monster/tough"
   },
   {
-    "name": "Tough Boss",
+    "name": "2024 - Tough Boss",
     "link": "https://www.aidedd.org/monster/tough-boss"
   },
   {
-    "name": "Treant",
+    "name": "2024 - Treant",
     "link": "https://www.aidedd.org/monster/treant"
   },
   {
-    "name": "Tree Blight",
+    "name": "2024 - Tree Blight",
     "link": "https://www.aidedd.org/monster/tree-blight"
   },
   {
-    "name": "Triceratops",
+    "name": "2024 - Triceratops",
     "link": "https://www.aidedd.org/monster/triceratops"
   },
   {
-    "name": "Troglodyte",
+    "name": "2024 - Troglodyte",
     "link": "https://www.aidedd.org/monster/troglodyte"
   },
   {
-    "name": "Troll",
+    "name": "2024 - Troll",
     "link": "https://www.aidedd.org/monster/troll"
   },
   {
-    "name": "Troll Limb",
+    "name": "2024 - Troll Limb",
     "link": "https://www.aidedd.org/monster/troll-limb"
   },
   {
-    "name": "Twig Blight",
+    "name": "2024 - Twig Blight",
     "link": "https://www.aidedd.org/monster/twig-blight"
   },
   {
-    "name": "Tyrannosaurus Rex",
+    "name": "2024 - Tyrannosaurus Rex",
     "link": "https://www.aidedd.org/monster/tyrannosaurus-rex"
   },
   {
-    "name": "Ultroloth",
+    "name": "2024 - Ultroloth",
     "link": "https://www.aidedd.org/monster/ultroloth"
   },
   {
-    "name": "Umber Hulk",
+    "name": "2024 - Umber Hulk",
     "link": "https://www.aidedd.org/monster/umber-hulk"
   },
   {
-    "name": "Undead Spirit",
+    "name": "2024 - Undead Spirit",
     "link": "https://www.aidedd.org/monster/undead-spirit"
   },
   {
-    "name": "Unicorn",
+    "name": "2024 - Unicorn",
     "link": "https://www.aidedd.org/monster/unicorn"
   },
   {
-    "name": "Vampire",
+    "name": "2024 - Vampire",
     "link": "https://www.aidedd.org/monster/vampire"
   },
   {
-    "name": "Vampire Familiar",
+    "name": "2024 - Vampire Familiar",
     "link": "https://www.aidedd.org/monster/vampire-familiar"
   },
   {
-    "name": "Vampire Nightbringer",
+    "name": "2024 - Vampire Nightbringer",
     "link": "https://www.aidedd.org/monster/vampire-nightbringer"
   },
   {
-    "name": "Vampire Spawn",
+    "name": "2024 - Vampire Spawn",
     "link": "https://www.aidedd.org/monster/vampire-spawn"
   },
   {
-    "name": "Vampire Umbral Lord",
+    "name": "2024 - Vampire Umbral Lord",
     "link": "https://www.aidedd.org/monster/vampire-umbral-lord"
   },
   {
-    "name": "Venomous Snake",
+    "name": "2024 - Venomous Snake",
     "link": "https://www.aidedd.org/monster/venomous-snake"
   },
   {
-    "name": "Vine Blight",
+    "name": "2024 - Vine Blight",
     "link": "https://www.aidedd.org/monster/vine-blight"
   },
   {
-    "name": "Violet Fungus",
+    "name": "2024 - Violet Fungus",
     "link": "https://www.aidedd.org/monster/violet-fungus"
   },
   {
-    "name": "Violet Fungus Necrohulk",
+    "name": "2024 - Violet Fungus Necrohulk",
     "link": "https://www.aidedd.org/monster/violet-fungus-necrohulk"
   },
   {
-    "name": "Vrock",
+    "name": "2024 - Vrock",
     "link": "https://www.aidedd.org/monster/vrock"
   },
   {
-    "name": "Vulture",
+    "name": "2024 - Vulture",
     "link": "https://www.aidedd.org/monster/vulture"
   },
   {
-    "name": "Warhorse",
+    "name": "2024 - Warhorse",
     "link": "https://www.aidedd.org/monster/warhorse"
   },
   {
-    "name": "Warhorse Skeleton",
+    "name": "2024 - Warhorse Skeleton",
     "link": "https://www.aidedd.org/monster/warhorse-skeleton"
   },
   {
-    "name": "Warrior Commander",
+    "name": "2024 - Warrior Commander",
     "link": "https://www.aidedd.org/monster/warrior-commander"
   },
   {
-    "name": "Warrior Infantry",
+    "name": "2024 - Warrior Infantry",
     "link": "https://www.aidedd.org/monster/warrior-infantry"
   },
   {
-    "name": "Warrior Veteran",
+    "name": "2024 - Warrior Veteran",
     "link": "https://www.aidedd.org/monster/warrior-veteran"
   },
   {
-    "name": "Water Elemental",
+    "name": "2024 - Water Elemental",
     "link": "https://www.aidedd.org/monster/water-elemental"
   },
   {
-    "name": "Water Weird",
+    "name": "2024 - Water Weird",
     "link": "https://www.aidedd.org/monster/water-weird"
   },
   {
-    "name": "Weasel",
+    "name": "2024 - Weasel",
     "link": "https://www.aidedd.org/monster/weasel"
   },
   {
-    "name": "Werebear",
+    "name": "2024 - Werebear",
     "link": "https://www.aidedd.org/monster/werebear"
   },
   {
-    "name": "Wereboar",
+    "name": "2024 - Wereboar",
     "link": "https://www.aidedd.org/monster/wereboar"
   },
   {
-    "name": "Wererat",
+    "name": "2024 - Wererat",
     "link": "https://www.aidedd.org/monster/wererat"
   },
   {
-    "name": "Weretiger",
+    "name": "2024 - Weretiger",
     "link": "https://www.aidedd.org/monster/weretiger"
   },
   {
-    "name": "Werewolf",
+    "name": "2024 - Werewolf",
     "link": "https://www.aidedd.org/monster/werewolf"
   },
   {
-    "name": "White Dragon Wyrmling",
+    "name": "2024 - White Dragon Wyrmling",
     "link": "https://www.aidedd.org/monster/white-dragon-wyrmling"
   },
   {
-    "name": "Wight",
+    "name": "2024 - Wight",
     "link": "https://www.aidedd.org/monster/wight"
   },
   {
-    "name": "Will-o'-Wisp",
+    "name": "2024 - Will-o'-Wisp",
     "link": "https://www.aidedd.org/monster/will-o--wisp"
   },
   {
-    "name": "Winged Kobold",
+    "name": "2024 - Winged Kobold",
     "link": "https://www.aidedd.org/monster/winged-kobold"
   },
   {
-    "name": "Winter Wolf",
+    "name": "2024 - Winter Wolf",
     "link": "https://www.aidedd.org/monster/winter-wolf"
   },
   {
-    "name": "Wolf",
+    "name": "2024 - Wolf",
     "link": "https://www.aidedd.org/monster/wolf"
   },
   {
-    "name": "Worg",
+    "name": "2024 - Worg",
     "link": "https://www.aidedd.org/monster/worg"
   },
   {
-    "name": "Wraith",
+    "name": "2024 - Wraith",
     "link": "https://www.aidedd.org/monster/wraith"
   },
   {
-    "name": "Wyvern",
+    "name": "2024 - Wyvern",
     "link": "https://www.aidedd.org/monster/wyvern"
   },
   {
-    "name": "Xorn",
+    "name": "2024 - Xorn",
     "link": "https://www.aidedd.org/monster/xorn"
   },
   {
-    "name": "Yeti",
+    "name": "2024 - Yeti",
     "link": "https://www.aidedd.org/monster/yeti"
   },
   {
-    "name": "Yochlol",
+    "name": "2024 - Yochlol",
     "link": "https://www.aidedd.org/monster/yochlol"
   },
   {
-    "name": "Young Black Dragon",
+    "name": "2024 - Young Black Dragon",
     "link": "https://www.aidedd.org/monster/young-black-dragon"
   },
   {
-    "name": "Young Blue Dragon",
+    "name": "2024 - Young Blue Dragon",
     "link": "https://www.aidedd.org/monster/young-blue-dragon"
   },
   {
-    "name": "Young Brass Dragon",
+    "name": "2024 - Young Brass Dragon",
     "link": "https://www.aidedd.org/monster/young-brass-dragon"
   },
   {
-    "name": "Young Bronze Dragon",
+    "name": "2024 - Young Bronze Dragon",
     "link": "https://www.aidedd.org/monster/young-bronze-dragon"
   },
   {
-    "name": "Young Copper Dragon",
+    "name": "2024 - Young Copper Dragon",
     "link": "https://www.aidedd.org/monster/young-copper-dragon"
   },
   {
-    "name": "Young Gold Dragon",
+    "name": "2024 - Young Gold Dragon",
     "link": "https://www.aidedd.org/monster/young-gold-dragon"
   },
   {
-    "name": "Young Green Dragon",
+    "name": "2024 - Young Green Dragon",
     "link": "https://www.aidedd.org/monster/young-green-dragon"
   },
   {
-    "name": "Young Red Dragon",
+    "name": "2024 - Young Red Dragon",
     "link": "https://www.aidedd.org/monster/young-red-dragon"
   },
   {
-    "name": "Young Remorhaz",
+    "name": "2024 - Young Remorhaz",
     "link": "https://www.aidedd.org/monster/young-remorhaz"
   },
   {
-    "name": "Young Silver Dragon",
+    "name": "2024 - Young Silver Dragon",
     "link": "https://www.aidedd.org/monster/young-silver-dragon"
   },
   {
-    "name": "Young White Dragon",
+    "name": "2024 - Young White Dragon",
     "link": "https://www.aidedd.org/monster/young-white-dragon"
   },
   {
-    "name": "Yuan-ti Abomination",
+    "name": "2024 - Yuan-ti Abomination",
     "link": "https://www.aidedd.org/monster/yuan-ti-abomination"
   },
   {
-    "name": "Yuan-ti Infiltrator",
+    "name": "2024 - Yuan-ti Infiltrator",
     "link": "https://www.aidedd.org/monster/yuan-ti-infiltrator"
   },
   {
-    "name": "Yuan-ti Malison (Type 1)",
+    "name": "2024 - Yuan-ti Malison (Type 1)",
     "link": "https://www.aidedd.org/monster/yuan-ti-malison-type-1"
   },
   {
-    "name": "Yuan-ti Malison (Type 2)",
+    "name": "2024 - Yuan-ti Malison (Type 2)",
     "link": "https://www.aidedd.org/monster/yuan-ti-malison-type-2"
   },
   {
-    "name": "Yuan-ti Malison (Type 3)",
+    "name": "2024 - Yuan-ti Malison (Type 3)",
     "link": "https://www.aidedd.org/monster/yuan-ti-malison-type-3"
   },
   {
-    "name": "Zombie",
+    "name": "2024 - Zombie",
     "link": "https://www.aidedd.org/monster/zombie"
   }
 ]

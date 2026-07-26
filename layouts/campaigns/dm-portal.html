@@ -857,22 +857,6 @@
                 nameSpan.textContent = name;
                 row.appendChild(nameSpan);
 
-                {{/* Same link + label as the public hub's Playable
-                  Characters list — live-imported characters carry their
-                  own link on the roster entry, real published pages get
-                  theirs from pcRealLinks (built from ddb_url front
-                  matter). */}}
-                var ddbUrl = rosterEntry ? rosterEntry.link : pcRealLinks[name];
-                if (ddbUrl) {
-                  var ddbLink = document.createElement("a");
-                  ddbLink.className = "ddb-link";
-                  ddbLink.href = ddbUrl;
-                  ddbLink.target = "_blank";
-                  ddbLink.rel = "noopener";
-                  ddbLink.textContent = "View on D&D Beyond →";
-                  row.appendChild(ddbLink);
-                }
-
                 var detailsBtn = document.createElement("button");
                 detailsBtn.type = "button";
                 detailsBtn.className = "pc-manager-details-toggle";
@@ -901,6 +885,22 @@
                   });
 
                   row.appendChild(removeBtn);
+                }
+
+                {{/* Same link + label as the public hub's Playable
+                  Characters list — live-imported characters carry their
+                  own link on the roster entry, real published pages get
+                  theirs from pcRealLinks (built from ddb_url front
+                  matter). */}}
+                var ddbUrl = rosterEntry ? rosterEntry.link : pcRealLinks[name];
+                if (ddbUrl) {
+                  var ddbLink = document.createElement("a");
+                  ddbLink.className = "ddb-link";
+                  ddbLink.href = ddbUrl;
+                  ddbLink.target = "_blank";
+                  ddbLink.rel = "noopener";
+                  ddbLink.textContent = "View on D&D Beyond →";
+                  row.appendChild(ddbLink);
                 }
 
                 li.appendChild(row);
