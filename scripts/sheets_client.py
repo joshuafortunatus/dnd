@@ -1,9 +1,8 @@
 """Shared Google Sheets API v4 helpers used by sync_sheet.py and fetch_ddb_character.py.
 
-Auth: expects a service-account JSON key in the GOOGLE_CREDENTIALS_JSON env var
-— the same credential this repo already uses for Drive (scripts/sync_drive.py).
-The service account just also needs to be shared as a Viewer on each
-campaign's Google Sheet (see data/campaigns.yaml).
+Auth: expects a service-account JSON key in the GOOGLE_CREDENTIALS_JSON env var.
+The service account needs to be shared as a Viewer on each campaign's Google
+Sheet (see data/campaigns.yaml).
 """
 
 from __future__ import annotations

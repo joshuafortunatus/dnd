@@ -120,20 +120,6 @@
     </div>
 
     <div class="hub-panel" id="panel-images">
-      {{ $gallery := partial "campaign-gallery.html" (dict "slug" $slug "heroImage" .Params.hero_image) }}
-      {{ with $gallery }}
-        <div class="hub-gallery">
-          {{ range . }}
-            <figure class="hub-gallery-item">
-              <a href="#{{ printf "lightbox-%s" .name }}">
-                <img src="{{ printf "images/campaigns/%s/%s" $slug .name | relURL }}" alt="{{ .title }}">
-              </a>
-              <figcaption>{{ .title }}</figcaption>
-            </figure>
-          {{ end }}
-        </div>
-      {{ end }}
-
       {{/* Runtime-fetched, not build-time — files the DM uploaded and
         marked "sent to players" via the DM Portal's File Library section
         (Cloudflare R2, proxied through worker/ddb-character-proxy.js's
@@ -285,16 +271,4 @@
         });
     })();
   </script>
-{{ end }}
-
-{{ define "overlays" }}
-  {{ $slug := .File.ContentBaseName }}
-  {{ $gallery := partial "campaign-gallery.html" (dict "slug" $slug "heroImage" .Params.hero_image) }}
-  {{ range $gallery }}
-    <div class="lightbox" id="{{ printf "lightbox-%s" .name }}">
-      <a href="#" class="lightbox-backdrop" aria-label="Close"></a>
-      <img src="{{ printf "images/campaigns/%s/%s" $slug .name | relURL }}" alt="{{ .title }}">
-      <a href="#" class="lightbox-close" aria-label="Close">&times;</a>
-    </div>
-  {{ end }}
 {{ end }}
