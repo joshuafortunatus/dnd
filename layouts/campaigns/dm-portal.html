@@ -12,7 +12,11 @@
     build one combined character list. */}}
   {{ $characters := where $hub.RegularPagesRecursive "Type" "characters" }}
   {{ $rosterTitles := slice }}
-  {{ range $characters.ByTitle }}{{ $rosterTitles = $rosterTitles | append .Title }}{{ end }}
+  {{ $realCharacterLinks := dict }}
+  {{ range $characters.ByTitle }}
+    {{ $rosterTitles = $rosterTitles | append .Title }}
+    {{ if .Params.ddb_url }}{{ $realCharacterLinks = merge $realCharacterLinks (dict .Title .Params.ddb_url) }}{{ end }}
+  {{ end }}
 
   {{/* Monster Manual reference index for NPC Tracker's Stat Block field —
     just a name + a link to that monster's page on aidedd.org, not any
@@ -75,7 +79,7 @@
                 Tracker — into one: import via D&D Beyond link (or an
                 already-published character page), click a name to
                 expand every PC-level field for them in one place. */}}
-              <div class="pc-manager" id="pc-manager" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}" data-pc-data-key="dm-portal-pc-data-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}">
+              <div class="pc-manager" id="pc-manager" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}" data-pc-data-key="dm-portal-pc-data-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}" data-real-links="{{ $realCharacterLinks | jsonify }}">
                 {{ if eq $proxyURL "" }}
                   <p class="entry-date pc-manager-proxy-notice">
                     Live character loading isn&rsquo;t set up yet. Deploy <code>worker/ddb-character-proxy.js</code>
@@ -452,6 +456,19 @@
                 return JSON.parse(pcManager.dataset.rosterTitles || "[]");
               } catch (e) {
                 return [];
+              }
+            })();
+            {{/* D&D Beyond links for real, published character pages —
+              keyed by title, sourced from each page's own ddb_url front
+              matter (fetch_ddb_character.py). Live-imported characters
+              already carry their own link on the roster entry itself
+              (rosterEntry.link), so this map only needs to cover the
+              non-imported half of the union. */}}
+            var pcRealLinks = (function () {
+              try {
+                return JSON.parse(pcManager.dataset.realLinks || "{}");
+              } catch (e) {
+                return {};
               }
             })();
 
@@ -839,6 +856,22 @@
                 var nameSpan = document.createElement("span");
                 nameSpan.textContent = name;
                 row.appendChild(nameSpan);
+
+                {{/* Same link + label as the public hub's Playable
+                  Characters list — live-imported characters carry their
+                  own link on the roster entry, real published pages get
+                  theirs from pcRealLinks (built from ddb_url front
+                  matter). */}}
+                var ddbUrl = rosterEntry ? rosterEntry.link : pcRealLinks[name];
+                if (ddbUrl) {
+                  var ddbLink = document.createElement("a");
+                  ddbLink.className = "ddb-link";
+                  ddbLink.href = ddbUrl;
+                  ddbLink.target = "_blank";
+                  ddbLink.rel = "noopener";
+                  ddbLink.textContent = "View on D&D Beyond →";
+                  row.appendChild(ddbLink);
+                }
 
                 var detailsBtn = document.createElement("button");
                 detailsBtn.type = "button";
