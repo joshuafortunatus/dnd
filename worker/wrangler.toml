@@ -6,10 +6,13 @@ compatibility_date = "2026-07-25"
 binding = "PORTAL_DATA"
 id = "ab521a5271844f5e8bc2f168221205ca"
 
-# Not the actual deploy mechanism (deploy is still paste-into-dashboard, per
-# this Worker's own header comment) -- just documentation of the binding.
-# Update bucket_name to match whatever you actually name the bucket when
-# you create it in the Cloudflare dashboard.
+# Verified working as a real deploy mechanism: `npx wrangler login` once,
+# then `npx wrangler r2 bucket create <bucket_name>` to create the bucket
+# and `npx wrangler deploy` (run from this worker/ directory) to push the
+# code and apply both bindings below in one shot -- no dashboard paste-in
+# required (that manual path, documented in this Worker's own header
+# comment, still works too, just isn't the only option anymore). If you
+# rename the bucket, update bucket_name here to match.
 [[r2_buckets]]
 binding = "PORTAL_FILES"
 bucket_name = "dnd-portal-files"

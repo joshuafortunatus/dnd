@@ -1020,6 +1020,7 @@ body.is-home {
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
 }
+.file-library-upload-form label { color: var(--text-dim); }
 .file-library-upload-form select {
   background: var(--bg-raised);
   border: 1px solid var(--border);
