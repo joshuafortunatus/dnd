@@ -1419,65 +1419,44 @@
               sibling fields is visible; "statBlock" is left as the exact
               field name it always was so older, already-saved custom
               entries keep working with no migration. */}}
-            {{/* The Monster Manual/Custom choice is made once, up front, at
-              "+ Add NPC" time (see npcAddBtn below) rather than being an
-              always-visible toggle inside the form — once an NPC exists,
-              its statBlockSource is fixed, so the form just renders
-              whichever of the two field layouts matches it. */}}
-            var npcMonsterField = function (editionValue, nameValue) {
+            {{/* Both the Custom/Monster Manual choice and, if Monster
+              Manual, the 2014/2024 edition choice are made once, up
+              front, via the chooser screens at "+ Add NPC" time (see
+              npcAddBtn below) rather than as always-visible toggles
+              inside the form — once an NPC exists, statBlockSource and
+              statBlockEdition are both fixed, so the form just renders
+              whichever single field layout matches them. */}}
+            var npcMonsterField = function (edition, nameValue) {
               var wrap = document.createElement("div");
               wrap.className = "npc-field";
               var label = document.createElement("label");
               label.textContent = "Monster";
               wrap.appendChild(label);
 
-              var editionSelect = document.createElement("select");
-              editionSelect.className = "npc-monster-edition-select";
-              editionSelect.dataset.field = "statBlockEdition";
-              NPC_MONSTER_EDITIONS.forEach(function (edition) {
+              var select = document.createElement("select");
+              select.dataset.field = "statBlockName";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select a monster —";
+              select.appendChild(placeholder);
+              var names = NPC_MONSTERS.filter(function (m) { return m.edition === edition; });
+              names.forEach(function (m) {
                 var option = document.createElement("option");
-                option.value = edition;
-                option.textContent = edition;
-                editionSelect.appendChild(option);
+                option.value = m.name;
+                option.textContent = m.name;
+                select.appendChild(option);
               });
-              editionSelect.value = NPC_MONSTER_EDITIONS.indexOf(editionValue) !== -1 ? editionValue : NPC_MONSTER_EDITIONS[0];
-              wrap.appendChild(editionSelect);
-
-              var nameSelect = document.createElement("select");
-              nameSelect.dataset.field = "statBlockName";
-              wrap.appendChild(nameSelect);
+              select.value = names.some(function (m) { return m.name === nameValue; }) ? nameValue : "";
+              wrap.appendChild(select);
 
               var link = document.createElement("a");
               link.className = "npc-monster-link";
               link.target = "_blank";
               link.rel = "noopener";
+              npcUpdateMonsterLink(link, edition, select.value);
               wrap.appendChild(link);
 
-              {{/* Rebuilds the name <select> for whichever edition is
-                currently chosen — swapping edition always resets the name
-                choice, since a name from one edition's list has no
-                meaning selected against the other. */}}
-              var populateNames = function (edition, selected) {
-                nameSelect.innerHTML = "";
-                var placeholder = document.createElement("option");
-                placeholder.value = "";
-                placeholder.textContent = "— Select a monster —";
-                nameSelect.appendChild(placeholder);
-                var names = NPC_MONSTERS.filter(function (m) { return m.edition === edition; });
-                names.forEach(function (m) {
-                  var option = document.createElement("option");
-                  option.value = m.name;
-                  option.textContent = m.name;
-                  nameSelect.appendChild(option);
-                });
-                nameSelect.value = names.some(function (m) { return m.name === selected; }) ? selected : "";
-                npcUpdateMonsterLink(link, edition, nameSelect.value);
-              };
-
-              populateNames(editionSelect.value, nameValue);
-
-              editionSelect.addEventListener("change", function () { populateNames(editionSelect.value, ""); });
-              nameSelect.addEventListener("change", function () { npcUpdateMonsterLink(link, editionSelect.value, nameSelect.value); });
+              select.addEventListener("change", function () { npcUpdateMonsterLink(link, edition, select.value); });
 
               return wrap;
             };
@@ -1509,10 +1488,15 @@
             };
 
             var collectNpcFromForm = function (form, originalNpc) {
-              {{/* statBlockSource is never a form field (it's fixed at
-                creation, see above) — seed it from the original record so
-                Save doesn't drop it. */}}
-              var npc = { id: originalNpc.id, createdAt: originalNpc.createdAt, statBlockSource: originalNpc.statBlockSource };
+              {{/* statBlockSource and statBlockEdition are never form
+                fields (both fixed at creation, see above) — seed them
+                from the original record so Save doesn't drop them. */}}
+              var npc = {
+                id: originalNpc.id,
+                createdAt: originalNpc.createdAt,
+                statBlockSource: originalNpc.statBlockSource,
+                statBlockEdition: originalNpc.statBlockEdition,
+              };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 npc[el.dataset.field] = el.value;
               });
@@ -1695,19 +1679,51 @@
                 btn.type = "button";
                 btn.className = "npc-source-chooser-btn";
                 btn.textContent = opt.label;
-                btn.addEventListener("click", function () { createNpcWithSource(opt.source); });
+                btn.addEventListener("click", function () {
+                  if (opt.source === "monster-manual") {
+                    renderNpcEditionChooser();
+                  } else {
+                    createNpcWithSource(opt.source);
+                  }
+                });
                 choices.appendChild(btn);
               });
               wrap.appendChild(choices);
               npcDetail.appendChild(wrap);
             };
 
-            var createNpcWithSource = function (source) {
+            {{/* Second chooser step, only reached from "Monster Manual"
+              above — styled identically (same classes) so it reads as a
+              continuation of the same choice rather than a new kind of
+              prompt. */}}
+            var renderNpcEditionChooser = function () {
+              npcDetail.innerHTML = "";
+              var wrap = document.createElement("div");
+              wrap.className = "npc-source-chooser";
+              var prompt = document.createElement("p");
+              prompt.className = "npc-source-chooser-prompt";
+              prompt.textContent = "Which Monster Manual edition?";
+              wrap.appendChild(prompt);
+              var choices = document.createElement("div");
+              choices.className = "npc-source-chooser-choices";
+              NPC_MONSTER_EDITIONS.forEach(function (edition) {
+                var btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "npc-source-chooser-btn";
+                btn.textContent = edition;
+                btn.addEventListener("click", function () { createNpcWithSource("monster-manual", edition); });
+                choices.appendChild(btn);
+              });
+              wrap.appendChild(choices);
+              npcDetail.appendChild(wrap);
+            };
+
+            var createNpcWithSource = function (source, edition) {
               var npcs = loadNpcs();
               var newNpc = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
-                name: "", statBlockSource: source, statBlock: "", statBlockEdition: "2024", statBlockName: "", mmPage: "",
+                name: "", statBlockSource: source, statBlock: "", statBlockEdition: edition || NPC_MONSTER_EDITIONS[0], statBlockName: "", mmPage: "",
                 statBlockAlterations: "", alignment: "", personality: "", appearance: "", secret: "",
               };
               npcs.push(newNpc);
