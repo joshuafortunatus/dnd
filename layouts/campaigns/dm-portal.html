@@ -1355,9 +1355,9 @@
                 updateOptionLabel(updated);
                 unsavedNewPlanId = null;
                 tpDirty = false;
-                var originalText = saveBtn.textContent;
-                saveBtn.textContent = "Saved";
-                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+                tpSelect.value = "";
+                tpCurrentValue = "";
+                clearDetail();
               });
 
               cancelBtn.addEventListener("click", cancelTravelForm);
@@ -2066,9 +2066,9 @@
                 updateNpcOptionLabel(updated);
                 unsavedNewNpcId = null;
                 npcDirty = false;
-                var originalText = saveBtn.textContent;
-                saveBtn.textContent = "Saved";
-                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+                npcSelect.value = "";
+                npcCurrentValue = "";
+                clearNpcDetail();
               });
 
               cancelBtn.addEventListener("click", cancelNpcForm);
@@ -2436,9 +2436,9 @@
                 updateSettlementOptionLabel(updated);
                 unsavedNewSettlementId = null;
                 settlementDirty = false;
-                var originalText = saveBtn.textContent;
-                saveBtn.textContent = "Saved";
-                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+                settlementSelect.value = "";
+                settlementCurrentValue = "";
+                clearSettlementDetail();
               });
 
               cancelBtn.addEventListener("click", cancelSettlementForm);
@@ -2697,9 +2697,9 @@
                 updateJournalOptionLabel(updated);
                 unsavedNewJournalId = null;
                 journalDirty = false;
-                var originalText = saveBtn.textContent;
-                saveBtn.textContent = "Saved";
-                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+                journalSelect.value = "";
+                journalCurrentValue = "";
+                clearJournalDetail();
               });
 
               cancelBtn.addEventListener("click", cancelJournalForm);
@@ -3058,9 +3058,9 @@
                 updateConflictOptionLabel(updated);
                 unsavedNewConflictId = null;
                 conflictDirty = false;
-                var originalText = saveBtn.textContent;
-                saveBtn.textContent = "Saved";
-                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+                conflictSelect.value = "";
+                conflictCurrentValue = "";
+                clearConflictDetail();
               });
 
               cancelBtn.addEventListener("click", cancelConflictForm);
@@ -3479,9 +3479,9 @@
                 updateBastionOptionLabel(updated);
                 unsavedNewBastionId = null;
                 bastionDirty = false;
-                var originalText = saveBtn.textContent;
-                saveBtn.textContent = "Saved";
-                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+                bastionSelect.value = "";
+                bastionCurrentValue = "";
+                clearBastionDetail();
               });
 
               cancelBtn.addEventListener("click", cancelBastionForm);
