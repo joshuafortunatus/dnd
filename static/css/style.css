@@ -571,6 +571,7 @@ body.is-home {
 .npc-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .npc-field label { color: var(--text-dim); font-size: 0.9rem; }
 .npc-field input[type="text"],
+.npc-field select,
 .npc-field textarea {
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -582,6 +583,10 @@ body.is-home {
 }
 .npc-field textarea { min-height: 5rem; resize: vertical; }
 .npc-field-wide { margin-bottom: 1.25rem; }
+
+.npc-radio-group { display: flex; flex-wrap: wrap; gap: 1.25rem; padding-top: 0.4rem; }
+.npc-radio-option { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text); font-size: 0.95rem; cursor: pointer; }
+.npc-monster-link { color: var(--accent); font-size: 0.95rem; align-self: flex-end; padding-bottom: 0.5rem; }
 
 .npc-save-btn,
 .npc-cancel-btn,

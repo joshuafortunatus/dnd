@@ -14,6 +14,13 @@
   {{ $rosterTitles := slice }}
   {{ range $characters.ByTitle }}{{ $rosterTitles = $rosterTitles | append .Title }}{{ end }}
 
+  {{/* Monster Manual reference index for NPC Tracker's Stat Block field —
+    just a name + a link to that monster's page on aidedd.org, not any
+    stat block content itself (data/monsters.json). Lets a DM pick a
+    standard monster instead of typing one freely, with a link to look
+    the real stat block up during a session. */}}
+  {{ $monsters := hugo.Data.monsters }}
+
   {{/* Order here is deliberate — matches how the DM wants to move through
     the portal. PC Manager comes first since every other section reads
     from the same roster it manages. */}}
@@ -101,7 +108,7 @@
                 (reference/tracking_sheets/npc-tracker-sheet.pdf) — one
                 record per NPC, picked via the same select+add-button
                 pattern as Travel Planner. */}}
-              <div class="npc-tracker" id="npc-tracker" data-storage-key="dm-portal-npcs-{{ $slug }}">
+              <div class="npc-tracker" id="npc-tracker" data-storage-key="dm-portal-npcs-{{ $slug }}" data-monsters="{{ $monsters | jsonify }}">
                 <div class="npc-tracker-controls">
                   <select class="npc-tracker-select" id="npc-tracker-select">
                     <option value="">&mdash; Select an NPC &mdash;</option>
@@ -1289,6 +1296,16 @@
             var npcIsDirty = function () { return npcDirty || Boolean(unsavedNewNpcId); };
             registerDirtyTracker(npcIsDirty, function () { cancelNpcForm(); });
 
+            var NPC_MONSTERS = (function () {
+              try {
+                return JSON.parse(npcTracker.dataset.monsters || "[]");
+              } catch (e) {
+                return [];
+              }
+            })();
+            var npcMonsterLinkByName = {};
+            NPC_MONSTERS.forEach(function (m) { npcMonsterLinkByName[m.name] = m.link; });
+
             var loadNpcs = function () {
               try {
                 return JSON.parse(window.localStorage.getItem(npcStorageKey) || "[]");
@@ -1355,10 +1372,99 @@
               return wrap;
             };
 
+            {{/* Stat Block can come from the Monster Manual reference
+              index (a plain <select>, plus a link out to that monster's
+              page on aidedd.org so the DM can pull up its real stat block
+              during a session) or stay free text, same as before this
+              feature existed — the toggle just decides which of the two
+              sibling fields is visible; "statBlock" is left as the exact
+              field name it always was so older, already-saved custom
+              entries keep working with no migration. */}}
+            var npcStatBlockSourceToggle = function (value) {
+              var wrap = document.createElement("div");
+              wrap.className = "npc-field";
+              var label = document.createElement("label");
+              label.textContent = "Stat Block Source";
+              wrap.appendChild(label);
+              var group = document.createElement("div");
+              group.className = "npc-radio-group";
+              [
+                { value: "custom", text: "Custom" },
+                { value: "monster-manual", text: "Monster Manual" },
+              ].forEach(function (opt) {
+                var optLabel = document.createElement("label");
+                optLabel.className = "npc-radio-option";
+                var input = document.createElement("input");
+                input.type = "radio";
+                input.name = "npc-statblock-source";
+                input.value = opt.value;
+                input.checked = (value || "custom") === opt.value;
+                input.dataset.field = "statBlockSource";
+                optLabel.appendChild(input);
+                optLabel.appendChild(document.createTextNode(" " + opt.text));
+                group.appendChild(optLabel);
+              });
+              wrap.appendChild(group);
+              return wrap;
+            };
+
+            var npcMonsterSelect = function (value) {
+              var wrap = document.createElement("div");
+              wrap.className = "npc-field";
+              var label = document.createElement("label");
+              label.textContent = "Monster";
+              wrap.appendChild(label);
+              var select = document.createElement("select");
+              select.dataset.field = "statBlockName";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select a monster —";
+              select.appendChild(placeholder);
+              NPC_MONSTERS.forEach(function (m) {
+                var option = document.createElement("option");
+                option.value = m.name;
+                option.textContent = m.name;
+                select.appendChild(option);
+              });
+              select.value = NPC_MONSTERS.some(function (m) { return m.name === value; }) ? value : "";
+              wrap.appendChild(select);
+              return wrap;
+            };
+
+            var npcMonsterLinkField = function (name) {
+              var wrap = document.createElement("div");
+              wrap.className = "npc-field";
+              var link = document.createElement("a");
+              link.className = "npc-monster-link";
+              link.target = "_blank";
+              link.rel = "noopener";
+              wrap.appendChild(link);
+              npcUpdateMonsterLink(link, name);
+              return wrap;
+            };
+
+            var npcUpdateMonsterLink = function (link, name) {
+              var href = npcMonsterLinkByName[name];
+              if (href) {
+                link.href = href;
+                link.textContent = "View stat block on aidedd.org ↗";
+                link.hidden = false;
+              } else {
+                link.removeAttribute("href");
+                link.textContent = "";
+                link.hidden = true;
+              }
+            };
+
             var collectNpcFromForm = function (form, originalNpc) {
               var npc = { id: originalNpc.id, createdAt: originalNpc.createdAt };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
-                npc[el.dataset.field] = el.value;
+                var field = el.dataset.field;
+                if (field === "statBlockSource") {
+                  if (el.checked) npc.statBlockSource = el.value;
+                } else {
+                  npc[field] = el.value;
+                }
               });
               return npc;
             };
@@ -1442,9 +1548,35 @@
               var header = document.createElement("div");
               header.className = "npc-header-fields";
               header.appendChild(markRequired(npcEditInput("NPC Name", npc.name, { field: "name" })));
-              header.appendChild(npcEditInput("Stat Block", npc.statBlock, { field: "statBlock" }));
+
+              var sourceField = npcStatBlockSourceToggle(npc.statBlockSource);
+              var customStatBlockField = npcEditInput("Stat Block", npc.statBlock, { field: "statBlock" });
+              var monsterSelectField = npcMonsterSelect(npc.statBlockName);
+              var monsterLinkField = npcMonsterLinkField(npc.statBlockName);
+              var isMonsterManual = npc.statBlockSource === "monster-manual";
+              customStatBlockField.hidden = isMonsterManual;
+              monsterSelectField.hidden = !isMonsterManual;
+              monsterLinkField.hidden = !isMonsterManual;
+
+              header.appendChild(sourceField);
+              header.appendChild(customStatBlockField);
+              header.appendChild(monsterSelectField);
+              header.appendChild(monsterLinkField);
               header.appendChild(npcEditInput("MM Page", npc.mmPage, { field: "mmPage" }));
               form.appendChild(header);
+
+              Array.prototype.forEach.call(sourceField.querySelectorAll('input[name="npc-statblock-source"]'), function (radio) {
+                radio.addEventListener("change", function () {
+                  var showMonsterManual = radio.checked && radio.value === "monster-manual";
+                  customStatBlockField.hidden = showMonsterManual;
+                  monsterSelectField.hidden = !showMonsterManual;
+                  monsterLinkField.hidden = !showMonsterManual;
+                });
+              });
+
+              monsterSelectField.querySelector("select").addEventListener("change", function () {
+                npcUpdateMonsterLink(monsterLinkField.querySelector("a"), this.value);
+              });
 
               form.appendChild(npcEditTextarea("Stat Block Alterations", npc.statBlockAlterations, { field: "statBlockAlterations" }));
               form.appendChild(npcEditTextarea("Alignment", npc.alignment, { field: "alignment" }));
@@ -1516,7 +1648,7 @@
               var newNpc = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
-                name: "", statBlock: "", mmPage: "",
+                name: "", statBlockSource: "custom", statBlock: "", statBlockName: "", mmPage: "",
                 statBlockAlterations: "", alignment: "", personality: "", appearance: "", secret: "",
               };
               npcs.push(newNpc);
