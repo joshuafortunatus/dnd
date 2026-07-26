@@ -8,11 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
-  {{ with .Params.hero_image }}
-    <style>
-      body { background-image: url('{{ . | relURL }}'); }
-    </style>
-  {{ else with .Site.Params.background_image }}
+  {{/* A page with no hero_image of its own (e.g. a campaign's DM
+    Portal) falls back to its parent's — the DM Portal should always
+    match the campaign it belongs to, not need the image set twice. */}}
+  {{ $heroImage := .Params.hero_image }}
+  {{ if not $heroImage }}{{ with .Parent }}{{ $heroImage = .Params.hero_image }}{{ end }}{{ end }}
+  {{ with $heroImage }}
     <style>
       body { background-image: url('{{ . | relURL }}'); }
     </style>
