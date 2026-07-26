@@ -1541,7 +1541,31 @@
               inside the form — once an NPC exists, statBlockSource and
               statBlockEdition are both fixed, so the form just renders
               whichever single field layout matches them. */}}
-            var npcMonsterField = function (edition, nameValue) {
+            {{/* Persists edits to a stat block's "top part" (see
+              npcRenderStatBlockPanel) onto the NPC record itself, keyed by
+              NPC id — never by monster name — so overriding one Commoner's
+              HP never bleeds into every other Commoner in the campaign.
+              A brand-new NPC (isNewNpc) has no storage row yet (per the
+              no-eager-persistence rule for unsaved "+ Add" records), so the
+              override just lives on the in-memory npc/pendingNewNpc object
+              until the outer Save commits the whole record; an already-saved
+              NPC gets the override written straight to localStorage + sync
+              immediately, since this widget's own Save button is the only
+              save action a DM sees for it. */}}
+            var npcMakeStatBlockOverridePersister = function (npc, isNewNpc) {
+              return function (override) {
+                if (override) { npc.statBlockOverride = override; } else { delete npc.statBlockOverride; }
+                if (isNewNpc) return;
+                var allNpcs = loadNpcs();
+                var idx = -1;
+                allNpcs.forEach(function (n, i) { if (n.id === npc.id) idx = i; });
+                if (idx === -1) return;
+                if (override) { allNpcs[idx].statBlockOverride = override; } else { delete allNpcs[idx].statBlockOverride; }
+                saveNpcs(allNpcs);
+              };
+            };
+
+            var npcMonsterField = function (npc, isNewNpc, edition, nameValue) {
               var wrap = document.createElement("div");
               wrap.className = "npc-field";
               var label = document.createElement("label");
@@ -1571,6 +1595,8 @@
               npcUpdateMonsterLink(link, edition, select.value);
               wrap.appendChild(link);
 
+              var persistOverride = npcMakeStatBlockOverridePersister(npc, isNewNpc);
+
               {{/* Full-width sibling of the narrow "Monster" field above, so
                 it wraps onto its own row inside the flex-wrap header (see
                 .npc-statblock in style.css) rather than being squeezed into
@@ -1579,11 +1605,16 @@
                 link above is all there is, same as before this feature. */}}
               var statblockPanel = document.createElement("div");
               statblockPanel.className = "npc-statblock";
-              npcFetchAndRenderMonsterStatBlock(statblockPanel, edition, select.value);
+              npcFetchAndRenderMonsterStatBlock(statblockPanel, edition, select.value, npc, persistOverride);
 
               select.addEventListener("change", function () {
                 npcUpdateMonsterLink(link, edition, select.value);
-                npcFetchAndRenderMonsterStatBlock(statblockPanel, edition, select.value);
+                {{/* A saved override belongs to whichever monster it was
+                  captured for — switching the dropdown to a different
+                  monster invalidates it, so clear it rather than carrying
+                  stale AC/HP/Speed text onto an unrelated stat block. */}}
+                persistOverride(undefined);
+                npcFetchAndRenderMonsterStatBlock(statblockPanel, edition, select.value, npc, persistOverride);
               });
 
               var fragment = document.createDocumentFragment();
@@ -1772,6 +1803,97 @@
               return p;
             };
 
+            {{/* 5e's ability-mod rubric is a pure function of score — always
+              floor((score-10)/2) — so there's no legitimate reason a DM's
+              edited Mod would ever disagree with an edited Score. */}}
+            var npcAbilityModFromScore = function (score) { return Math.floor((score - 10) / 2); };
+            var npcFormatMod = function (n) { return (n >= 0 ? "+" : "") + n; };
+
+            {{/* 1-30 covers every ability score that appears in a published
+              5e stat block (1 is the lowest seen on e.g. an Intelligence
+              score for beasts/oozes; 30 is the natural cap, e.g. the
+              Tarrasque's Con) — not just the 8-15ish PC point-buy/standard-
+              array range, since this picklist has to work for monsters. */}}
+            var npcAbilityScoreOptions = (function () {
+              var arr = [];
+              for (var i = 1; i <= 30; i++) arr.push(String(i));
+              return arr;
+            })();
+
+            {{/* Parsers/formatters so Initiative/AC/HP/Speed can round-trip
+              between the plain "+0 (10)" / "10" / "4 (1d8)" / "30 ft."
+              strings aidedd.org's markup already parses into and the
+              structured widgets below. Each parser is deliberately strict —
+              on anything it doesn't recognize it returns null, and the
+              caller falls back to a plain free-text field for that one
+              line rather than silently mangling an unusual stat block. */}}
+            var npcCapitalize = function (s) { return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s; };
+
+            var npcParseInitiativeMod = function (str) {
+              var m = /^\s*([+\-]?\d+)/.exec(str || "");
+              return m ? parseInt(m[1], 10) : null;
+            };
+            var npcFormatInitiative = function (mod) { return npcFormatMod(mod) + " (" + (10 + mod) + ")"; };
+
+            var NPC_HP_DIE_SIZES = [4, 6, 8, 10, 12, 20];
+            var npcParseHp = function (str) {
+              var m = /^\s*\d+\s*\(\s*(\d+)\s*d\s*(\d+)\s*(?:[+\-]\s*\d+)?\s*\)\s*$/i.exec(str || "");
+              return m ? { diceCount: parseInt(m[1], 10), dieSize: parseInt(m[2], 10) } : null;
+            };
+            {{/* Official 5e average-HP formula: floor(count * (dieSize+1)/2)
+              per hit die, plus a flat Con-mod-per-die bonus (omitted from
+              the parenthetical entirely when it's 0, matching every
+              published stat block, e.g. "4 (1d8)" not "4 (1d8 + 0)"). */}}
+            var npcFormatHp = function (diceCount, dieSize, conMod) {
+              var avg = Math.floor(diceCount * (dieSize + 1) / 2) + diceCount * conMod;
+              var bonus = diceCount * conMod;
+              var bonusText = bonus === 0 ? "" : " " + (bonus > 0 ? "+" : "-") + " " + Math.abs(bonus);
+              return avg + " (" + diceCount + "d" + dieSize + bonusText + ")";
+            };
+
+            var npcParseAc = function (str) {
+              var m = /^\s*(\d+)\s*(?:\(([^)]*)\))?\s*$/.exec(str || "");
+              return m ? { value: parseInt(m[1], 10), note: m[2] || "" } : null;
+            };
+            var npcFormatAc = function (value, note) { return String(value) + (note ? " (" + note + ")" : ""); };
+
+            var NPC_SPEED_MODES = ["Walk", "Fly", "Swim", "Climb", "Burrow", "Hover"];
+            var npcParseSpeed = function (str) {
+              var segments = (str || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+              if (!segments.length) return null;
+              var entries = [];
+              for (var i = 0; i < segments.length; i++) {
+                var m = /^(?:([A-Za-z]+)\s+)?(\d+)\s*ft\.?$/i.exec(segments[i]);
+                if (!m) return null;
+                entries.push({ mode: npcCapitalize(m[1]) || "Walk", feet: parseInt(m[2], 10) });
+              }
+              return entries;
+            };
+            var npcFormatSpeed = function (entries) {
+              return entries.map(function (e) {
+                return (e.mode === "Walk" ? "" : e.mode.toLowerCase() + " ") + e.feet + " ft.";
+              }).join(", ");
+            };
+
+            {{/* These fields (AC value, HP dice count, Initiative bonus,
+              Speed feet) are plain text inputs rather than <input
+              type="number"> — the native spinner arrows were too slow to
+              click through for anything but the smallest values, and none
+              of these fields have an actual rules-defined cap the way
+              ability scores (1-30) or hit die size (a fixed set) do, so a
+              <select> picklist doesn't fit either. Restricting keystrokes
+              to digits (and, if allowNegative, a single leading "-") keeps
+              them numeric without reintroducing the spinner. */}}
+            var npcRestrictNumericInput = function (input, allowNegative) {
+              input.addEventListener("input", function () {
+                var pattern = allowNegative ? /[^0-9-]/g : /[^0-9]/g;
+                var cleaned = input.value.replace(pattern, "");
+                if (allowNegative) cleaned = cleaned.charAt(0) + cleaned.slice(1).replace(/-/g, "");
+                if (cleaned !== input.value) input.value = cleaned;
+              });
+              input.inputMode = "numeric";
+            };
+
             var npcStatBlockAbilityRow = function (labelText, valueGetter, abilities) {
               var row = document.createElement("tr");
               var th = document.createElement("th");
@@ -1785,44 +1907,523 @@
               return row;
             };
 
-            var npcRenderStatBlockPanel = function (container, sb, edition) {
-              container.innerHTML = "";
+            {{/* Applies a saved override on top of the raw sb parsed fresh
+              from aidedd.org. Only name/typeLine/initiative/linesBefore/
+              abilities (name, type/alignment line, Initiative, AC/HP/Speed,
+              and the Str/Dex/Con/Int/Wis/Cha Score/Mod/Save grid) are ever
+              overridable; everything below that — Traits/Actions/flavor
+              text/footer — always comes straight from the source parse,
+              never edited in place. */}}
+            var npcApplyStatBlockOverride = function (rawSb, override) {
+              if (!override) return rawSb;
+              var merged = {};
+              Object.keys(rawSb).forEach(function (k) { merged[k] = rawSb[k]; });
+              if (override.name !== undefined) merged.name = override.name;
+              if (override.typeLine !== undefined) merged.typeLine = override.typeLine;
+              if (override.initiative !== undefined) merged.initiative = override.initiative;
+              if (override.linesBefore) merged.linesBefore = override.linesBefore;
+              if (override.abilities) merged.abilities = override.abilities;
+              return merged;
+            };
 
+            {{/* container, rawSb (as parsed from aidedd.org, untouched by any
+              override), edition, npc (for its saved statBlockOverride),
+              onOverrideSaved(override) — persists a new override, onReset()
+              — clears the override and forces a genuine re-fetch. The last
+              two are omitted for read-only render paths that don't need
+              editing (there are none currently, but keeps this function
+              usable standalone). */}}
+            var npcRenderStatBlockPanel = function (container, rawSb, edition, npc, onOverrideSaved, onReset) {
+              container.innerHTML = "";
+              var sb = npcApplyStatBlockOverride(rawSb, npc && npc.statBlockOverride);
+
+              var header = document.createElement("div");
+              header.className = "npc-statblock-header";
               var title = document.createElement("h4");
               title.textContent = sb.name;
-              container.appendChild(title);
+              header.appendChild(title);
 
-              if (sb.typeLine) {
-                var meta = document.createElement("p");
-                meta.className = "npc-statblock-meta";
-                meta.textContent = sb.typeLine;
-                container.appendChild(meta);
+              if (onOverrideSaved && onReset) {
+                var topControls = document.createElement("div");
+                topControls.className = "npc-statblock-top-controls";
+                var editBtn = document.createElement("button");
+                editBtn.type = "button";
+                editBtn.textContent = "Edit";
+                var resetBtn = document.createElement("button");
+                resetBtn.type = "button";
+                resetBtn.textContent = "Reset";
+                resetBtn.title = "Discard any edits and re-fetch this stat block from aidedd.org";
+                topControls.appendChild(editBtn);
+                topControls.appendChild(resetBtn);
+                header.appendChild(topControls);
               }
+              container.appendChild(header);
 
-              if (sb.initiative) container.appendChild(npcStatBlockLine("Initiative", sb.initiative));
-              sb.linesBefore.forEach(function (line) { container.appendChild(npcStatBlockLine(line.label, line.value)); });
+              var topPart = document.createElement("div");
+              topPart.className = "npc-statblock-top";
+              container.appendChild(topPart);
 
-              if (sb.abilities.length) {
-                var table = document.createElement("table");
-                table.className = "npc-statblock-abilities";
-                var headRow = document.createElement("tr");
-                headRow.appendChild(document.createElement("th"));
-                sb.abilities.forEach(function (a) {
-                  var th = document.createElement("th");
-                  th.textContent = a.name;
-                  headRow.appendChild(th);
-                });
-                table.appendChild(headRow);
-                table.appendChild(npcStatBlockAbilityRow("Score", function (a) { return a.score; }, sb.abilities));
-                table.appendChild(npcStatBlockAbilityRow("Mod", function (a) { return a.mod; }, sb.abilities));
-                {{/* 2014's compact block has no separate save column — save
-                  always equals mod there (see the "carac" branch above), so
-                  showing it would misleadingly imply proficiency. Only 2024
-                  computes a real save value distinct from the flat mod. */}}
-                if (edition === "2024") {
-                  table.appendChild(npcStatBlockAbilityRow("Save", function (a) { return a.save; }, sb.abilities));
+              var renderTopReadOnly = function () {
+                topPart.innerHTML = "";
+                if (sb.typeLine) {
+                  var meta = document.createElement("p");
+                  meta.className = "npc-statblock-meta";
+                  meta.textContent = sb.typeLine;
+                  topPart.appendChild(meta);
                 }
-                container.appendChild(table);
+                if (sb.initiative) topPart.appendChild(npcStatBlockLine("Initiative", sb.initiative));
+                sb.linesBefore.forEach(function (line) { topPart.appendChild(npcStatBlockLine(line.label, line.value)); });
+
+                if (sb.abilities.length) {
+                  var table = document.createElement("table");
+                  table.className = "npc-statblock-abilities";
+                  var headRow = document.createElement("tr");
+                  headRow.appendChild(document.createElement("th"));
+                  sb.abilities.forEach(function (a) {
+                    var th = document.createElement("th");
+                    th.textContent = a.name;
+                    headRow.appendChild(th);
+                  });
+                  table.appendChild(headRow);
+                  table.appendChild(npcStatBlockAbilityRow("Score", function (a) { return a.score; }, sb.abilities));
+                  table.appendChild(npcStatBlockAbilityRow("Mod", function (a) { return a.mod; }, sb.abilities));
+                  {{/* 2014's compact block has no separate save column — save
+                    always equals mod there (see the "carac" branch above), so
+                    showing it would misleadingly imply proficiency. Only 2024
+                    computes a real save value distinct from the flat mod. */}}
+                  if (edition === "2024") {
+                    table.appendChild(npcStatBlockAbilityRow("Save", function (a) { return a.save; }, sb.abilities));
+                  }
+                  topPart.appendChild(table);
+                }
+              };
+
+              var renderTopEditable = function () {
+                topPart.innerHTML = "";
+
+                var nameRow = document.createElement("div");
+                nameRow.className = "npc-statblock-edit-row";
+                var nameInput = document.createElement("input");
+                nameInput.type = "text";
+                nameInput.className = "npc-statblock-edit-input npc-statblock-name-input";
+                nameInput.value = sb.name || "";
+                nameRow.appendChild(nameInput);
+                topPart.appendChild(nameRow);
+
+                var typeLineInput = document.createElement("input");
+                typeLineInput.type = "text";
+                typeLineInput.className = "npc-statblock-edit-input";
+                typeLineInput.value = sb.typeLine || "";
+                topPart.appendChild(typeLineInput);
+
+                {{/* Placeholders reassigned once the Initiative/HP widgets
+                  below actually exist. The per-ability Score listener
+                  (built next) calls these by name, and since both live in
+                  this same function's scope, the closure sees whichever
+                  function is currently assigned at the moment Score
+                  changes — not whatever was assigned when the listener was
+                  created — so build order here doesn't matter. */}}
+                var recomputeInitiativeDisplay = function () {};
+                var recomputeHpDisplay = function () {};
+
+                {{/* Same Score/Mod/(Save) grid as the read-only render, but
+                  every cell is its own input. abilityInputs stays index-
+                  aligned with sb.abilities so Save can zip labels back
+                  together; 2014 has no Save row/input, so its save value on
+                  Save falls back to the (possibly edited) Mod, same
+                  convention npcParseMonsterHtml already uses.
+
+                  Mod (and, for 2024, Save) are read-only, computed live from
+                  Score rather than free text — Mod always equals 5e's fixed
+                  rubric, so a DM only ever needs to type the Score. Save
+                  isn't a pure function of Score alone (it also depends on
+                  whether the creature is proficient in that save, i.e. a
+                  flat bonus on top of Mod), so instead of assuming
+                  proficiency each ability's saveOffset (its current Save
+                  minus its current Mod, captured once when editing starts)
+                  is held constant and re-added to the recomputed Mod —
+                  preserving "proficient" vs. "not proficient" as the Score
+                  changes rather than guessing.
+
+                  Built before Initiative/AC/HP/Speed below (which need to
+                  read Dex/Con's current Mod), but its table isn't appended
+                  to topPart until after them, so the DOM order still
+                  matches a real stat block (vitals, then the grid). */}}
+                var abilityInputs = sb.abilities.map(function (a) {
+                  var mod = parseInt(a.mod, 10);
+                  var save = parseInt(a.save, 10);
+                  return {
+                    name: a.name,
+                    saveOffset: isNaN(mod) || isNaN(save) ? 0 : save - mod,
+                  };
+                });
+                var abilityTable = null;
+                if (sb.abilities.length) {
+                  abilityTable = document.createElement("table");
+                  abilityTable.className = "npc-statblock-abilities";
+                  var abilityHeadRow = document.createElement("tr");
+                  abilityHeadRow.appendChild(document.createElement("th"));
+                  sb.abilities.forEach(function (a) {
+                    var th = document.createElement("th");
+                    th.textContent = a.name;
+                    abilityHeadRow.appendChild(th);
+                  });
+                  abilityTable.appendChild(abilityHeadRow);
+
+                  {{/* Score is a <select> restricted to 1-30 (the full
+                    valid 5e range — see npcAbilityScoreOptions above), not
+                    free text, so a DM can never save an out-of-range or
+                    non-numeric score. If the parsed value from aidedd.org
+                    somehow fell outside 1-30 (shouldn't happen, but don't
+                    silently discard real data if it did), it's added as an
+                    extra option rather than dropped. */}}
+                  var makeEditableAbilityScoreRow = function () {
+                    var row = document.createElement("tr");
+                    var th = document.createElement("th");
+                    th.textContent = "Score";
+                    row.appendChild(th);
+                    sb.abilities.forEach(function (a, idx) {
+                      var td = document.createElement("td");
+                      var select = document.createElement("select");
+                      select.className = "npc-statblock-ability-input";
+                      var currentValue = String(a.score || "");
+                      var options = npcAbilityScoreOptions;
+                      if (currentValue && options.indexOf(currentValue) === -1) options = [currentValue].concat(options);
+                      options.forEach(function (opt) {
+                        var option = document.createElement("option");
+                        option.value = opt;
+                        option.textContent = opt;
+                        select.appendChild(option);
+                      });
+                      select.value = currentValue;
+                      abilityInputs[idx].score = select;
+                      td.appendChild(select);
+                      row.appendChild(td);
+                    });
+                    abilityTable.appendChild(row);
+                  };
+
+                  var makeEditableAbilityRow = function (labelText, key) {
+                    var row = document.createElement("tr");
+                    var th = document.createElement("th");
+                    th.textContent = labelText;
+                    row.appendChild(th);
+                    sb.abilities.forEach(function (a, idx) {
+                      var td = document.createElement("td");
+                      var input = document.createElement("input");
+                      input.type = "text";
+                      input.className = "npc-statblock-ability-input";
+                      input.value = a[key] || "";
+                      abilityInputs[idx][key] = input;
+                      td.appendChild(input);
+                      row.appendChild(td);
+                    });
+                    abilityTable.appendChild(row);
+                  };
+                  makeEditableAbilityScoreRow();
+                  makeEditableAbilityRow("Mod", "mod");
+                  if (edition === "2024") makeEditableAbilityRow("Save", "save");
+
+                  abilityInputs.forEach(function (ai) {
+                    ai.mod.readOnly = true;
+                    ai.mod.className += " npc-statblock-ability-input-computed";
+                    if (ai.save) {
+                      ai.save.readOnly = true;
+                      ai.save.className += " npc-statblock-ability-input-computed";
+                    }
+                    ai.score.addEventListener("change", function () {
+                      var scoreNum = parseInt(ai.score.value, 10);
+                      if (isNaN(scoreNum)) return;
+                      var mod = npcAbilityModFromScore(scoreNum);
+                      ai.mod.value = npcFormatMod(mod);
+                      if (ai.save) ai.save.value = npcFormatMod(mod + ai.saveOffset);
+                      if (/^dex/i.test(ai.name)) recomputeInitiativeDisplay();
+                      if (/^con/i.test(ai.name)) recomputeHpDisplay();
+                    });
+                  });
+                }
+
+                var dexAbility = abilityInputs.filter(function (ai) { return /^dex/i.test(ai.name); })[0];
+                var conAbility = abilityInputs.filter(function (ai) { return /^con/i.test(ai.name); })[0];
+
+                {{/* Initiative's Modifier/Passive are computed from Dex Mod
+                  rather than free text, same reasoning as ability Mod — but
+                  Initiative can carry a flat bonus beyond Dex (Alert feat,
+                  Reliable Talent, etc.), so that bonus (captured once as
+                  the gap between the parsed initiative and the current Dex
+                  Mod) stays in its own editable field, same offset-
+                  preservation idea as ability Save above. Falls back to a
+                  plain text field if the source text or the Dex ability
+                  can't be found/parsed. */}}
+                var initRow = document.createElement("div");
+                initRow.className = "npc-statblock-edit-row";
+                var initLabel = document.createElement("strong");
+                initLabel.textContent = "Initiative";
+                initRow.appendChild(initLabel);
+
+                var initFallbackInput = null;
+                var initBonusInput = null;
+                var initialInitMod = npcParseInitiativeMod(sb.initiative);
+                if (initialInitMod !== null && dexAbility) {
+                  var initComputedSpan = document.createElement("span");
+                  initComputedSpan.className = "npc-statblock-computed-text";
+                  initComputedSpan.textContent = npcFormatInitiative(initialInitMod);
+                  initBonusInput = document.createElement("input");
+                  initBonusInput.type = "text";
+                  npcRestrictNumericInput(initBonusInput, true);
+                  initBonusInput.className = "npc-statblock-edit-input npc-statblock-initiative-bonus";
+                  initBonusInput.title = "Bonus beyond the Dexterity modifier (e.g. Alert feat)";
+                  initBonusInput.value = String(initialInitMod - (parseInt(dexAbility.mod.value, 10) || 0));
+                  var initBonusLabel = document.createElement("span");
+                  initBonusLabel.className = "npc-statblock-inline-label";
+                  initBonusLabel.textContent = "bonus";
+                  initRow.appendChild(initComputedSpan);
+                  initRow.appendChild(initBonusLabel);
+                  initRow.appendChild(initBonusInput);
+
+                  recomputeInitiativeDisplay = function () {
+                    var dexMod = parseInt(dexAbility.mod.value, 10) || 0;
+                    var bonus = parseInt(initBonusInput.value, 10) || 0;
+                    initComputedSpan.textContent = npcFormatInitiative(dexMod + bonus);
+                  };
+                  initBonusInput.addEventListener("input", recomputeInitiativeDisplay);
+                } else {
+                  initFallbackInput = document.createElement("input");
+                  initFallbackInput.type = "text";
+                  initFallbackInput.className = "npc-statblock-edit-input";
+                  initFallbackInput.value = sb.initiative || "";
+                  initRow.appendChild(initFallbackInput);
+                }
+                topPart.appendChild(initRow);
+
+                {{/* AC/HP/Speed each try to parse into a structured widget;
+                  anything that doesn't match (or an unrecognized label
+                  entirely) falls back to the original plain label/value
+                  text row, so unusual stat blocks never lose data. */}}
+                var linesBeforeWidgets = sb.linesBefore.map(function (line) {
+                  if (line.label === "AC") {
+                    var parsedAc = npcParseAc(line.value);
+                    if (parsedAc) {
+                      var acRow = document.createElement("div");
+                      acRow.className = "npc-statblock-edit-row";
+                      var acLabel = document.createElement("strong");
+                      acLabel.textContent = "AC";
+                      var acValueInput = document.createElement("input");
+                      acValueInput.type = "text";
+                      npcRestrictNumericInput(acValueInput, false);
+                      acValueInput.className = "npc-statblock-edit-input npc-statblock-ac-value";
+                      acValueInput.value = String(parsedAc.value);
+                      var acNoteInput = document.createElement("input");
+                      acNoteInput.type = "text";
+                      acNoteInput.className = "npc-statblock-edit-input npc-statblock-ac-note";
+                      acNoteInput.placeholder = "source, e.g. natural armor";
+                      acNoteInput.value = parsedAc.note;
+                      acRow.appendChild(acLabel);
+                      acRow.appendChild(acValueInput);
+                      acRow.appendChild(acNoteInput);
+                      topPart.appendChild(acRow);
+                      return { type: "ac", label: line.label, valueInput: acValueInput, noteInput: acNoteInput };
+                    }
+                  }
+
+                  if (line.label === "HP") {
+                    var parsedHp = npcParseHp(line.value);
+                    if (parsedHp && conAbility) {
+                      var hpRow = document.createElement("div");
+                      hpRow.className = "npc-statblock-edit-row";
+                      var hpLabel = document.createElement("strong");
+                      hpLabel.textContent = "HP";
+                      var hpCountInput = document.createElement("input");
+                      hpCountInput.type = "text";
+                      npcRestrictNumericInput(hpCountInput, false);
+                      hpCountInput.className = "npc-statblock-edit-input npc-statblock-hp-count";
+                      hpCountInput.value = String(parsedHp.diceCount);
+                      var hpDLabel = document.createElement("span");
+                      hpDLabel.className = "npc-statblock-inline-label";
+                      hpDLabel.textContent = "d";
+                      var hpSizeSelect = document.createElement("select");
+                      hpSizeSelect.className = "npc-statblock-edit-input npc-statblock-hp-size";
+                      NPC_HP_DIE_SIZES.forEach(function (size) {
+                        var option = document.createElement("option");
+                        option.value = String(size);
+                        option.textContent = String(size);
+                        hpSizeSelect.appendChild(option);
+                      });
+                      hpSizeSelect.value = String(parsedHp.dieSize);
+                      var hpComputedSpan = document.createElement("span");
+                      hpComputedSpan.className = "npc-statblock-computed-text";
+                      hpRow.appendChild(hpLabel);
+                      hpRow.appendChild(hpCountInput);
+                      hpRow.appendChild(hpDLabel);
+                      hpRow.appendChild(hpSizeSelect);
+                      hpRow.appendChild(hpComputedSpan);
+                      topPart.appendChild(hpRow);
+
+                      var recomputeThisHp = function () {
+                        var count = parseInt(hpCountInput.value, 10);
+                        var size = parseInt(hpSizeSelect.value, 10);
+                        var conMod = parseInt(conAbility.mod.value, 10) || 0;
+                        if (isNaN(count) || count < 1 || isNaN(size)) return;
+                        hpComputedSpan.textContent = npcFormatHp(count, size, conMod);
+                      };
+                      recomputeThisHp();
+                      hpCountInput.addEventListener("input", recomputeThisHp);
+                      hpSizeSelect.addEventListener("change", recomputeThisHp);
+                      recomputeHpDisplay = recomputeThisHp;
+
+                      return { type: "hp", label: line.label, countInput: hpCountInput, sizeInput: hpSizeSelect };
+                    }
+                  }
+
+                  if (line.label === "Speed") {
+                    var parsedSpeed = npcParseSpeed(line.value);
+                    if (parsedSpeed) {
+                      var speedWrap = document.createElement("div");
+                      speedWrap.className = "npc-statblock-speed-edit";
+                      var speedLabel = document.createElement("strong");
+                      speedLabel.textContent = "Speed";
+                      speedWrap.appendChild(speedLabel);
+                      var speedRowsWrap = document.createElement("div");
+                      speedWrap.appendChild(speedRowsWrap);
+                      var speedEntryInputs = [];
+
+                      var addSpeedEntryRow = function (mode, feet) {
+                        var row = document.createElement("div");
+                        row.className = "npc-statblock-edit-row npc-statblock-speed-row";
+                        var modeSelect = document.createElement("select");
+                        modeSelect.className = "npc-statblock-edit-input";
+                        NPC_SPEED_MODES.forEach(function (m) {
+                          var option = document.createElement("option");
+                          option.value = m;
+                          option.textContent = m;
+                          modeSelect.appendChild(option);
+                        });
+                        modeSelect.value = NPC_SPEED_MODES.indexOf(mode) !== -1 ? mode : "Walk";
+                        var feetInput = document.createElement("input");
+                        feetInput.type = "text";
+                        npcRestrictNumericInput(feetInput, false);
+                        feetInput.className = "npc-statblock-edit-input npc-statblock-speed-feet";
+                        feetInput.value = String(feet);
+                        var ftLabel = document.createElement("span");
+                        ftLabel.className = "npc-statblock-inline-label";
+                        ftLabel.textContent = "ft.";
+                        var removeBtn = document.createElement("button");
+                        removeBtn.type = "button";
+                        removeBtn.className = "npc-statblock-speed-remove";
+                        removeBtn.textContent = "×";
+                        removeBtn.addEventListener("click", function () {
+                          speedRowsWrap.removeChild(row);
+                          speedEntryInputs = speedEntryInputs.filter(function (e) { return e.row !== row; });
+                        });
+                        row.appendChild(modeSelect);
+                        row.appendChild(feetInput);
+                        row.appendChild(ftLabel);
+                        row.appendChild(removeBtn);
+                        speedRowsWrap.appendChild(row);
+                        speedEntryInputs.push({ row: row, modeInput: modeSelect, feetInput: feetInput });
+                      };
+
+                      parsedSpeed.forEach(function (e) { addSpeedEntryRow(e.mode, e.feet); });
+
+                      var addSpeedBtn = document.createElement("button");
+                      addSpeedBtn.type = "button";
+                      addSpeedBtn.className = "npc-statblock-speed-add";
+                      addSpeedBtn.textContent = "+ Add Speed";
+                      addSpeedBtn.addEventListener("click", function () { addSpeedEntryRow("Fly", 0); });
+                      speedWrap.appendChild(addSpeedBtn);
+
+                      topPart.appendChild(speedWrap);
+                      return {
+                        type: "speed",
+                        label: line.label,
+                        getEntries: function () { return speedEntryInputs; },
+                      };
+                    }
+                  }
+
+                  var row = document.createElement("div");
+                  row.className = "npc-statblock-edit-row";
+                  var lineLabel = document.createElement("strong");
+                  lineLabel.textContent = line.label;
+                  var lineInput = document.createElement("input");
+                  lineInput.type = "text";
+                  lineInput.className = "npc-statblock-edit-input";
+                  lineInput.value = line.value || "";
+                  row.appendChild(lineLabel);
+                  row.appendChild(lineInput);
+                  topPart.appendChild(row);
+                  return { type: "generic", label: line.label, input: lineInput };
+                });
+
+                if (abilityTable) topPart.appendChild(abilityTable);
+
+                var editActions = document.createElement("div");
+                editActions.className = "npc-statblock-edit-actions";
+                var saveBtn = document.createElement("button");
+                saveBtn.type = "button";
+                saveBtn.className = "npc-save-btn";
+                saveBtn.textContent = "Save";
+                var cancelBtn = document.createElement("button");
+                cancelBtn.type = "button";
+                cancelBtn.className = "npc-cancel-btn";
+                cancelBtn.textContent = "Cancel";
+                editActions.appendChild(saveBtn);
+                editActions.appendChild(cancelBtn);
+                topPart.appendChild(editActions);
+
+                saveBtn.addEventListener("click", function () {
+                  var newLinesBefore = linesBeforeWidgets.map(function (w) {
+                    if (w.type === "ac") {
+                      var acValue = parseInt(w.valueInput.value, 10) || 0;
+                      return { label: w.label, value: npcFormatAc(acValue, w.noteInput.value.trim()) };
+                    }
+                    if (w.type === "hp") {
+                      var count = parseInt(w.countInput.value, 10) || 1;
+                      var size = parseInt(w.sizeInput.value, 10) || 8;
+                      var conMod = conAbility ? (parseInt(conAbility.mod.value, 10) || 0) : 0;
+                      return { label: w.label, value: npcFormatHp(count, size, conMod) };
+                    }
+                    if (w.type === "speed") {
+                      var entries = w.getEntries().map(function (e) {
+                        return { mode: e.modeInput.value, feet: parseInt(e.feetInput.value, 10) || 0 };
+                      });
+                      return { label: w.label, value: npcFormatSpeed(entries) };
+                    }
+                    return { label: w.label, value: w.input.value };
+                  });
+
+                  var initiativeValue = initBonusInput
+                    ? npcFormatInitiative((dexAbility ? parseInt(dexAbility.mod.value, 10) || 0 : 0) + (parseInt(initBonusInput.value, 10) || 0))
+                    : (initFallbackInput ? initFallbackInput.value : sb.initiative);
+
+                  var override = {
+                    name: nameInput.value,
+                    typeLine: typeLineInput.value,
+                    initiative: initiativeValue,
+                    linesBefore: newLinesBefore,
+                    abilities: abilityInputs.map(function (ai) {
+                      return {
+                        name: ai.name,
+                        score: ai.score.value,
+                        mod: ai.mod.value,
+                        save: ai.save ? ai.save.value : ai.mod.value,
+                      };
+                    }),
+                  };
+                  sb = npcApplyStatBlockOverride(rawSb, override);
+                  title.textContent = sb.name;
+                  renderTopReadOnly();
+                  onOverrideSaved(override);
+                });
+
+                cancelBtn.addEventListener("click", renderTopReadOnly);
+              };
+
+              renderTopReadOnly();
+
+              if (onOverrideSaved && onReset) {
+                editBtn.addEventListener("click", renderTopEditable);
+                resetBtn.addEventListener("click", onReset);
               }
 
               sb.linesAfter.forEach(function (line) { container.appendChild(npcStatBlockLine(line.label, line.value)); });
@@ -1871,8 +2472,13 @@
               monster's stat block the moment it's picked, rather than
               storing any of this in the repo. Cached per page load only, so
               re-selecting the same monster (or re-rendering the dropdown)
-              doesn't re-fetch it. */}}
-            var npcFetchAndRenderMonsterStatBlock = function (container, edition, name) {
+              doesn't re-fetch it — except Reset (see below), which exists
+              specifically to bypass that cache and hit aidedd.org again.
+              npc/persistOverride are threaded through so the rendered panel
+              can offer its own Edit/Save/Reset for the top part (name,
+              type/alignment line, Initiative, AC/HP/Speed) without touching
+              the ability table or anything below it. */}}
+            var npcFetchAndRenderMonsterStatBlock = function (container, edition, name, npc, persistOverride) {
               container.innerHTML = "";
               container.hidden = true;
               if (!name || !NPC_PROXY_URL) return;
@@ -1883,8 +2489,14 @@
               container.dataset.pendingKey = cacheKey;
               container.hidden = false;
 
+              var handleReset = function () {
+                persistOverride(undefined);
+                delete npcStatBlockCache[cacheKey];
+                npcFetchAndRenderMonsterStatBlock(container, edition, name, npc, persistOverride);
+              };
+
               if (npcStatBlockCache[cacheKey]) {
-                npcRenderStatBlockPanel(container, npcStatBlockCache[cacheKey], edition);
+                npcRenderStatBlockPanel(container, npcStatBlockCache[cacheKey], edition, npc, persistOverride, handleReset);
                 return;
               }
 
@@ -1903,7 +2515,7 @@
                   if (!sb) throw new Error("parse failed");
                   npcStatBlockCache[cacheKey] = sb;
                   if (container.dataset.pendingKey !== cacheKey) return;
-                  npcRenderStatBlockPanel(container, sb, edition);
+                  npcRenderStatBlockPanel(container, sb, edition, npc, persistOverride, handleReset);
                 })
                 .catch(function (err) {
                   console.error("Stat block fetch/parse failed for " + name + " (" + edition + "):", err);
@@ -1914,14 +2526,20 @@
             };
 
             var collectNpcFromForm = function (form, originalNpc) {
-              {{/* statBlockSource and statBlockEdition are never form
-                fields (both fixed at creation, see above) — seed them
-                from the original record so Save doesn't drop them. */}}
+              {{/* statBlockSource, statBlockEdition, and statBlockOverride
+                are never form fields (all fixed/managed outside the main
+                form — see above) — seed them from the original record so
+                Save doesn't drop them. statBlockOverride in particular is
+                mutated directly on this same npc object by the stat block
+                widget's own Save button (see npcMakeStatBlockOverridePersister),
+                so by the time the outer Save runs, originalNpc already
+                reflects the latest override. */}}
               var npc = {
                 id: originalNpc.id,
                 createdAt: originalNpc.createdAt,
                 statBlockSource: originalNpc.statBlockSource,
                 statBlockEdition: originalNpc.statBlockEdition,
+                statBlockOverride: originalNpc.statBlockOverride,
               };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 npc[el.dataset.field] = el.value;
@@ -2015,7 +2633,7 @@
                 the field layout that matches how it was created. */}}
               header.appendChild(
                 npc.statBlockSource === "monster-manual"
-                  ? npcMonsterField(npcNormalizedEdition(npc), npcNormalizedMonsterName(npc))
+                  ? npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc))
                   : npcEditInput("Stat Block", npc.statBlock, { field: "statBlock" })
               );
               header.appendChild(npcEditInput("MM Page", npc.mmPage, { field: "mmPage" }));
@@ -2124,6 +2742,19 @@
                 choices.appendChild(btn);
               });
               wrap.appendChild(choices);
+              var backBtn = document.createElement("button");
+              backBtn.type = "button";
+              backBtn.className = "npc-source-chooser-back";
+              backBtn.textContent = "← Back";
+              {{/* Nothing is persisted at this step (see comment above), so
+                Back is just a plain cancel of "+ Add NPC" — same reset as
+                every other npcSelect-to-blank transition. */}}
+              backBtn.addEventListener("click", function () {
+                npcSelect.value = "";
+                npcCurrentValue = "";
+                clearNpcDetail();
+              });
+              wrap.appendChild(backBtn);
               npcDetail.appendChild(wrap);
             };
 
