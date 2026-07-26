@@ -584,9 +584,21 @@ body.is-home {
 .npc-field textarea { min-height: 5rem; resize: vertical; }
 .npc-field-wide { margin-bottom: 1.25rem; }
 
-.npc-radio-group { display: flex; flex-wrap: wrap; gap: 1.25rem; padding-top: 0.4rem; }
-.npc-radio-option { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text); font-size: 0.95rem; cursor: pointer; }
-.npc-monster-link { color: var(--accent); font-size: 0.95rem; align-self: flex-end; padding-bottom: 0.5rem; }
+.npc-monster-link { display: block; color: var(--accent); font-size: 0.85rem; margin-top: 0.35rem; }
+
+.npc-source-chooser-prompt { color: var(--text-dim); margin-bottom: 1rem; }
+.npc-source-chooser-choices { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.npc-source-chooser-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.6rem 1.5rem;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.npc-source-chooser-btn:hover { background: rgba(201, 162, 39, 0.15); }
 
 .npc-save-btn,
 .npc-cancel-btn,
@@ -757,7 +769,7 @@ body.is-home {
 }
 .journal-field input[type="text"], .journal-field textarea,
 .pc-field input[type="text"], .pc-field textarea, .pc-field select,
-.conflict-field input[type="text"], .conflict-field textarea,
+.conflict-field input[type="text"], .conflict-field textarea, .conflict-field select,
 .bastion-field input[type="text"], .bastion-field textarea {
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -767,6 +779,7 @@ body.is-home {
   font-size: 1rem;
   font-family: inherit;
 }
+.conflict-field select[multiple] { padding: 0.35rem; }
 .journal-field textarea, .pc-field textarea, .conflict-field textarea, .bastion-field textarea {
   min-height: 5rem;
   resize: vertical;
