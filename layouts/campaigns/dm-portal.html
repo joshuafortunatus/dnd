@@ -330,6 +330,21 @@
             return fieldWrap;
           };
 
+          {{/* Defense in depth for the placeholder-on-Add pattern described
+            above: the beforeunload guard can only warn before a close, it
+            can't force cleanup to run afterward — a crash, force-quit, or
+            just clicking "Leave" on that warning abandons the placeholder
+            permanently, as a blank "Untitled ___"/"Unnamed ___" record that
+            then syncs to every other device too. Each Save/Cancel/Delete
+            section calls this once at load and once after a remote pull to
+            quietly drop any entry that still fails its own required-field
+            check, unless it's the one actively being edited in this tab
+            right now (keepId) — so this can't yank a record out from under
+            someone who's mid-edit. */}}
+          var pruneOrphanedDrafts = function (entries, isValidFn, keepId) {
+            return entries.filter(function (e) { return e.id === keepId || isValidFn(e); });
+          };
+
           {{/*
             Cross-device sync: portal data (Character Importer roster,
             Expectations edits, Travel Planner plans) otherwise lives only
@@ -1021,10 +1036,14 @@
               syncPush("travel-plans", plans);
             };
 
+            var tpIsValid = function (plan) { return Boolean(plan.origin && plan.origin.trim() && plan.destination && plan.destination.trim()); };
+
             var pullTravelPlans = function () {
               syncPull("travel-plans").then(function (remote) {
                 if (remote) {
-                  writePlansLocal(remote);
+                  var prunedRemote = pruneOrphanedDrafts(remote, tpIsValid, unsavedNewPlanId);
+                  writePlansLocal(prunedRemote);
+                  if (prunedRemote.length !== remote.length) syncPush("travel-plans", prunedRemote);
                   renderSelect();
                   clearDetail();
                 } else if (syncEnabled()) {
@@ -1279,6 +1298,9 @@
               });
             };
 
+            var initialPlans = loadPlans();
+            var prunedInitialPlans = pruneOrphanedDrafts(initialPlans, tpIsValid, unsavedNewPlanId);
+            if (prunedInitialPlans.length !== initialPlans.length) savePlans(prunedInitialPlans);
             renderSelect();
             pullTravelPlans();
 
@@ -1378,10 +1400,14 @@
               syncPush("npcs", npcs);
             };
 
+            var npcIsValid = function (npc) { return Boolean(npc.name && npc.name.trim()); };
+
             var pullNpcs = function () {
               syncPull("npcs").then(function (remote) {
                 if (remote) {
-                  writeNpcsLocal(remote);
+                  var prunedRemote = pruneOrphanedDrafts(remote, npcIsValid, unsavedNewNpcId);
+                  writeNpcsLocal(prunedRemote);
+                  if (prunedRemote.length !== remote.length) syncPush("npcs", prunedRemote);
                   renderNpcSelect();
                   clearNpcDetail();
                 } else if (syncEnabled()) {
@@ -1966,6 +1992,9 @@
               });
             };
 
+            var initialNpcs = loadNpcs();
+            var prunedInitialNpcs = pruneOrphanedDrafts(initialNpcs, npcIsValid, unsavedNewNpcId);
+            if (prunedInitialNpcs.length !== initialNpcs.length) saveNpcs(prunedInitialNpcs);
             renderNpcSelect();
             pullNpcs();
 
@@ -2103,10 +2132,14 @@
               syncPush("settlements", settlements);
             };
 
+            var settlementIsValid = function (settlement) { return Boolean(settlement.name && settlement.name.trim()); };
+
             var pullSettlements = function () {
               syncPull("settlements").then(function (remote) {
                 if (remote) {
-                  writeSettlementsLocal(remote);
+                  var prunedRemote = pruneOrphanedDrafts(remote, settlementIsValid, unsavedNewSettlementId);
+                  writeSettlementsLocal(prunedRemote);
+                  if (prunedRemote.length !== remote.length) syncPush("settlements", prunedRemote);
                   renderSettlementSelect();
                   clearSettlementDetail();
                 } else if (syncEnabled()) {
@@ -2321,6 +2354,9 @@
               });
             };
 
+            var initialSettlements = loadSettlements();
+            var prunedInitialSettlements = pruneOrphanedDrafts(initialSettlements, settlementIsValid, unsavedNewSettlementId);
+            if (prunedInitialSettlements.length !== initialSettlements.length) saveSettlements(prunedInitialSettlements);
             renderSettlementSelect();
             pullSettlements();
 
@@ -2392,10 +2428,14 @@
               syncPush("journal", entries);
             };
 
+            var journalIsValid = function (entry) { return Boolean(entry.title && entry.title.trim()); };
+
             var pullJournalEntries = function () {
               syncPull("journal").then(function (remote) {
                 if (remote) {
-                  writeJournalEntriesLocal(remote);
+                  var prunedRemote = pruneOrphanedDrafts(remote, journalIsValid, unsavedNewJournalId);
+                  writeJournalEntriesLocal(prunedRemote);
+                  if (prunedRemote.length !== remote.length) syncPush("journal", prunedRemote);
                   renderJournalSelect();
                   clearJournalDetail();
                 } else if (syncEnabled()) {
@@ -2575,6 +2615,9 @@
               });
             };
 
+            var initialJournalEntries = loadJournalEntries();
+            var prunedInitialJournalEntries = pruneOrphanedDrafts(initialJournalEntries, journalIsValid, unsavedNewJournalId);
+            if (prunedInitialJournalEntries.length !== initialJournalEntries.length) saveJournalEntries(prunedInitialJournalEntries);
             renderJournalSelect();
             pullJournalEntries();
 
@@ -2663,10 +2706,14 @@
               syncPush("conflicts", conflicts);
             };
 
+            var conflictIsValid = function (conflict) { return Boolean(conflict.adversaryNpcIds && conflict.adversaryNpcIds.length); };
+
             var pullConflicts = function () {
               syncPull("conflicts").then(function (remote) {
                 if (remote) {
-                  writeConflictsLocal(remote);
+                  var prunedRemote = pruneOrphanedDrafts(remote, conflictIsValid, unsavedNewConflictId);
+                  writeConflictsLocal(prunedRemote);
+                  if (prunedRemote.length !== remote.length) syncPush("conflicts", prunedRemote);
                   renderConflictSelect();
                   clearConflictDetail();
                 } else if (syncEnabled()) {
@@ -2929,6 +2976,9 @@
               });
             };
 
+            var initialConflicts = loadConflicts();
+            var prunedInitialConflicts = pruneOrphanedDrafts(initialConflicts, conflictIsValid, unsavedNewConflictId);
+            if (prunedInitialConflicts.length !== initialConflicts.length) saveConflicts(prunedInitialConflicts);
             renderConflictSelect();
             pullConflicts();
 
@@ -3126,10 +3176,14 @@
               syncPush("bastions", bastions);
             };
 
+            var bastionIsValid = function (bastion) { return Boolean(bastion.bastionName && bastion.bastionName.trim()); };
+
             var pullBastions = function () {
               syncPull("bastions").then(function (remote) {
                 if (remote) {
-                  writeBastionsLocal(remote);
+                  var prunedRemote = pruneOrphanedDrafts(remote, bastionIsValid, unsavedNewBastionId);
+                  writeBastionsLocal(prunedRemote);
+                  if (prunedRemote.length !== remote.length) syncPush("bastions", prunedRemote);
                   renderBastionSelect();
                   clearBastionDetail();
                 } else if (syncEnabled()) {
@@ -3343,6 +3397,9 @@
               });
             };
 
+            var initialBastions = loadBastions();
+            var prunedInitialBastions = pruneOrphanedDrafts(initialBastions, bastionIsValid, unsavedNewBastionId);
+            if (prunedInitialBastions.length !== initialBastions.length) saveBastions(prunedInitialBastions);
             renderBastionSelect();
             pullBastions();
 
