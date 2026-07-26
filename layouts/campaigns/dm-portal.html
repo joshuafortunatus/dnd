@@ -687,27 +687,29 @@
               form.appendChild(pcFieldTextarea("Magic Items", d.magicItems, { field: "magicItems" }));
               form.appendChild(pcFieldTextarea("Adventure Ideas", d.adventureIdeas, { field: "adventureIdeas" }));
 
-              var saveBtn = document.createElement("button");
-              saveBtn.type = "button";
-              saveBtn.className = "pc-save-btn";
-              saveBtn.textContent = "Save";
-              saveBtn.addEventListener("click", function () {
-                var updated = {};
-                Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
-                  updated[el.dataset.field] = el.value;
-                });
-                var checked = form.querySelectorAll('[data-checkbox-group="motivations"]:checked');
-                updated.motivations = Array.prototype.map.call(checked, function (el) { return el.value; });
-                var allData = loadPcData();
-                allData[charKey] = updated;
-                savePcData(allData);
-                var originalText = saveBtn.textContent;
-                saveBtn.textContent = "Saved";
-                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
-              });
-
+              {{/* Auto-save instead of a Save button — with this many
+                fields, a DM editing something near the top has no
+                reason to notice a button below everything else, so a
+                missed edit would silently not persist. */}}
               container.appendChild(form);
-              container.appendChild(saveBtn);
+
+              var saveTimer = null;
+              var scheduleSave = function () {
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(function () {
+                  var updated = {};
+                  Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
+                    updated[el.dataset.field] = el.value;
+                  });
+                  var checked = form.querySelectorAll('[data-checkbox-group="motivations"]:checked');
+                  updated.motivations = Array.prototype.map.call(checked, function (el) { return el.value; });
+                  var allData = loadPcData();
+                  allData[charKey] = updated;
+                  savePcData(allData);
+                }, 500);
+              };
+              form.addEventListener("input", scheduleSave);
+              form.addEventListener("change", scheduleSave);
             };
 
             var renderPcList = function () {
