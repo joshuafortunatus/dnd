@@ -12,7 +12,18 @@
     build one combined character list. */}}
   {{ $characters := where $hub.RegularPagesRecursive "Type" "characters" }}
   {{ $rosterTitles := slice }}
-  {{ range $characters.ByTitle }}{{ $rosterTitles = $rosterTitles | append .Title }}{{ end }}
+  {{ $realCharacterLinks := dict }}
+  {{ range $characters.ByTitle }}
+    {{ $rosterTitles = $rosterTitles | append .Title }}
+    {{ if .Params.ddb_url }}{{ $realCharacterLinks = merge $realCharacterLinks (dict .Title .Params.ddb_url) }}{{ end }}
+  {{ end }}
+
+  {{/* Monster Manual reference index for NPC Tracker's Stat Block field —
+    just a name + a link to that monster's page on aidedd.org, not any
+    stat block content itself (data/monsters.json). Lets a DM pick a
+    standard monster instead of typing one freely, with a link to look
+    the real stat block up during a session. */}}
+  {{ $monsters := hugo.Data.monsters }}
 
   {{/* Order here is deliberate — matches how the DM wants to move through
     the portal. PC Manager comes first since every other section reads
@@ -68,7 +79,7 @@
                 Tracker — into one: import via D&D Beyond link (or an
                 already-published character page), click a name to
                 expand every PC-level field for them in one place. */}}
-              <div class="pc-manager" id="pc-manager" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}" data-pc-data-key="dm-portal-pc-data-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}">
+              <div class="pc-manager" id="pc-manager" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}" data-pc-data-key="dm-portal-pc-data-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}" data-real-links="{{ $realCharacterLinks | jsonify }}">
                 {{ if eq $proxyURL "" }}
                   <p class="entry-date pc-manager-proxy-notice">
                     Live character loading isn&rsquo;t set up yet. Deploy <code>worker/ddb-character-proxy.js</code>
@@ -101,7 +112,7 @@
                 (reference/tracking_sheets/npc-tracker-sheet.pdf) — one
                 record per NPC, picked via the same select+add-button
                 pattern as Travel Planner. */}}
-              <div class="npc-tracker" id="npc-tracker" data-storage-key="dm-portal-npcs-{{ $slug }}">
+              <div class="npc-tracker" id="npc-tracker" data-storage-key="dm-portal-npcs-{{ $slug }}" data-monsters="{{ $monsters | jsonify }}">
                 <div class="npc-tracker-controls">
                   <select class="npc-tracker-select" id="npc-tracker-select">
                     <option value="">&mdash; Select an NPC &mdash;</option>
@@ -445,6 +456,19 @@
                 return JSON.parse(pcManager.dataset.rosterTitles || "[]");
               } catch (e) {
                 return [];
+              }
+            })();
+            {{/* D&D Beyond links for real, published character pages —
+              keyed by title, sourced from each page's own ddb_url front
+              matter (fetch_ddb_character.py). Live-imported characters
+              already carry their own link on the roster entry itself
+              (rosterEntry.link), so this map only needs to cover the
+              non-imported half of the union. */}}
+            var pcRealLinks = (function () {
+              try {
+                return JSON.parse(pcManager.dataset.realLinks || "{}");
+              } catch (e) {
+                return {};
               }
             })();
 
@@ -832,6 +856,22 @@
                 var nameSpan = document.createElement("span");
                 nameSpan.textContent = name;
                 row.appendChild(nameSpan);
+
+                {{/* Same link + label as the public hub's Playable
+                  Characters list — live-imported characters carry their
+                  own link on the roster entry, real published pages get
+                  theirs from pcRealLinks (built from ddb_url front
+                  matter). */}}
+                var ddbUrl = rosterEntry ? rosterEntry.link : pcRealLinks[name];
+                if (ddbUrl) {
+                  var ddbLink = document.createElement("a");
+                  ddbLink.className = "ddb-link";
+                  ddbLink.href = ddbUrl;
+                  ddbLink.target = "_blank";
+                  ddbLink.rel = "noopener";
+                  ddbLink.textContent = "View on D&D Beyond →";
+                  row.appendChild(ddbLink);
+                }
 
                 var detailsBtn = document.createElement("button");
                 detailsBtn.type = "button";
@@ -1289,6 +1329,16 @@
             var npcIsDirty = function () { return npcDirty || Boolean(unsavedNewNpcId); };
             registerDirtyTracker(npcIsDirty, function () { cancelNpcForm(); });
 
+            var NPC_MONSTERS = (function () {
+              try {
+                return JSON.parse(npcTracker.dataset.monsters || "[]");
+              } catch (e) {
+                return [];
+              }
+            })();
+            var npcMonsterLinkByName = {};
+            NPC_MONSTERS.forEach(function (m) { npcMonsterLinkByName[m.name] = m.link; });
+
             var loadNpcs = function () {
               try {
                 return JSON.parse(window.localStorage.getItem(npcStorageKey) || "[]");
@@ -1355,8 +1405,70 @@
               return wrap;
             };
 
+            {{/* Stat Block can come from the Monster Manual reference
+              index (a plain <select>, plus a link out to that monster's
+              page on aidedd.org so the DM can pull up its real stat block
+              during a session) or stay free text, same as before this
+              feature existed — the toggle just decides which of the two
+              sibling fields is visible; "statBlock" is left as the exact
+              field name it always was so older, already-saved custom
+              entries keep working with no migration. */}}
+            {{/* The Monster Manual/Custom choice is made once, up front, at
+              "+ Add NPC" time (see npcAddBtn below) rather than being an
+              always-visible toggle inside the form — once an NPC exists,
+              its statBlockSource is fixed, so the form just renders
+              whichever of the two field layouts matches it. */}}
+            var npcMonsterField = function (value) {
+              var wrap = document.createElement("div");
+              wrap.className = "npc-field";
+              var label = document.createElement("label");
+              label.textContent = "Monster";
+              wrap.appendChild(label);
+              var select = document.createElement("select");
+              select.dataset.field = "statBlockName";
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select a monster —";
+              select.appendChild(placeholder);
+              NPC_MONSTERS.forEach(function (m) {
+                var option = document.createElement("option");
+                option.value = m.name;
+                option.textContent = m.name;
+                select.appendChild(option);
+              });
+              select.value = NPC_MONSTERS.some(function (m) { return m.name === value; }) ? value : "";
+              wrap.appendChild(select);
+
+              var link = document.createElement("a");
+              link.className = "npc-monster-link";
+              link.target = "_blank";
+              link.rel = "noopener";
+              npcUpdateMonsterLink(link, select.value);
+              wrap.appendChild(link);
+
+              select.addEventListener("change", function () { npcUpdateMonsterLink(link, select.value); });
+
+              return wrap;
+            };
+
+            var npcUpdateMonsterLink = function (link, name) {
+              var href = npcMonsterLinkByName[name];
+              if (href) {
+                link.href = href;
+                link.textContent = "View stat block on aidedd.org ↗";
+                link.hidden = false;
+              } else {
+                link.removeAttribute("href");
+                link.textContent = "";
+                link.hidden = true;
+              }
+            };
+
             var collectNpcFromForm = function (form, originalNpc) {
-              var npc = { id: originalNpc.id, createdAt: originalNpc.createdAt };
+              {{/* statBlockSource is never a form field (it's fixed at
+                creation, see above) — seed it from the original record so
+                Save doesn't drop it. */}}
+              var npc = { id: originalNpc.id, createdAt: originalNpc.createdAt, statBlockSource: originalNpc.statBlockSource };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 npc[el.dataset.field] = el.value;
               });
@@ -1442,7 +1554,15 @@
               var header = document.createElement("div");
               header.className = "npc-header-fields";
               header.appendChild(markRequired(npcEditInput("NPC Name", npc.name, { field: "name" })));
-              header.appendChild(npcEditInput("Stat Block", npc.statBlock, { field: "statBlock" }));
+
+              {{/* Source is fixed at "+ Add NPC" time (npcAddBtn below) and
+                never shown as an editable toggle here — each NPC just gets
+                the field layout that matches how it was created. */}}
+              header.appendChild(
+                npc.statBlockSource === "monster-manual"
+                  ? npcMonsterField(npc.statBlockName)
+                  : npcEditInput("Stat Block", npc.statBlock, { field: "statBlock" })
+              );
               header.appendChild(npcEditInput("MM Page", npc.mmPage, { field: "mmPage" }));
               form.appendChild(header);
 
@@ -1509,14 +1629,41 @@
               }
             });
 
-            npcAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(npcIsDirty)) return;
-              discardUnsavedNewNpc();
+            {{/* "+ Add NPC" asks Monster Manual vs. Custom up front rather
+              than creating the record immediately — nothing is persisted
+              (and so nothing is dirty/discardable) until one of the two
+              choices is actually clicked. */}}
+            var renderNpcSourceChooser = function () {
+              npcDetail.innerHTML = "";
+              var wrap = document.createElement("div");
+              wrap.className = "npc-source-chooser";
+              var prompt = document.createElement("p");
+              prompt.className = "npc-source-chooser-prompt";
+              prompt.textContent = "How is this NPC's stat block sourced?";
+              wrap.appendChild(prompt);
+              var choices = document.createElement("div");
+              choices.className = "npc-source-chooser-choices";
+              [
+                { source: "custom", label: "Custom" },
+                { source: "monster-manual", label: "Monster Manual" },
+              ].forEach(function (opt) {
+                var btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "npc-source-chooser-btn";
+                btn.textContent = opt.label;
+                btn.addEventListener("click", function () { createNpcWithSource(opt.source); });
+                choices.appendChild(btn);
+              });
+              wrap.appendChild(choices);
+              npcDetail.appendChild(wrap);
+            };
+
+            var createNpcWithSource = function (source) {
               var npcs = loadNpcs();
               var newNpc = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
-                name: "", statBlock: "", mmPage: "",
+                name: "", statBlockSource: source, statBlock: "", statBlockName: "", mmPage: "",
                 statBlockAlterations: "", alignment: "", personality: "", appearance: "", secret: "",
               };
               npcs.push(newNpc);
@@ -1525,6 +1672,14 @@
               npcSelect.value = newNpc.id;
               npcCurrentValue = newNpc.id;
               renderNpcForm(newNpc.id, true);
+            };
+
+            npcAddBtn.addEventListener("click", function () {
+              if (!confirmLeaveIfDirty(npcIsDirty)) return;
+              discardUnsavedNewNpc();
+              npcSelect.value = "";
+              npcCurrentValue = "";
+              renderNpcSourceChooser();
             });
           }
 
@@ -2134,7 +2289,28 @@
             };
             syncPullers.push(pullConflicts);
 
+            {{/* adversaryNpcIds ties a conflict to real NPC Tracker
+              entries (an array of NPC ids, since a conflict can be
+              Adventurers vs. more than one NPC) — reads loadNpcs/npcLabel,
+              defined above in the NPC Tracker block, which always exists
+              on the page since every DM portal renders the full fixed
+              section list (same reasoning as Conflicts' session tie-in
+              reading loadJournalEntries). The old free-text "adversary"
+              string is kept as a fallback purely for already-saved
+              conflicts predating this field — editing and re-saving one
+              switches it over to the NPC-based list. */}}
             var conflictLabel = function (conflict) {
+              var ids = conflict.adversaryNpcIds || [];
+              if (ids.length) {
+                var npcs = loadNpcs();
+                var names = ids
+                  .map(function (id) {
+                    var npc = npcs.filter(function (n) { return n.id === id; })[0];
+                    return npc ? npcLabel(npc) : null;
+                  })
+                  .filter(Boolean);
+                if (names.length) return "Adventurers vs. " + names.join(", ");
+              }
               return conflict.adversary ? "Adventurers vs. " + conflict.adversary : "Unnamed Conflict";
             };
 
@@ -2167,6 +2343,38 @@
               Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
               wrap.appendChild(label);
               wrap.appendChild(textarea);
+              return wrap;
+            };
+
+            var conflictAdversarySelect = function (labelText, selectedIds, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "conflict-field conflict-field-wide";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              wrap.appendChild(label);
+              var npcs = loadNpcs().slice().sort(function (a, b) {
+                return npcLabel(a).localeCompare(npcLabel(b), undefined, { sensitivity: "base" });
+              });
+              if (!npcs.length) {
+                var empty = document.createElement("p");
+                empty.className = "entry-date";
+                empty.textContent = "No NPCs yet — add some in NPC Tracker first.";
+                wrap.appendChild(empty);
+                return wrap;
+              }
+              var select = document.createElement("select");
+              select.multiple = true;
+              select.size = Math.min(npcs.length, 6);
+              Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+              var selected = selectedIds || [];
+              npcs.forEach(function (npc) {
+                var option = document.createElement("option");
+                option.value = npc.id;
+                option.textContent = npcLabel(npc);
+                option.selected = selected.indexOf(npc.id) !== -1;
+                select.appendChild(option);
+              });
+              wrap.appendChild(select);
               return wrap;
             };
 
@@ -2205,7 +2413,12 @@
             var collectConflictFromForm = function (form, originalConflict) {
               var conflict = { id: originalConflict.id, createdAt: originalConflict.createdAt };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
-                conflict[el.dataset.field] = el.value;
+                var field = el.dataset.field;
+                if (field === "adversaryNpcIds") {
+                  conflict.adversaryNpcIds = Array.prototype.map.call(el.selectedOptions, function (o) { return o.value; });
+                } else {
+                  conflict[field] = el.value;
+                }
               });
               return conflict;
             };
@@ -2280,13 +2493,13 @@
               var error = document.createElement("p");
               error.className = "conflict-form-error";
               error.hidden = true;
-              error.textContent = "The adversary (“Adventurers vs. ___”) is required.";
+              error.textContent = "At least one adversary NPC is required.";
               conflictDetail.appendChild(error);
 
               var form = document.createElement("div");
               form.className = "conflict-edit-form";
 
-              form.appendChild(markRequired(conflictEditInput("Adventurers vs.", conflict.adversary, { field: "adversary" })));
+              form.appendChild(markRequired(conflictAdversarySelect("Adventurers vs.", conflict.adversaryNpcIds, { field: "adversaryNpcIds" })));
               form.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
               form.appendChild(conflictEditTextarea("Notes", conflict.notes, { field: "notes" }));
 
@@ -2297,7 +2510,7 @@
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectConflictFromForm(form, conflict);
-                if (!updated.adversary || !updated.adversary.trim()) {
+                if (!updated.adversaryNpcIds || !updated.adversaryNpcIds.length) {
                   error.hidden = false;
                   return;
                 }
@@ -2354,7 +2567,7 @@
               var newConflict = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
-                adversary: "", sessionId: "", notes: "",
+                adversaryNpcIds: [], sessionId: "", notes: "",
               };
               conflicts.push(newConflict);
               saveConflicts(conflicts);
