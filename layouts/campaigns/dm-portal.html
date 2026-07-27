@@ -26,18 +26,18 @@
   {{ $monsters := hugo.Data.monsters }}
 
   {{/* Order here is deliberate — matches how the DM wants to move through
-    the portal. PC Manager comes first since every other section reads
-    from the same roster it manages. */}}
+    the portal. Character Manager comes first since every other section
+    reads from the same roster it manages (Playable via PC Manager, NPC
+    via NPC Tracker — see the "character-manager" panel below). */}}
   {{ $sections := slice
-    (dict "id" "pc-manager" "label" "PC Manager")
-    (dict "id" "travel-planner" "label" "Travel Planner")
-    (dict "id" "npc-tracker" "label" "NPC Tracker")
-    (dict "id" "settlement-tracker" "label" "Settlement Tracker")
+    (dict "id" "character-manager" "label" "Character Manager")
     (dict "id" "campaign-journal" "label" "Campaign Journal")
     (dict "id" "campaign-conflicts" "label" "Campaign Conflicts")
-    (dict "id" "magic-item-tracker" "label" "Magic Item Tracker")
-    (dict "id" "bastion-tracker" "label" "Bastion Tracker")
     (dict "id" "file-library" "label" "File Library")
+    (dict "id" "travel-planner" "label" "Travel Planner")
+    (dict "id" "magic-item-tracker" "label" "Magic Item Tracker")
+    (dict "id" "settlement-tracker" "label" "Settlement Tracker")
+    (dict "id" "bastion-tracker" "label" "Bastion Tracker")
   }}
 
   <div class="hub-topline">
@@ -74,29 +74,80 @@
 
         {{ range $sections }}
           <div class="dm-section-panel" data-section="{{ .id }}" hidden>
-            {{ if eq .id "pc-manager" }}
-              {{/* Combines what used to be three separate sections —
-                Character Importer, Game Expectations, and Character
-                Tracker — into one: import via D&D Beyond link (or an
-                already-published character page), click a name to
-                expand every PC-level field for them in one place. */}}
-              <div class="pc-manager" id="pc-manager" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}" data-pc-data-key="dm-portal-pc-data-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}" data-real-links="{{ $realCharacterLinks | jsonify }}">
-                {{ if eq $proxyURL "" }}
-                  <p class="entry-date pc-manager-proxy-notice">
-                    Live character loading isn&rsquo;t set up yet. Deploy <code>worker/ddb-character-proxy.js</code>
-                    to Cloudflare Workers and set <code>ddb_proxy_url</code> in <code>hugo.toml</code> to enable it.
-                  </p>
-                {{ else }}
-                  <form class="pc-manager-form" id="pc-manager-form">
-                    <label for="pc-manager-link">D&amp;D Beyond character link</label>
-                    <input type="text" id="pc-manager-link" placeholder="https://www.dndbeyond.com/characters/12345678" required>
-                    <button type="submit">Import Character</button>
-                    <p class="pc-manager-error" id="pc-manager-error" hidden></p>
-                  </form>
-                {{ end }}
+            {{ if eq .id "character-manager" }}
+              {{/* Consolidates what used to be two separate top-level
+                sections, PC Manager and NPC Tracker, into one — the DM
+                picks Playable or NPC once via this chooser, then works
+                within that manager exactly as before. Both managers'
+                own markup/IDs (#pc-manager, #npc-tracker) and JS are
+                completely unchanged — this only adds a chooser and a
+                Back button above them (see the "Character Manager"
+                controller in the <script> below). Re-entering this
+                section from elsewhere always resets to the chooser
+                (registerSectionResetHook), the same "blank landing
+                state on every visit" rule every other section already
+                follows — it doesn't remember which kind was open last. */}}
+              <div class="character-manager" id="character-manager">
+                <div class="npc-source-chooser character-manager-chooser" id="character-manager-chooser">
+                  <p class="npc-source-chooser-prompt">Which kind of character?</p>
+                  <div class="npc-source-chooser-choices">
+                    <button type="button" class="npc-source-chooser-btn" data-manager-kind="playable">Playable</button>
+                    <button type="button" class="npc-source-chooser-btn" data-manager-kind="npc">NPC</button>
+                  </div>
+                </div>
 
-                <p class="entry-date" id="pc-manager-empty" {{ if $rosterTitles }}hidden{{ end }}>No characters yet &mdash; add one above.</p>
-                <ul class="pc-manager-list" id="pc-manager-list"></ul>
+                <div class="character-manager-kind" id="character-manager-kind-playable" hidden>
+                  <button type="button" class="npc-source-chooser-back character-manager-back">&larr; Back</button>
+
+                  {{/* Combines what used to be three separate sections —
+                    Character Importer, Game Expectations, and Character
+                    Tracker — into one: import via D&D Beyond link (or an
+                    already-published character page), click a name to
+                    expand every PC-level field for them in one place. */}}
+                  <div class="pc-manager" id="pc-manager" data-proxy-url="{{ $proxyURL }}" data-storage-key="dm-portal-characters-{{ $slug }}" data-pc-data-key="dm-portal-pc-data-{{ $slug }}" data-roster-titles="{{ $rosterTitles | jsonify }}" data-real-links="{{ $realCharacterLinks | jsonify }}">
+                    {{ if eq $proxyURL "" }}
+                      <p class="entry-date pc-manager-proxy-notice">
+                        Live character loading isn&rsquo;t set up yet. Deploy <code>worker/ddb-character-proxy.js</code>
+                        to Cloudflare Workers and set <code>ddb_proxy_url</code> in <code>hugo.toml</code> to enable it.
+                      </p>
+                    {{ else }}
+                      <form class="pc-manager-form" id="pc-manager-form">
+                        <label for="pc-manager-link">D&amp;D Beyond character link</label>
+                        <input type="text" id="pc-manager-link" placeholder="https://www.dndbeyond.com/characters/12345678" required>
+                        <button type="submit">Import Character</button>
+                        <p class="pc-manager-error" id="pc-manager-error" hidden></p>
+                      </form>
+                    {{ end }}
+
+                    <p class="entry-date" id="pc-manager-empty" {{ if $rosterTitles }}hidden{{ end }}>No characters yet &mdash; add one above.</p>
+                    <ul class="pc-manager-list" id="pc-manager-list"></ul>
+                  </div>
+                </div>
+
+                <div class="character-manager-kind" id="character-manager-kind-npc" hidden>
+                  <button type="button" class="npc-source-chooser-back character-manager-back">&larr; Back</button>
+
+                  {{/* Fields match D&D Beyond's official NPC Tracker sheet
+                    (reference/tracking_sheets/npc-tracker-sheet.pdf) — one
+                    record per NPC, picked via the same select+add-button
+                    pattern as Travel Planner. */}}
+                  <div class="npc-tracker" id="npc-tracker" data-storage-key="dm-portal-npcs-{{ $slug }}" data-monsters="{{ $monsters | jsonify }}" data-proxy-url="{{ $proxyURL }}">
+                    {{ if eq $proxyURL "" }}
+                      <p class="entry-date">
+                        Monster Manual picks link out to aidedd.org only. Deploy <code>worker/ddb-character-proxy.js</code>
+                        (with its new <code>/monster</code> route) to Cloudflare Workers and set <code>ddb_proxy_url</code>
+                        in <code>hugo.toml</code> to also show the full stat block inline here.
+                      </p>
+                    {{ end }}
+                    <div class="npc-tracker-controls">
+                      <select class="npc-tracker-select" id="npc-tracker-select">
+                        <option value="">&mdash; Select an NPC &mdash;</option>
+                      </select>
+                      <button type="button" class="npc-tracker-add-btn" id="npc-tracker-add-btn">+ Add NPC</button>
+                    </div>
+                    <div class="npc-tracker-detail" id="npc-tracker-detail"></div>
+                  </div>
+                </div>
               </div>
             {{ else if eq .id "travel-planner" }}
               <div class="travel-planner" id="travel-planner" data-storage-key="dm-portal-travel-plans-{{ $slug }}">
@@ -107,27 +158,6 @@
                   <button type="button" class="travel-planner-add-btn" id="travel-planner-add-btn">+ Add Travel Plan</button>
                 </div>
                 <div class="travel-planner-detail" id="travel-planner-detail"></div>
-              </div>
-            {{ else if eq .id "npc-tracker" }}
-              {{/* Fields match D&D Beyond's official NPC Tracker sheet
-                (reference/tracking_sheets/npc-tracker-sheet.pdf) — one
-                record per NPC, picked via the same select+add-button
-                pattern as Travel Planner. */}}
-              <div class="npc-tracker" id="npc-tracker" data-storage-key="dm-portal-npcs-{{ $slug }}" data-monsters="{{ $monsters | jsonify }}" data-proxy-url="{{ $proxyURL }}">
-                {{ if eq $proxyURL "" }}
-                  <p class="entry-date">
-                    Monster Manual picks link out to aidedd.org only. Deploy <code>worker/ddb-character-proxy.js</code>
-                    (with its new <code>/monster</code> route) to Cloudflare Workers and set <code>ddb_proxy_url</code>
-                    in <code>hugo.toml</code> to also show the full stat block inline here.
-                  </p>
-                {{ end }}
-                <div class="npc-tracker-controls">
-                  <select class="npc-tracker-select" id="npc-tracker-select">
-                    <option value="">&mdash; Select an NPC &mdash;</option>
-                  </select>
-                  <button type="button" class="npc-tracker-add-btn" id="npc-tracker-add-btn">+ Add NPC</button>
-                </div>
-                <div class="npc-tracker-detail" id="npc-tracker-detail"></div>
               </div>
             {{ else if eq .id "settlement-tracker" }}
               {{/* Fields match D&D Beyond's official Settlement Tracker
@@ -534,6 +564,62 @@
             b.addEventListener("click", function () { goToSection(b.dataset.section); });
           });
           sectionSelect.addEventListener("change", function () { goToSection(sectionSelect.value); });
+
+          {{/* Character Manager: the outer chooser that PC Manager and NPC
+            Tracker (both below) now live inside. Neither manager's own
+            markup/JS changed at all — same #pc-manager / #npc-tracker
+            elements, same registerDirtyTracker/registerSectionResetHook
+            calls each already makes — this only shows/hides which one is
+            visible and where each one's "Back" button returns to. Reusing
+            the global isAnyFormDirty/discardAllUnsaved (rather than
+            scoping a new dirty check to just "the currently open kind") is
+            safe here specifically because Back is the *only* way to move
+            from one kind to the other — there's no direct kind-to-kind
+            switch — and every other cross-section switch already discards
+            everything before landing here, so nothing outside the
+            currently open kind could be dirty at the moment Back is
+            clicked. PC Manager itself never contributes anything to
+            isAnyFormDirty (its fields autosave, no Save/Cancel step to
+            guard), so Back out of it never prompts — only an NPC Tracker
+            record mid-edit does. */}}
+          var characterManagerRoot = document.getElementById("character-manager");
+          if (characterManagerRoot) {
+            var characterManagerChooser = document.getElementById("character-manager-chooser");
+            var characterManagerKindEls = {
+              playable: document.getElementById("character-manager-kind-playable"),
+              npc: document.getElementById("character-manager-kind-npc"),
+            };
+
+            var showCharacterManagerChooser = function () {
+              characterManagerChooser.hidden = false;
+              Object.keys(characterManagerKindEls).forEach(function (k) { characterManagerKindEls[k].hidden = true; });
+            };
+
+            var showCharacterManagerKind = function (kind) {
+              characterManagerChooser.hidden = true;
+              Object.keys(characterManagerKindEls).forEach(function (k) { characterManagerKindEls[k].hidden = k !== kind; });
+            };
+
+            Array.prototype.forEach.call(characterManagerChooser.querySelectorAll("[data-manager-kind]"), function (btn) {
+              btn.addEventListener("click", function () { showCharacterManagerKind(btn.dataset.managerKind); });
+            });
+
+            Array.prototype.forEach.call(characterManagerRoot.querySelectorAll(".character-manager-back"), function (btn) {
+              btn.addEventListener("click", function () {
+                if (!confirmLeaveIfDirty(isAnyFormDirty)) return;
+                discardAllUnsaved();
+                showCharacterManagerChooser();
+              });
+            });
+
+            {{/* Every other section already resets to its own blank
+              landing state on any section switch (see each tracker's own
+              registerSectionResetHook call) — this makes Character
+              Manager follow the same rule at its own outer level: leaving
+              and coming back always re-shows the chooser rather than
+              remembering which kind was open. */}}
+            registerSectionResetHook(showCharacterManagerChooser);
+          }
 
           {{/* PC Manager combines what used to be three separate
             sections — Character Importer, Game Expectations, Character
