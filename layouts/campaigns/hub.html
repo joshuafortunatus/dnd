@@ -27,7 +27,7 @@
       <option value="lore">Lore</option>
       <option value="characters">Characters</option>
       <option value="locations">Locations</option>
-      <option value="images">Images</option>
+      <option value="images">Files</option>
       <option value="misc">Misc.</option>
       {{ with $dmPage }}<option value="dm" data-href="{{ .RelPermalink }}">DM Portal</option>{{ end }}
     </select>
@@ -43,7 +43,7 @@
     <input type="radio" name="hub-tab" id="tab-locations" class="hub-tab-radio">
     <label for="tab-locations" class="hub-tab-label">Locations</label>
     <input type="radio" name="hub-tab" id="tab-images" class="hub-tab-radio">
-    <label for="tab-images" class="hub-tab-label">Images</label>
+    <label for="tab-images" class="hub-tab-label">Files</label>
     <input type="radio" name="hub-tab" id="tab-misc" class="hub-tab-radio">
     <label for="tab-misc" class="hub-tab-label">Misc.</label>
     {{ with $dmPage }}<a class="hub-tab-label hub-tab-link" href="{{ .RelPermalink }}">DM Portal</a>{{ end }}
@@ -129,7 +129,6 @@
         than one merged grid — faking an image-shaped card for a PDF
         would erase the real image-vs-download distinction this feature
         is for. */}}
-      <h2>Shared Files</h2>
       <div class="hub-gallery" id="hub-shared-images-list" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}"></div>
       <ul class="entry-list" id="hub-shared-docs-list"></ul>
       <p class="entry-date" id="hub-shared-files-empty" hidden>Nothing shared yet.</p>
