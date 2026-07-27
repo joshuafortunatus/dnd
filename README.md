@@ -1,8 +1,9 @@
 # dnd
 
 Public GitHub Pages site for D&D campaign notes (synced from Google Sheets) and
-character sheets (synced from D&D Beyond). Built with [Hugo](https://gohugo.io/).
-Supports multiple campaigns.
+character sheets (synced from D&D Beyond), plus a password-gated DM Portal
+(NPCs, travel, settlements, journal, conflicts, magic items, bastions, file
+sharing). Built with [Hugo](https://gohugo.io/). Supports multiple campaigns.
 
 https://joshuafortunatus.github.io/dnd/
 
@@ -16,7 +17,8 @@ https://joshuafortunatus.github.io/dnd/
   marked `type: playable`)
 - `worker/ddb-character-proxy.js` — Cloudflare Worker: CORS proxy, cross-device
   DM Portal sync, File Library uploads (R2)
-- `.github/workflows/` — daily content sync, deploy on push to `main`
+- `.github/workflows/` — `sync-content.yml` (daily content sync), `deploy.yml`
+  (build + publish on push to `main`), `ci.yml` (build + test on PRs)
 
 ## ⚠️ Character privacy
 
@@ -43,9 +45,9 @@ only works for characters shared as "Public".
 ```bash
 hugo server -D                              # http://localhost:1313/dnd/
 
-pip install -r scripts/requirements.txt     # needs GOOGLE_CREDENTIALS_JSON
-python scripts/sync_sheet.py
-python scripts/fetch_ddb_character.py
+pip install -r scripts/requirements.txt
+GOOGLE_CREDENTIALS_JSON='...' python scripts/sync_sheet.py
+GOOGLE_CREDENTIALS_JSON='...' python scripts/fetch_ddb_character.py
 
 pytest scripts/tests/
 ```
