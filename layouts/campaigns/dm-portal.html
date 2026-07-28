@@ -4625,30 +4625,29 @@
                 initTd.appendChild(initSelect);
                 tr.appendChild(initTd);
 
-                {{/* PCs don't get an HP cell at all — a player's HP is
-                  tracked on their own D&D Beyond sheet, not duplicated
-                  here; only NPCs (the DM's own responsibility to track)
-                  get one. The cell itself still renders, empty, so the
-                  column stays aligned across every row regardless of kind. */}}
+                {{/* PCs get an editable HP cell too, same as NPCs — a
+                  player's HP normally lives on their own D&D Beyond sheet,
+                  but the DM may still want to track it here during a fight
+                  (e.g. no live sheet access at the table). Unlike NPCs, PC
+                  rows are never auto-filled from a stat block — they start
+                  blank (null) and stay that way until the DM types a value. */}}
                 var hpTd = document.createElement("td");
                 hpTd.className = "combat-hp-cell";
-                if (kindLabel !== "PC") {
-                  var hpCurrentInput = document.createElement("input");
-                  hpCurrentInput.type = "text";
-                  hpCurrentInput.className = "combat-hp-input";
-                  hpCurrentInput.dataset.combatField = "hpCurrent";
-                  hpCurrentInput.value = stats.hpCurrent || "";
-                  npcRestrictNumericInput(hpCurrentInput, false);
-                  var hpMaxInput = document.createElement("input");
-                  hpMaxInput.type = "text";
-                  hpMaxInput.className = "combat-hp-input";
-                  hpMaxInput.dataset.combatField = "hpMax";
-                  hpMaxInput.value = stats.hpMax || "";
-                  npcRestrictNumericInput(hpMaxInput, false);
-                  hpTd.appendChild(hpCurrentInput);
-                  hpTd.appendChild(document.createTextNode(" / "));
-                  hpTd.appendChild(hpMaxInput);
-                }
+                var hpCurrentInput = document.createElement("input");
+                hpCurrentInput.type = "text";
+                hpCurrentInput.className = "combat-hp-input";
+                hpCurrentInput.dataset.combatField = "hpCurrent";
+                hpCurrentInput.value = stats.hpCurrent || "";
+                npcRestrictNumericInput(hpCurrentInput, false);
+                var hpMaxInput = document.createElement("input");
+                hpMaxInput.type = "text";
+                hpMaxInput.className = "combat-hp-input";
+                hpMaxInput.dataset.combatField = "hpMax";
+                hpMaxInput.value = stats.hpMax || "";
+                npcRestrictNumericInput(hpMaxInput, false);
+                hpTd.appendChild(hpCurrentInput);
+                hpTd.appendChild(document.createTextNode(" / "));
+                hpTd.appendChild(hpMaxInput);
                 tr.appendChild(hpTd);
 
                 var acTd = document.createElement("td");
@@ -4838,15 +4837,10 @@
                   var key = tr.dataset.combatantKey;
                   var checkedConditions = tr.querySelectorAll('[data-combat-field="conditions"] input[type="checkbox"]:checked');
                   var selectedConditions = Array.prototype.map.call(checkedConditions, function (el) { return el.value; });
-                  {{/* PC rows have no hpCurrent/hpMax elements at all (see
-                    combatRow) — guard rather than assume every row has
-                    every field. */}}
-                  var hpCurrentEl = tr.querySelector('[data-combat-field="hpCurrent"]');
-                  var hpMaxEl = tr.querySelector('[data-combat-field="hpMax"]');
                   stats[key] = {
                     initiative: tr.querySelector('[data-combat-field="initiative"]').value,
-                    hpCurrent: hpCurrentEl ? hpCurrentEl.value : "",
-                    hpMax: hpMaxEl ? hpMaxEl.value : "",
+                    hpCurrent: tr.querySelector('[data-combat-field="hpCurrent"]').value,
+                    hpMax: tr.querySelector('[data-combat-field="hpMax"]').value,
                     ac: tr.querySelector('[data-combat-field="ac"]').value,
                     conditions: selectedConditions,
                   };
