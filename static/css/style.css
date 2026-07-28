@@ -63,6 +63,16 @@ main.wrap {
 .ddb-link { white-space: nowrap; }
 .entry-date, .tags { color: var(--text-dim); font-size: 0.9rem; }
 h3 .entry-date { margin-left: 0.75rem; font-weight: normal; }
+.conflict-goto-npc-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 .tag {
   display: inline-block;
@@ -964,13 +974,141 @@ body.is-home {
   min-height: 5rem;
   resize: vertical;
 }
-.conflict-adversary-checkboxes {
-  max-height: 12rem;
+/* Combined selector, not just .conflict-adversary-toggle, so this reliably
+   overrides .combat-conditions-toggle's max-width regardless of source
+   order (equal-specificity single-class rules would otherwise let
+   whichever is declared later in the file win). */
+.combat-conditions-toggle.conflict-adversary-toggle { min-width: 14rem; max-width: none; white-space: normal; }
+.conflict-adversary-dropdown {
+  min-width: 16rem;
+  max-height: 16rem;
   overflow-y: auto;
+}
+.conflict-adversary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.conflict-adversary-row .pc-checkbox-option { font-size: 1rem; }
+.conflict-adversary-qty-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+}
+.conflict-adversary-qty-x { color: var(--text-dim); font-size: 1rem; }
+.conflict-adversary-qty-input {
+  box-sizing: border-box;
+  width: 2.25rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.2rem 0.3rem;
+  font-size: 1rem;
+  font-family: inherit;
+  text-align: center;
+}
+
+.combat-tracker-heading {
+  color: var(--text-dim);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 1rem;
+}
+/* No overflow-x:auto wrapper here — the site already clips horizontal
+   overflow at the body level (see `body { overflow-x: hidden; }`), and a
+   local auto-scroll container here would turn the Conditions dropdown's
+   popover (which deliberately extends past its row) into a real scrollbar
+   the moment it opens. Everything else in this table uses the site's
+   normal table/input sizing — only the combatant name itself
+   (.combat-name-text) shrinks, and only when it's actually too long to
+   fit; see renderCombatSection's post-render measurement pass. */
+.combat-table-empty { margin-top: -0.5rem; }
+.combat-name-cell { white-space: nowrap; }
+.combat-name-text-small { font-size: 0.8rem; }
+.combat-name-conditions {
+  margin-top: 0.35rem;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  white-space: normal;
+}
+.combat-kind-tag {
+  display: inline-block;
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 0.5rem 0.7rem;
+  padding: 0.05rem 0.4rem;
+  margin-right: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
 }
+.combat-kind-tag.combat-kind-pc { color: var(--accent); border-color: var(--accent); }
+.combat-hp-cell { white-space: nowrap; }
+.combat-initiative-input { width: 3.5rem; }
+.combat-ac-input, .combat-hp-input { width: 2.5rem; }
+.combat-initiative-input, .combat-hp-input, .combat-ac-input {
+  box-sizing: border-box;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+.combat-conditions-wrap { position: relative; }
+.combat-conditions-toggle {
+  box-sizing: border-box;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 9rem;
+  max-width: 12rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.combat-conditions-toggle:hover { border-color: var(--accent); }
+.combat-conditions-toggle-open {
+  border-color: var(--accent);
+  background: rgba(201, 162, 39, 0.15);
+  color: var(--accent);
+}
+/* :not([hidden]) is required here, not just .combat-conditions-dropdown —
+   a bare class rule with `display: flex` beats the browser's default
+   [hidden] { display: none }, so the dropdown would stay visibly expanded
+   in the layout regardless of its hidden property (this exact gotcha has
+   bitten this codebase before: see the DM portal gate). */
+.combat-conditions-dropdown:not([hidden]) {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 11rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.combat-conditions-dropdown .pc-checkbox-option { font-size: 0.85rem; white-space: nowrap; }
+/* A <tr> doesn't establish its own stacking context by default, so an
+   open dropdown's z-index only resolves correctly against elements within
+   the same context — without this, a later sibling row's plain (non-
+   positioned) cell content can still paint over it. */
+.combat-row-dropdown-open { position: relative; z-index: 30; }
 .journal-field-wide, .pc-field-wide, .conflict-field-wide, .bastion-field-wide {
   margin-bottom: 1.25rem;
 }

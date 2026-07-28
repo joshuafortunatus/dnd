@@ -688,6 +688,26 @@
             };
             syncPullers.push(pullRoster);
 
+            {{/* HP is a reliable pull from D&D Beyond's own character JSON —
+              baseHitPoints/bonusHitPoints/overrideHitPoints/removedHitPoints
+              are plain fields, unlike AC (which has no equivalent field at
+              all; it'd need a full equipped-armor/shield/Dex-cap/modifier
+              calculation to replicate D&D Beyond's own math, confirmed via
+              a real character whose computed AC came out 2 short of the
+              true value even after checking armor/Dex/attunement/manual
+              overrides — too failure-prone to ship, so AC stays manual).
+              hpCurrent intentionally reflects the character's real, already-
+              damaged HP at fetch time (maxHp - removedHitPoints), not a
+              fresh full-health value — a PC's damage persists across real
+              sessions the way an NPC's never does, since NPCs are always a
+              brand-new combatant the first time they're added to a fight. */}}
+            var pcHpFromDdbData = function (data) {
+              if (typeof data.baseHitPoints !== "number") return { hpMax: "", hpCurrent: "" };
+              var maxHp = typeof data.overrideHitPoints === "number" ? data.overrideHitPoints : data.baseHitPoints + (data.bonusHitPoints || 0);
+              var currentHp = maxHp - (data.removedHitPoints || 0);
+              return { hpMax: String(maxHp), hpCurrent: String(currentHp) };
+            };
+
             {{/* Keeps Class/Level/Species current with D&D Beyond on
               every page load, so a level-up shows up here without the
               DM re-importing. Runs after the sync pull settles so it
@@ -709,7 +729,8 @@
                     var charClass = classes.length ? ((classes[0].definition && classes[0].definition.name) || "") : "";
                     var level = classes.length ? classes.reduce(function (sum, c) { return sum + (c.level || 0); }, 0) : "";
                     var species = (payload.data.race && payload.data.race.fullName) || "";
-                    return { id: entry.id, charClass: charClass, level: level, species: species };
+                    var hp = pcHpFromDdbData(payload.data);
+                    return { id: entry.id, charClass: charClass, level: level, species: species, hpMax: hp.hpMax, hpCurrent: hp.hpCurrent };
                   })
                   .catch(function () { return null; });
               })).then(function (results) {
@@ -719,10 +740,12 @@
                   if (!r) return;
                   var entry = current.filter(function (e) { return e.id === r.id; })[0];
                   if (!entry) return;
-                  if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species) {
+                  if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species || entry.hpMax !== r.hpMax || entry.hpCurrent !== r.hpCurrent) {
                     entry.charClass = r.charClass;
                     entry.level = r.level;
                     entry.species = r.species;
+                    entry.hpMax = r.hpMax;
+                    entry.hpCurrent = r.hpCurrent;
                     changed = true;
                   }
                 });
@@ -1153,9 +1176,10 @@
                     var charClass = classes.length ? ((classes[0].definition && classes[0].definition.name) || "") : "";
                     var level = classes.length ? classes.reduce(function (sum, c) { return sum + (c.level || 0); }, 0) : "";
                     var species = (payload.data.race && payload.data.race.fullName) || "";
+                    var hp = pcHpFromDdbData(payload.data);
                     var roster = loadRoster();
                     if (!roster.some(function (e) { return e.id === id; })) {
-                      roster.push({ id: id, name: name, link: link, charClass: charClass, level: level, species: species });
+                      roster.push({ id: id, name: name, link: link, charClass: charClass, level: level, species: species, hpMax: hp.hpMax, hpCurrent: hp.hpCurrent });
                       saveRoster(roster);
                     }
                     renderPcList();
@@ -1581,8 +1605,19 @@
             };
             syncPullers.push(pullNpcs);
 
+            {{/* A Monster Manual NPC whose stat block has been edited away
+              from the raw fetched version (npc.statBlockOverride present)
+              is flagged everywhere its name is shown — the adversary
+              picklist, the combat tracker, NPC Tracker's own select — so a
+              DM can tell at a glance this one no longer matches the vanilla
+              stat block. Custom NPCs have no "unmodified" baseline to
+              diverge from, so they never get the suffix. */}}
             var npcLabel = function (npc) {
-              return npc.name || "Unnamed NPC";
+              var base = npc.name || "Unnamed NPC";
+              if (npc.statBlockSource === "monster-manual" && npc.statBlockOverride) {
+                return base + " - Modified";
+              }
+              return base;
             };
 
             var npcEditInput = function (labelText, value, dataAttrs) {
@@ -1651,7 +1686,7 @@
               };
             };
 
-            var npcMonsterField = function (npc, isNewNpc, edition, nameValue) {
+            var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl) {
               var wrap = document.createElement("div");
               wrap.className = "npc-field";
               var label = document.createElement("label");
@@ -1695,6 +1730,12 @@
 
               select.addEventListener("change", function () {
                 npcUpdateMonsterLink(link, edition, select.value);
+                {{/* NPC Name auto-fills from whichever monster is picked —
+                  a DM adding a Monster Manual NPC shouldn't have to type
+                  the same name twice. Always overwrites on change, same as
+                  the override-clearing line right below it: picking a
+                  different monster resets every monster-derived field. */}}
+                if (nameInputEl && select.value) nameInputEl.value = select.value;
                 {{/* A saved override belongs to whichever monster it was
                   captured for — switching the dropdown to a different
                   monster invalidates it, so clear it rather than carrying
@@ -3403,14 +3444,16 @@
 
               var header = document.createElement("div");
               header.className = "npc-header-fields";
-              header.appendChild(markRequired(npcEditInput("NPC Name", npc.name, { field: "name" })));
+              var nameFieldWrap = markRequired(npcEditInput("NPC Name", npc.name, { field: "name" }));
+              header.appendChild(nameFieldWrap);
+              var nameInputEl = nameFieldWrap.querySelector('[data-field="name"]');
 
               {{/* Source is fixed at "+ Add NPC" time (npcAddBtn below) and
                 never shown as an editable toggle here — each NPC just gets
                 the field layout that matches how it was created. */}}
               header.appendChild(
                 npc.statBlockSource === "monster-manual"
-                  ? npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc))
+                  ? npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl)
                   : npcCustomStatBlockField(npc, isNew, npcNormalizedEdition(npc))
               );
               header.appendChild(npcEditInput("MM Page", npc.mmPage, { field: "mmPage" }));
@@ -4174,6 +4217,7 @@
             var conflictAddBtn = document.getElementById("campaign-conflicts-add-btn");
             var conflictDirty = false;
             var conflictCurrentValue = "";
+            var currentCombatSection = null;
             var conflictIsDirty = function () { return conflictDirty || Boolean(unsavedNewConflictId); };
             registerDirtyTracker(conflictIsDirty, function () { cancelConflictForm(); });
             registerSectionResetHook(function () { cancelConflictForm(); });
@@ -4222,14 +4266,23 @@
               string is kept as a fallback purely for already-saved
               conflicts predating this field — editing and re-saving one
               switches it over to the NPC-based list. */}}
+            {{/* Shared by conflictLabel and the adversary picker's own
+              toggle/checklist — suffixed with " x<qty>" only when qty > 1,
+              so a lone adversary never shows a redundant "x1". */}}
+            var conflictAdversaryDisplayLabel = function (npc, qty) {
+              var base = npcLabel(npc);
+              return qty > 1 ? base + " x" + qty : base;
+            };
+
             var conflictLabel = function (conflict) {
               var ids = conflict.adversaryNpcIds || [];
               if (ids.length) {
                 var npcs = loadNpcs();
+                var quantities = conflict.adversaryNpcQuantities || {};
                 var names = ids
                   .map(function (id) {
                     var npc = npcs.filter(function (n) { return n.id === id; })[0];
-                    return npc ? npcLabel(npc) : null;
+                    return npc ? conflictAdversaryDisplayLabel(npc, quantities[id] || 1) : null;
                   })
                   .filter(Boolean);
                 if (names.length) return "Adventurers vs. " + names.join(", ");
@@ -4264,14 +4317,17 @@
               return wrap;
             };
 
-            {{/* A native <select multiple> requires ctrl/cmd-click to add to
-              the selection — a plain click replaces it, which reads as "this
-              is broken, it acts like a single-select" (real bug the user
-              hit: clicking a second NPC silently dropped the first). A
-              checkbox list has no hidden modifier-key requirement, so every
-              click is unambiguously additive — same pattern as PC Manager's
-              motivations checkbox group above. */}}
-            var conflictAdversarySelect = function (labelText, selectedIds) {
+            {{/* Collapsed toggle + checklist dropdown, same interaction
+              pattern as the combat table's Conditions widget (immediate/
+              live toggles, no Save/Cancel step, auto-collapse on outside
+              click via the shared .dm-dropdown-wrap listener) — a native
+              <select multiple> was tried here before and rejected: a plain
+              click replaces the selection instead of adding to it, which
+              reads as broken. Each row also gets a quantity input so a DM
+              can field e.g. three identical Goblin Minions from one
+              checklist entry; renderCombatSection explodes that into one
+              combat-table row per copy. */}}
+            var conflictAdversarySelect = function (labelText, selectedIds, selectedQuantities) {
               var wrap = document.createElement("div");
               wrap.className = "conflict-field conflict-field-wide";
               var label = document.createElement("label");
@@ -4283,14 +4339,59 @@
               if (!npcs.length) {
                 var empty = document.createElement("p");
                 empty.className = "entry-date";
-                empty.textContent = "No NPCs yet — add some in NPC Tracker first.";
+                empty.appendChild(document.createTextNode("No NPCs yet — "));
+                var addLink = document.createElement("button");
+                addLink.type = "button";
+                addLink.className = "conflict-goto-npc-link";
+                addLink.textContent = "add one in Character Manager";
+                addLink.addEventListener("click", function () {
+                  goToSection("character-manager");
+                  var npcChooserBtn = document.querySelector('.npc-source-chooser-btn[data-manager-kind="npc"]');
+                  if (npcChooserBtn) npcChooserBtn.click();
+                });
+                empty.appendChild(addLink);
+                empty.appendChild(document.createTextNode("."));
                 wrap.appendChild(empty);
                 return wrap;
               }
-              var group = document.createElement("div");
-              group.className = "pc-checkbox-group conflict-adversary-checkboxes";
+
               var selected = selectedIds || [];
+              var quantities = selectedQuantities || {};
+
+              var adversaryWrap = document.createElement("div");
+              adversaryWrap.className = "combat-conditions-wrap dm-dropdown-wrap conflict-adversary-wrap";
+
+              var adversaryToggle = document.createElement("button");
+              adversaryToggle.type = "button";
+              adversaryToggle.className = "combat-conditions-toggle conflict-adversary-toggle";
+
+              var adversaryDropdown = document.createElement("div");
+              adversaryDropdown.className = "combat-conditions-dropdown conflict-adversary-dropdown";
+              adversaryDropdown.hidden = true;
+
+              var refreshAdversaryToggle = function () {
+                if (!adversaryDropdown.hidden) {
+                  adversaryToggle.textContent = "Collapse";
+                  adversaryToggle.classList.add("combat-conditions-toggle-open");
+                  return;
+                }
+                adversaryToggle.classList.remove("combat-conditions-toggle-open");
+                var chosen = [];
+                Array.prototype.forEach.call(adversaryDropdown.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]'), function (cb) {
+                  if (!cb.checked) return;
+                  var npc = npcs.filter(function (n) { return n.id === cb.value; })[0];
+                  if (!npc) return;
+                  var qtyInput = adversaryDropdown.querySelector('[data-quantity-for-npc="' + npc.id + '"]');
+                  var qty = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
+                  chosen.push(conflictAdversaryDisplayLabel(npc, qty));
+                });
+                adversaryToggle.textContent = chosen.length ? chosen.join(", ") : "Select adversaries";
+              };
+
               npcs.forEach(function (npc) {
+                var row = document.createElement("div");
+                row.className = "conflict-adversary-row";
+
                 var optLabel = document.createElement("label");
                 optLabel.className = "pc-checkbox-option";
                 var input = document.createElement("input");
@@ -4298,11 +4399,53 @@
                 input.dataset.checkboxGroup = "adversaryNpcIds";
                 input.value = npc.id;
                 input.checked = selected.indexOf(npc.id) !== -1;
+                input.addEventListener("change", refreshAdversaryToggle);
                 optLabel.appendChild(input);
                 optLabel.appendChild(document.createTextNode(" " + npcLabel(npc)));
-                group.appendChild(optLabel);
+                row.appendChild(optLabel);
+
+                var qtyGroup = document.createElement("span");
+                qtyGroup.className = "conflict-adversary-qty-group";
+                var qtyX = document.createElement("span");
+                qtyX.className = "conflict-adversary-qty-x";
+                qtyX.textContent = "x";
+                qtyX.setAttribute("aria-hidden", "true");
+                var qtyInput = document.createElement("input");
+                qtyInput.type = "text";
+                qtyInput.className = "conflict-adversary-qty-input";
+                qtyInput.dataset.quantityForNpc = npc.id;
+                qtyInput.maxLength = 2;
+                qtyInput.title = "Quantity";
+                qtyInput.value = String(quantities[npc.id] || 1);
+                npcRestrictNumericInput(qtyInput, false);
+                qtyInput.addEventListener("input", refreshAdversaryToggle);
+                qtyGroup.appendChild(qtyX);
+                qtyGroup.appendChild(qtyInput);
+                row.appendChild(qtyGroup);
+
+                adversaryDropdown.appendChild(row);
               });
-              wrap.appendChild(group);
+              refreshAdversaryToggle();
+
+              adversaryWrap._collapse = function () {
+                adversaryDropdown.hidden = true;
+                refreshAdversaryToggle();
+              };
+
+              adversaryToggle.addEventListener("click", function (e) {
+                e.stopPropagation();
+                var wasHidden = adversaryDropdown.hidden;
+                Array.prototype.forEach.call(document.querySelectorAll(".dm-dropdown-wrap"), function (w) {
+                  if (w !== adversaryWrap && w._collapse) w._collapse();
+                });
+                adversaryDropdown.hidden = !wasHidden;
+                refreshAdversaryToggle();
+                if (!adversaryDropdown.hidden) adversaryDropdown.scrollIntoView({ block: "nearest" });
+              });
+
+              adversaryWrap.appendChild(adversaryToggle);
+              adversaryWrap.appendChild(adversaryDropdown);
+              wrap.appendChild(adversaryWrap);
               return wrap;
             };
 
@@ -4338,6 +4481,479 @@
               return wrap;
             };
 
+            var COMBAT_CONDITIONS = [
+              "Blinded", "Charmed", "Deafened", "Exhausted", "Frightened", "Grappled",
+              "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned",
+              "Prone", "Restrained", "Stunned", "Unconscious",
+            ];
+
+            {{/* Registered once (not per-row, not per-render) so re-rendering
+              the combat table — which happens every time an adversary NPC
+              checkbox is toggled — never accumulates duplicate document-level
+              listeners. Shared by every collapsible checklist dropdown in
+              this section (Conditions per combat row, and the Adversary
+              NPC picker) via the common .dm-dropdown-wrap marker class — a
+              click outside an open one auto-collapses it back to its
+              toggle button, same as clicking the toggle again. */}}
+            document.addEventListener("click", function (e) {
+              Array.prototype.forEach.call(document.querySelectorAll(".dm-dropdown-wrap"), function (wrap) {
+                if (!wrap.contains(e.target) && wrap._collapse) wrap._collapse();
+              });
+            });
+
+            {{/* Combat Initiative is a bounded 0-30 picklist (a rolled
+              turn-order value, not a raw modifier — same reasoning as
+              ability Score's 1-30 select: a real bounded range gets a
+              <select>, not free text). It's never pre-filled from a stat
+              block though — every row starts blank here regardless of
+              source, per an explicit correction. */}}
+            var COMBAT_INITIATIVE_OPTIONS = (function () {
+              var arr = [];
+              for (var i = 0; i <= 30; i++) arr.push(String(i));
+              return arr;
+            })();
+
+            {{/* Threshold for renderCombatSection's measureNames — a name
+              rendered wider than this (at the table's normal font-size)
+              gets .combat-name-text-small instead of the whole table
+              shrinking or the name wrapping. */}}
+            var COMBAT_NAME_MAX_WIDTH_PX = 195;
+
+            {{/* Shared by npcCombatDefaults (sync path) and
+              fillNpcCombatDefaultsAsync's fetch resolution (async path) —
+              both end up with a parsed/overridden "sb" object and need the
+              same AC/HP extraction from it. Initiative is deliberately never
+              pulled from a stat block — every combatant, PC or NPC, starts
+              with a blank Initiative regardless of source, per an explicit
+              correction; only AC/HP pull in automatically. */}}
+            var npcCombatDefaultsFromSb = function (sb) {
+              if (!sb) return { hpMax: "", ac: "" };
+              var acLine = (sb.linesBefore || []).filter(function (l) { return l.label === "AC"; })[0];
+              var hpLine = (sb.linesBefore || []).filter(function (l) { return l.label === "HP"; })[0];
+              var acValue = acLine ? parseInt(acLine.value, 10) : NaN;
+              var hpValue = hpLine ? parseInt(hpLine.value, 10) : NaN;
+              return {
+                ac: isNaN(acValue) ? "" : String(acValue),
+                hpMax: isNaN(hpValue) ? "" : String(hpValue),
+              };
+            };
+
+            {{/* Synchronous starting HP/AC for a combatant row —
+              npc.customStatBlock always exists for a Custom NPC (created at
+              NPC creation), but npc.statBlockOverride only exists for a
+              Monster Manual NPC once its stat block panel has been opened
+              and saved at least once. Falls back to blank; the caller
+              (renderRows, via fillNpcCombatDefaultsAsync below) follows up
+              with a live aidedd.org fetch for the Monster Manual/no-override
+              case instead of leaving it blank forever. */}}
+            var npcCombatDefaults = function (npc) {
+              if (npc.statBlockSource === "custom" && npc.customStatBlock) {
+                return npcCombatDefaultsFromSb(npcCustomStatBlockToSb(npc.customStatBlock));
+              }
+              if (npc.statBlockSource === "monster-manual" && npc.statBlockOverride) {
+                return npcCombatDefaultsFromSb(npc.statBlockOverride);
+              }
+              return { hpMax: "", ac: "" };
+            };
+
+            {{/* The combat tracker table: every campaign PC is always
+              listed (read from pc-manager's rosterTitles, the same roster
+              union the Expectations picker uses — no separate "which PCs
+              are in this fight" selector needed), plus whichever NPCs are
+              currently checked in the Adventurers-vs. picklist above. Row
+              inputs use "data-combat-field" rather than "data-field" so
+              collectConflictFromForm's generic [data-field] sweep (used for
+              sessionId/notes) doesn't also pick up per-row combat inputs. */}}
+            var renderCombatSection = function (form, conflict) {
+              var wrap = document.createElement("div");
+              wrap.className = "conflict-field-wide combat-tracker-wrap";
+              var heading = document.createElement("h4");
+              heading.className = "combat-tracker-heading";
+              heading.textContent = "Combatants";
+              wrap.appendChild(heading);
+
+              var table = document.createElement("table");
+              table.className = "combat-table";
+              var thead = document.createElement("thead");
+              var headRow = document.createElement("tr");
+              ["Combatant", "Initiative", "HP", "AC", "Conditions"].forEach(function (label) {
+                var th = document.createElement("th");
+                th.textContent = label;
+                headRow.appendChild(th);
+              });
+              thead.appendChild(headRow);
+              table.appendChild(thead);
+              var tbody = document.createElement("tbody");
+              table.appendChild(tbody);
+              wrap.appendChild(table);
+
+              var empty = document.createElement("p");
+              empty.className = "entry-date combat-table-empty";
+              empty.textContent = "No combatants yet — add adversary NPCs above, or add PCs in Character Manager.";
+              wrap.appendChild(empty);
+
+              var combatRow = function (key, kindLabel, name, stats) {
+                stats = stats || {};
+                var tr = document.createElement("tr");
+                tr.className = "combat-row";
+                tr.dataset.combatantKey = key;
+
+                var nameTd = document.createElement("td");
+                nameTd.className = "combat-name-cell";
+                var tag = document.createElement("span");
+                tag.className = "combat-kind-tag combat-kind-" + kindLabel.toLowerCase();
+                tag.textContent = kindLabel;
+                nameTd.appendChild(tag);
+                nameTd.appendChild(document.createTextNode(" "));
+                var nameTextSpan = document.createElement("span");
+                nameTextSpan.className = "combat-name-text";
+                nameTextSpan.textContent = name;
+                nameTd.appendChild(nameTextSpan);
+                var nameConditionsLine = document.createElement("div");
+                nameConditionsLine.className = "combat-name-conditions";
+                nameConditionsLine.hidden = true;
+                nameTd.appendChild(nameConditionsLine);
+                tr.appendChild(nameTd);
+
+                var initTd = document.createElement("td");
+                var initSelect = document.createElement("select");
+                initSelect.className = "combat-initiative-input";
+                initSelect.dataset.combatField = "initiative";
+                var initPlaceholder = document.createElement("option");
+                initPlaceholder.value = "";
+                initPlaceholder.textContent = "—";
+                initSelect.appendChild(initPlaceholder);
+                COMBAT_INITIATIVE_OPTIONS.forEach(function (n) {
+                  var option = document.createElement("option");
+                  option.value = n;
+                  option.textContent = n;
+                  initSelect.appendChild(option);
+                });
+                initSelect.value = stats.initiative || "";
+                initSelect.addEventListener("change", function () { resortRows(); });
+                initTd.appendChild(initSelect);
+                tr.appendChild(initTd);
+
+                var hpTd = document.createElement("td");
+                hpTd.className = "combat-hp-cell";
+                var hpCurrentInput = document.createElement("input");
+                hpCurrentInput.type = "text";
+                hpCurrentInput.className = "combat-hp-input";
+                hpCurrentInput.dataset.combatField = "hpCurrent";
+                hpCurrentInput.value = stats.hpCurrent || "";
+                npcRestrictNumericInput(hpCurrentInput, false);
+                var hpMaxInput = document.createElement("input");
+                hpMaxInput.type = "text";
+                hpMaxInput.className = "combat-hp-input";
+                hpMaxInput.dataset.combatField = "hpMax";
+                hpMaxInput.value = stats.hpMax || "";
+                npcRestrictNumericInput(hpMaxInput, false);
+                hpTd.appendChild(hpCurrentInput);
+                hpTd.appendChild(document.createTextNode(" / "));
+                hpTd.appendChild(hpMaxInput);
+                tr.appendChild(hpTd);
+
+                var acTd = document.createElement("td");
+                var acInput = document.createElement("input");
+                acInput.type = "text";
+                acInput.className = "combat-ac-input";
+                acInput.dataset.combatField = "ac";
+                acInput.value = stats.ac || "";
+                npcRestrictNumericInput(acInput, false);
+                acTd.appendChild(acInput);
+                tr.appendChild(acTd);
+
+                var conditionsTd = document.createElement("td");
+                {{/* Immediate/live, like every other checkbox picklist in
+                  this portal (adversary NPCs, PC motivations) — no separate
+                  Save/Cancel step, a toggle just is what it is. The toggle
+                  button shows the comma-joined selection when collapsed, or
+                  "Select conditions" if none are checked yet; while the
+                  dropdown is open it reads "Collapse" and gets an accent
+                  (gold) highlight so it's obvious clicking it again — or
+                  clicking anywhere outside — closes it back up. */}}
+                var conditionsWrap = document.createElement("div");
+                conditionsWrap.className = "combat-conditions-wrap dm-dropdown-wrap";
+                conditionsWrap.dataset.combatField = "conditions";
+
+                var conditionsToggle = document.createElement("button");
+                conditionsToggle.type = "button";
+                conditionsToggle.className = "combat-conditions-toggle";
+
+                var conditionsDropdown = document.createElement("div");
+                conditionsDropdown.className = "combat-conditions-dropdown";
+                conditionsDropdown.hidden = true;
+
+                var selectedConditions = stats.conditions || [];
+                {{/* COMBAT_CONDITIONS is already alphabetized, but chosen is
+                  sorted explicitly here too so the under-name summary is
+                  guaranteed alpha order regardless. The toggle button itself
+                  always reads "Select conditions" once collapsed — the
+                  selected list is only ever shown once, under the name, not
+                  duplicated onto the button too. */}}
+                var refreshConditionsToggle = function () {
+                  var chosen = Array.prototype.map.call(
+                    conditionsDropdown.querySelectorAll('input[type="checkbox"]:checked'),
+                    function (el) { return el.value; }
+                  ).sort();
+                  nameConditionsLine.textContent = chosen.length ? "Conditions: " + chosen.join(", ") : "";
+                  nameConditionsLine.hidden = !chosen.length;
+
+                  if (!conditionsDropdown.hidden) {
+                    conditionsToggle.textContent = "Collapse";
+                    conditionsToggle.classList.add("combat-conditions-toggle-open");
+                    return;
+                  }
+                  conditionsToggle.classList.remove("combat-conditions-toggle-open");
+                  conditionsToggle.textContent = "Select conditions";
+                };
+
+                COMBAT_CONDITIONS.forEach(function (condition) {
+                  var optLabel = document.createElement("label");
+                  optLabel.className = "pc-checkbox-option";
+                  var input = document.createElement("input");
+                  input.type = "checkbox";
+                  input.value = condition;
+                  input.checked = selectedConditions.indexOf(condition) !== -1;
+                  input.addEventListener("change", refreshConditionsToggle);
+                  optLabel.appendChild(input);
+                  optLabel.appendChild(document.createTextNode(" " + condition));
+                  conditionsDropdown.appendChild(optLabel);
+                });
+                refreshConditionsToggle();
+
+                {{/* Collapsing also raises/lowers this row's own stacking
+                  context (see .combat-row-dropdown-open) — <tr> elements
+                  don't establish one on their own, so without this the open
+                  dropdown could paint underneath a later sibling row's plain
+                  (non-positioned) cell content despite its z-index, since
+                  z-index only resolves ordering among elements that share
+                  the same stacking context. */}}
+                conditionsWrap._collapse = function () {
+                  conditionsDropdown.hidden = true;
+                  tr.classList.remove("combat-row-dropdown-open");
+                  refreshConditionsToggle();
+                };
+
+                conditionsToggle.addEventListener("click", function (e) {
+                  e.stopPropagation();
+                  var wasHidden = conditionsDropdown.hidden;
+                  Array.prototype.forEach.call(document.querySelectorAll(".dm-dropdown-wrap"), function (w) {
+                    if (w !== conditionsWrap && w._collapse) w._collapse();
+                  });
+                  conditionsDropdown.hidden = !wasHidden;
+                  tr.classList.toggle("combat-row-dropdown-open", !conditionsDropdown.hidden);
+                  refreshConditionsToggle();
+                  {{/* The dropdown grows downward from the toggle — if the
+                    row is near the bottom of the viewport, scroll just
+                    enough to bring the whole open list into view instead of
+                    leaving it cut off below the fold. */}}
+                  if (!conditionsDropdown.hidden) conditionsDropdown.scrollIntoView({ block: "nearest" });
+                });
+
+                conditionsWrap.appendChild(conditionsToggle);
+                conditionsWrap.appendChild(conditionsDropdown);
+                conditionsTd.appendChild(conditionsWrap);
+                tr.appendChild(conditionsTd);
+
+                return tr;
+              };
+
+              var resortRows = function () {
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+                rows.sort(function (a, b) {
+                  var aInit = parseInt(a.querySelector('[data-combat-field="initiative"]').value, 10);
+                  var bInit = parseInt(b.querySelector('[data-combat-field="initiative"]').value, 10);
+                  if (isNaN(aInit)) aInit = -Infinity;
+                  if (isNaN(bInit)) bInit = -Infinity;
+                  return bInit - aInit;
+                });
+                rows.forEach(function (row) { tbody.appendChild(row); });
+              };
+
+              {{/* Fills in a freshly-added NPC row's Initiative/HP/AC once
+                real data becomes available, in three tiers: (1) sync —
+                override or custom stat block, already handled by whoever
+                built `stats` before this is called; (2) this page's
+                in-memory npcStatBlockCache, if the DM already viewed this
+                exact monster/edition in NPC Tracker this session — free, no
+                network; (3) a live fetch through the same Worker /monster
+                proxy NPC Tracker itself uses, for a Monster Manual NPC
+                that's never been looked at yet this session. Only ever
+                fills a field that's still blank when the result arrives
+                (never overwrites something the DM already typed while
+                waiting), and bails silently if the row's no longer attached
+                to the page (a fast re-render — e.g. toggling the checkbox
+                again — beat the fetch back). */}}
+              var fillNpcCombatDefaultsAsync = function (npc, tr) {
+                if (npc.statBlockSource !== "monster-manual" || npc.statBlockOverride) return;
+                var edition = npcNormalizedEdition(npc);
+                var name = npcNormalizedMonsterName(npc);
+                var cacheKey = edition + "|" + name;
+                var applyToRow = function (defaults) {
+                  if (!tr.isConnected) return;
+                  {{/* Initiative is deliberately never auto-filled, sync or
+                    async — it always starts blank regardless of source,
+                    per an explicit correction; only AC/HP pull in. */}}
+                  var acInput = tr.querySelector('[data-combat-field="ac"]');
+                  var hpCurrentInput = tr.querySelector('[data-combat-field="hpCurrent"]');
+                  var hpMaxInput = tr.querySelector('[data-combat-field="hpMax"]');
+                  if (acInput && !acInput.value && defaults.ac) acInput.value = defaults.ac;
+                  if (hpMaxInput && !hpMaxInput.value && defaults.hpMax) {
+                    hpMaxInput.value = defaults.hpMax;
+                    if (hpCurrentInput && !hpCurrentInput.value) hpCurrentInput.value = defaults.hpMax;
+                  }
+                  resortRows();
+                };
+                if (npcStatBlockCache[cacheKey]) {
+                  applyToRow(npcCombatDefaultsFromSb(npcStatBlockCache[cacheKey]));
+                  return;
+                }
+                var href = (npcMonsterLinkByEditionName[edition] || {})[name];
+                if (!href || !NPC_PROXY_URL) return;
+                fetch(NPC_PROXY_URL + "/monster?url=" + encodeURIComponent(href))
+                  .then(function (res) {
+                    if (!res.ok) throw new Error("fetch failed");
+                    return res.text();
+                  })
+                  .then(function (html) {
+                    var sb = npcParseMonsterHtml(html);
+                    if (!sb) throw new Error("parse failed");
+                    npcStatBlockCache[cacheKey] = sb;
+                    applyToRow(npcCombatDefaultsFromSb(sb));
+                  })
+                  .catch(function (err) {
+                    console.error("Combat tracker: stat block fetch/parse failed for " + name + " (" + edition + "):", err);
+                  });
+              };
+
+              var collectCombatStatsFromRows = function () {
+                var stats = {};
+                Array.prototype.forEach.call(tbody.querySelectorAll("tr"), function (tr) {
+                  var key = tr.dataset.combatantKey;
+                  var checkedConditions = tr.querySelectorAll('[data-combat-field="conditions"] input[type="checkbox"]:checked');
+                  var selectedConditions = Array.prototype.map.call(checkedConditions, function (el) { return el.value; });
+                  stats[key] = {
+                    initiative: tr.querySelector('[data-combat-field="initiative"]').value,
+                    hpCurrent: tr.querySelector('[data-combat-field="hpCurrent"]').value,
+                    hpMax: tr.querySelector('[data-combat-field="hpMax"]').value,
+                    ac: tr.querySelector('[data-combat-field="ac"]').value,
+                    conditions: selectedConditions,
+                  };
+                });
+                return stats;
+              };
+
+              {{/* Re-derives which rows should exist (current PC roster ∪
+                currently-checked adversary NPCs) every time it's called —
+                on first render and again whenever an adversary checkbox
+                changes. Already-typed values for rows that persist across
+                a re-render are carried forward via collectCombatStatsFromRows
+                first, so toggling one NPC's checkbox never wipes out
+                another row's in-progress edits. */}}
+              var renderRows = function () {
+                var carriedOver = collectCombatStatsFromRows();
+                tbody.innerHTML = "";
+
+                {{/* Same union PC Manager's own renderPcList uses — real
+                  static content pages (pcRealTitles) PLUS anyone added only
+                  via the live D&D Beyond importer (loadRoster()), not just
+                  the former. A PC who only exists as a live import (no
+                  static page yet) was otherwise invisible here. */}}
+                var roster = loadRoster();
+                var pcNames = pcRealTitles.slice();
+                roster.forEach(function (e) { if (pcNames.indexOf(e.name) === -1) pcNames.push(e.name); });
+                pcNames.forEach(function (name) {
+                  var key = "pc:" + slugifyName(name);
+                  var stats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]);
+                  if (!stats) {
+                    {{/* Seeds HP from the character's real, already-damaged
+                      current HP (a live-imported PC only — no equivalent
+                      exists for a static content-page character), not a
+                      fresh full-health value; see pcHpFromDdbData. AC has
+                      no reliable source (see npcCombatDefaults' own note on
+                      why AC isn't auto-pulled for NPCs either) and Initiative
+                      never pre-fills for anyone. */}}
+                    var rosterEntry = roster.filter(function (e) { return e.name === name; })[0];
+                    stats = {
+                      initiative: "", ac: "",
+                      hpCurrent: (rosterEntry && rosterEntry.hpCurrent) || "",
+                      hpMax: (rosterEntry && rosterEntry.hpMax) || "",
+                      conditions: [],
+                    };
+                  }
+                  tbody.appendChild(combatRow(key, "PC", name, stats));
+                });
+
+                var checkedNpcIds = Array.prototype.map.call(
+                  form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]:checked'),
+                  function (el) { return el.value; }
+                );
+                var npcs = loadNpcs();
+                {{/* A quantity > 1 on the adversary picker (e.g. "Goblin
+                  Minion" x3) explodes into that many independent rows here
+                  — each copy takes its own turn and takes damage
+                  separately in a real fight, so one shared row wouldn't be
+                  enough. Quantity is read live from the adversary picker's
+                  own input, not from the stored conflict, so changing it
+                  updates the table immediately without a Save first. */}}
+                checkedNpcIds.forEach(function (npcId) {
+                  var npc = npcs.filter(function (n) { return n.id === npcId; })[0];
+                  if (!npc) return;
+                  var qtyInput = form.querySelector('[data-quantity-for-npc="' + npcId + '"]');
+                  var qty = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
+                  for (var i = 1; i <= qty; i++) {
+                    var key = "npc:" + npc.id + ":" + i;
+                    var existingStats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]);
+                    var isFreshRow = !existingStats;
+                    var stats = existingStats;
+                    if (!stats) {
+                      var defaults = npcCombatDefaults(npc);
+                      stats = { initiative: "", hpCurrent: defaults.hpMax, hpMax: defaults.hpMax, ac: defaults.ac, conditions: [] };
+                    }
+                    var rowLabel = qty > 1 ? npcLabel(npc) + " " + i : npcLabel(npc);
+                    var tr = combatRow(key, "NPC", rowLabel, stats);
+                    tbody.appendChild(tr);
+                    if (isFreshRow) fillNpcCombatDefaultsAsync(npc, tr);
+                  }
+                });
+
+                empty.hidden = tbody.children.length > 0;
+                resortRows();
+                measureNames();
+              };
+
+              {{/* Only the name itself shrinks, and only when it's actually
+                too long to fit — every other column stays at the site's
+                normal size. offsetWidth is 0 (and this a no-op) until the
+                table is actually attached to the visible document, so the
+                very first render's call happens from renderConflictForm
+                right after conflictDetail.appendChild(form) — re-renders
+                triggered by checking/unchecking an adversary NPC are
+                already attached by then, so calling it again at the end of
+                renderRows (above) is enough for those. */}}
+              var measureNames = function () {
+                Array.prototype.forEach.call(tbody.querySelectorAll(".combat-name-text"), function (span) {
+                  span.classList.remove("combat-name-text-small");
+                  if (span.offsetWidth > COMBAT_NAME_MAX_WIDTH_PX) span.classList.add("combat-name-text-small");
+                });
+              };
+              wrap._remeasureNames = measureNames;
+
+              renderRows();
+              Array.prototype.forEach.call(
+                form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]'),
+                function (checkbox) { checkbox.addEventListener("change", renderRows); }
+              );
+              Array.prototype.forEach.call(
+                form.querySelectorAll('[data-quantity-for-npc]'),
+                function (qtyInput) { qtyInput.addEventListener("input", renderRows); }
+              );
+
+              wrap._collectCombatStats = collectCombatStatsFromRows;
+              return wrap;
+            };
+
             var collectConflictFromForm = function (form, originalConflict) {
               var conflict = { id: originalConflict.id, createdAt: originalConflict.createdAt };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
@@ -4345,10 +4961,17 @@
               });
               var checkedAdversaries = form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]:checked');
               conflict.adversaryNpcIds = Array.prototype.map.call(checkedAdversaries, function (el) { return el.value; });
+              conflict.adversaryNpcQuantities = {};
+              conflict.adversaryNpcIds.forEach(function (npcId) {
+                var qtyInput = form.querySelector('[data-quantity-for-npc="' + npcId + '"]');
+                conflict.adversaryNpcQuantities[npcId] = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
+              });
+              conflict.combatStats = currentCombatSection ? currentCombatSection._collectCombatStats() : (originalConflict.combatStats || {});
               return conflict;
             };
 
             var clearConflictDetail = function () {
+              currentCombatSection = null;
               conflictDetail.innerHTML = "";
             };
 
@@ -4425,11 +5048,18 @@
               var form = document.createElement("div");
               form.className = "conflict-edit-form";
 
-              form.appendChild(markRequired(conflictAdversarySelect("Adventurers vs.", conflict.adversaryNpcIds)));
+              form.appendChild(markRequired(conflictAdversarySelect("Adventurers vs.", conflict.adversaryNpcIds, conflict.adversaryNpcQuantities)));
               form.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
               form.appendChild(conflictEditTextarea("Notes", conflict.notes, { field: "notes" }));
 
+              currentCombatSection = renderCombatSection(form, conflict);
+              form.appendChild(currentCombatSection);
+
               conflictDetail.appendChild(form);
+              {{/* Name-width measurement needs real layout, which only
+                exists once the section is actually attached above —
+                offsetWidth reads 0 on anything still detached. */}}
+              currentCombatSection._remeasureNames();
 
               form.addEventListener("input", function () { conflictDirty = true; });
               form.addEventListener("change", function () { conflictDirty = true; });
