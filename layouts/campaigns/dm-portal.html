@@ -688,26 +688,6 @@
             };
             syncPullers.push(pullRoster);
 
-            {{/* HP is a reliable pull from D&D Beyond's own character JSON —
-              baseHitPoints/bonusHitPoints/overrideHitPoints/removedHitPoints
-              are plain fields, unlike AC (which has no equivalent field at
-              all; it'd need a full equipped-armor/shield/Dex-cap/modifier
-              calculation to replicate D&D Beyond's own math, confirmed via
-              a real character whose computed AC came out 2 short of the
-              true value even after checking armor/Dex/attunement/manual
-              overrides — too failure-prone to ship, so AC stays manual).
-              hpCurrent intentionally reflects the character's real, already-
-              damaged HP at fetch time (maxHp - removedHitPoints), not a
-              fresh full-health value — a PC's damage persists across real
-              sessions the way an NPC's never does, since NPCs are always a
-              brand-new combatant the first time they're added to a fight. */}}
-            var pcHpFromDdbData = function (data) {
-              if (typeof data.baseHitPoints !== "number") return { hpMax: "", hpCurrent: "" };
-              var maxHp = typeof data.overrideHitPoints === "number" ? data.overrideHitPoints : data.baseHitPoints + (data.bonusHitPoints || 0);
-              var currentHp = maxHp - (data.removedHitPoints || 0);
-              return { hpMax: String(maxHp), hpCurrent: String(currentHp) };
-            };
-
             {{/* Keeps Class/Level/Species current with D&D Beyond on
               every page load, so a level-up shows up here without the
               DM re-importing. Runs after the sync pull settles so it
@@ -729,8 +709,7 @@
                     var charClass = classes.length ? ((classes[0].definition && classes[0].definition.name) || "") : "";
                     var level = classes.length ? classes.reduce(function (sum, c) { return sum + (c.level || 0); }, 0) : "";
                     var species = (payload.data.race && payload.data.race.fullName) || "";
-                    var hp = pcHpFromDdbData(payload.data);
-                    return { id: entry.id, charClass: charClass, level: level, species: species, hpMax: hp.hpMax, hpCurrent: hp.hpCurrent };
+                    return { id: entry.id, charClass: charClass, level: level, species: species };
                   })
                   .catch(function () { return null; });
               })).then(function (results) {
@@ -740,12 +719,10 @@
                   if (!r) return;
                   var entry = current.filter(function (e) { return e.id === r.id; })[0];
                   if (!entry) return;
-                  if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species || entry.hpMax !== r.hpMax || entry.hpCurrent !== r.hpCurrent) {
+                  if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species) {
                     entry.charClass = r.charClass;
                     entry.level = r.level;
                     entry.species = r.species;
-                    entry.hpMax = r.hpMax;
-                    entry.hpCurrent = r.hpCurrent;
                     changed = true;
                   }
                 });
@@ -1176,10 +1153,9 @@
                     var charClass = classes.length ? ((classes[0].definition && classes[0].definition.name) || "") : "";
                     var level = classes.length ? classes.reduce(function (sum, c) { return sum + (c.level || 0); }, 0) : "";
                     var species = (payload.data.race && payload.data.race.fullName) || "";
-                    var hp = pcHpFromDdbData(payload.data);
                     var roster = loadRoster();
                     if (!roster.some(function (e) { return e.id === id; })) {
-                      roster.push({ id: id, name: name, link: link, charClass: charClass, level: level, species: species, hpMax: hp.hpMax, hpCurrent: hp.hpCurrent });
+                      roster.push({ id: id, name: name, link: link, charClass: charClass, level: level, species: species });
                       saveRoster(roster);
                     }
                     renderPcList();
@@ -4274,8 +4250,16 @@
               return qty > 1 ? base + " x" + qty : base;
             };
 
+            {{/* Prefixed with the tied session's number (e.g. "3 - Adventurers
+              vs. ...") when the conflict is tied to one — reads
+              loadJournalEntries, defined above in the Campaign Journal
+              block, which always exists on the page since every DM portal
+              renders the full fixed section list (same reasoning as
+              conflictSessionSelect's own read of it). Untied conflicts are
+              unprefixed, same as before. */}}
             var conflictLabel = function (conflict) {
               var ids = conflict.adversaryNpcIds || [];
+              var base;
               if (ids.length) {
                 var npcs = loadNpcs();
                 var quantities = conflict.adversaryNpcQuantities || {};
@@ -4285,9 +4269,16 @@
                     return npc ? conflictAdversaryDisplayLabel(npc, quantities[id] || 1) : null;
                   })
                   .filter(Boolean);
-                if (names.length) return "Adventurers vs. " + names.join(", ");
+                base = names.length ? "Adventurers vs. " + names.join(", ") : null;
               }
-              return conflict.adversary ? "Adventurers vs. " + conflict.adversary : "Unnamed Conflict";
+              if (base === undefined || base === null) {
+                base = conflict.adversary ? "Adventurers vs. " + conflict.adversary : "Unnamed Conflict";
+              }
+              if (conflict.sessionId) {
+                var session = loadJournalEntries().filter(function (e) { return e.id === conflict.sessionId; })[0];
+                if (session) return (session.sessionNumber || "?") + " - " + base;
+              }
+              return base;
             };
 
             var conflictEditInput = function (labelText, value, dataAttrs) {
@@ -4634,23 +4625,30 @@
                 initTd.appendChild(initSelect);
                 tr.appendChild(initTd);
 
+                {{/* PCs don't get an HP cell at all — a player's HP is
+                  tracked on their own D&D Beyond sheet, not duplicated
+                  here; only NPCs (the DM's own responsibility to track)
+                  get one. The cell itself still renders, empty, so the
+                  column stays aligned across every row regardless of kind. */}}
                 var hpTd = document.createElement("td");
                 hpTd.className = "combat-hp-cell";
-                var hpCurrentInput = document.createElement("input");
-                hpCurrentInput.type = "text";
-                hpCurrentInput.className = "combat-hp-input";
-                hpCurrentInput.dataset.combatField = "hpCurrent";
-                hpCurrentInput.value = stats.hpCurrent || "";
-                npcRestrictNumericInput(hpCurrentInput, false);
-                var hpMaxInput = document.createElement("input");
-                hpMaxInput.type = "text";
-                hpMaxInput.className = "combat-hp-input";
-                hpMaxInput.dataset.combatField = "hpMax";
-                hpMaxInput.value = stats.hpMax || "";
-                npcRestrictNumericInput(hpMaxInput, false);
-                hpTd.appendChild(hpCurrentInput);
-                hpTd.appendChild(document.createTextNode(" / "));
-                hpTd.appendChild(hpMaxInput);
+                if (kindLabel !== "PC") {
+                  var hpCurrentInput = document.createElement("input");
+                  hpCurrentInput.type = "text";
+                  hpCurrentInput.className = "combat-hp-input";
+                  hpCurrentInput.dataset.combatField = "hpCurrent";
+                  hpCurrentInput.value = stats.hpCurrent || "";
+                  npcRestrictNumericInput(hpCurrentInput, false);
+                  var hpMaxInput = document.createElement("input");
+                  hpMaxInput.type = "text";
+                  hpMaxInput.className = "combat-hp-input";
+                  hpMaxInput.dataset.combatField = "hpMax";
+                  hpMaxInput.value = stats.hpMax || "";
+                  npcRestrictNumericInput(hpMaxInput, false);
+                  hpTd.appendChild(hpCurrentInput);
+                  hpTd.appendChild(document.createTextNode(" / "));
+                  hpTd.appendChild(hpMaxInput);
+                }
                 tr.appendChild(hpTd);
 
                 var acTd = document.createElement("td");
@@ -4833,10 +4831,15 @@
                   var key = tr.dataset.combatantKey;
                   var checkedConditions = tr.querySelectorAll('[data-combat-field="conditions"] input[type="checkbox"]:checked');
                   var selectedConditions = Array.prototype.map.call(checkedConditions, function (el) { return el.value; });
+                  {{/* PC rows have no hpCurrent/hpMax elements at all (see
+                    combatRow) — guard rather than assume every row has
+                    every field. */}}
+                  var hpCurrentEl = tr.querySelector('[data-combat-field="hpCurrent"]');
+                  var hpMaxEl = tr.querySelector('[data-combat-field="hpMax"]');
                   stats[key] = {
                     initiative: tr.querySelector('[data-combat-field="initiative"]').value,
-                    hpCurrent: tr.querySelector('[data-combat-field="hpCurrent"]').value,
-                    hpMax: tr.querySelector('[data-combat-field="hpMax"]').value,
+                    hpCurrent: hpCurrentEl ? hpCurrentEl.value : "",
+                    hpMax: hpMaxEl ? hpMaxEl.value : "",
                     ac: tr.querySelector('[data-combat-field="ac"]').value,
                     conditions: selectedConditions,
                   };
@@ -4865,23 +4868,7 @@
                 roster.forEach(function (e) { if (pcNames.indexOf(e.name) === -1) pcNames.push(e.name); });
                 pcNames.forEach(function (name) {
                   var key = "pc:" + slugifyName(name);
-                  var stats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]);
-                  if (!stats) {
-                    {{/* Seeds HP from the character's real, already-damaged
-                      current HP (a live-imported PC only — no equivalent
-                      exists for a static content-page character), not a
-                      fresh full-health value; see pcHpFromDdbData. AC has
-                      no reliable source (see npcCombatDefaults' own note on
-                      why AC isn't auto-pulled for NPCs either) and Initiative
-                      never pre-fills for anyone. */}}
-                    var rosterEntry = roster.filter(function (e) { return e.name === name; })[0];
-                    stats = {
-                      initiative: "", ac: "",
-                      hpCurrent: (rosterEntry && rosterEntry.hpCurrent) || "",
-                      hpMax: (rosterEntry && rosterEntry.hpMax) || "",
-                      conditions: [],
-                    };
-                  }
+                  var stats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]) || { initiative: "", ac: "", conditions: [] };
                   tbody.appendChild(combatRow(key, "PC", name, stats));
                 });
 
