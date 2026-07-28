@@ -971,6 +971,40 @@ body.is-home {
   border-radius: 4px;
   padding: 0.5rem 0.7rem;
 }
+
+.combat-tracker-heading {
+  color: var(--text-dim);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 1rem;
+}
+.combat-table-empty { margin-top: -0.5rem; }
+.combat-name-cell { white-space: nowrap; }
+.combat-kind-tag {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.4rem;
+  margin-right: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.combat-kind-tag.combat-kind-pc { color: var(--accent); border-color: var(--accent); }
+.combat-hp-cell { white-space: nowrap; }
+.combat-initiative-input, .combat-ac-input { width: 3.5rem; }
+.combat-hp-input { width: 3.5rem; }
+.combat-initiative-input, .combat-hp-input, .combat-ac-input {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+.combat-conditions-group { gap: 0.6rem 1rem; max-width: 22rem; }
+.combat-conditions-group .pc-checkbox-option { font-size: 0.85rem; }
 .journal-field-wide, .pc-field-wide, .conflict-field-wide, .bastion-field-wide {
   margin-bottom: 1.25rem;
 }

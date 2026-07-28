@@ -4174,6 +4174,7 @@
             var conflictAddBtn = document.getElementById("campaign-conflicts-add-btn");
             var conflictDirty = false;
             var conflictCurrentValue = "";
+            var currentCombatSection = null;
             var conflictIsDirty = function () { return conflictDirty || Boolean(unsavedNewConflictId); };
             registerDirtyTracker(conflictIsDirty, function () { cancelConflictForm(); });
             registerSectionResetHook(function () { cancelConflictForm(); });
@@ -4338,6 +4339,232 @@
               return wrap;
             };
 
+            var COMBAT_CONDITIONS = [
+              "Blinded", "Charmed", "Deafened", "Exhausted", "Frightened", "Grappled",
+              "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned",
+              "Prone", "Restrained", "Stunned", "Unconscious",
+            ];
+
+            {{/* Pulls starting Initiative/HP/AC for a combatant row from
+              whatever structured stat block data an NPC already has —
+              npc.customStatBlock always exists for a Custom NPC (created
+              at NPC creation), but npc.statBlockOverride only exists for a
+              Monster Manual NPC once its stat block panel has been opened
+              and saved at least once. If neither is available, the row
+              just starts blank like a PC's does — no live aidedd.org fetch
+              is attempted from here, since that would need new async
+              orchestration for what's normally already done by the time a
+              fight starts (a DM reviewing the monster's stat block first). */}}
+            var npcCombatDefaults = function (npc) {
+              var sb = null;
+              if (npc.statBlockSource === "custom" && npc.customStatBlock) {
+                sb = npcCustomStatBlockToSb(npc.customStatBlock);
+              } else if (npc.statBlockSource === "monster-manual" && npc.statBlockOverride) {
+                sb = npc.statBlockOverride;
+              }
+              if (!sb) return { initiative: "", hpMax: "", ac: "" };
+              var initMod = npcParseInitiativeMod(sb.initiative);
+              var acLine = (sb.linesBefore || []).filter(function (l) { return l.label === "AC"; })[0];
+              var hpLine = (sb.linesBefore || []).filter(function (l) { return l.label === "HP"; })[0];
+              var acValue = acLine ? parseInt(acLine.value, 10) : NaN;
+              var hpValue = hpLine ? parseInt(hpLine.value, 10) : NaN;
+              return {
+                initiative: initMod === null ? "" : String(initMod),
+                ac: isNaN(acValue) ? "" : String(acValue),
+                hpMax: isNaN(hpValue) ? "" : String(hpValue),
+              };
+            };
+
+            {{/* The combat tracker table: every campaign PC is always
+              listed (read from pc-manager's rosterTitles, the same roster
+              union the Expectations picker uses — no separate "which PCs
+              are in this fight" selector needed), plus whichever NPCs are
+              currently checked in the Adventurers-vs. picklist above. Row
+              inputs use "data-combat-field" rather than "data-field" so
+              collectConflictFromForm's generic [data-field] sweep (used for
+              sessionId/notes) doesn't also pick up per-row combat inputs. */}}
+            var renderCombatSection = function (form, conflict) {
+              var wrap = document.createElement("div");
+              wrap.className = "conflict-field-wide combat-tracker-wrap";
+              var heading = document.createElement("h4");
+              heading.className = "combat-tracker-heading";
+              heading.textContent = "Combatants";
+              wrap.appendChild(heading);
+
+              var table = document.createElement("table");
+              table.className = "combat-table";
+              var thead = document.createElement("thead");
+              var headRow = document.createElement("tr");
+              ["Combatant", "Initiative", "HP", "AC", "Conditions"].forEach(function (label) {
+                var th = document.createElement("th");
+                th.textContent = label;
+                headRow.appendChild(th);
+              });
+              thead.appendChild(headRow);
+              table.appendChild(thead);
+              var tbody = document.createElement("tbody");
+              table.appendChild(tbody);
+              wrap.appendChild(table);
+
+              var empty = document.createElement("p");
+              empty.className = "entry-date combat-table-empty";
+              empty.textContent = "No combatants yet — add adversary NPCs above, or add PCs in Character Manager.";
+              wrap.appendChild(empty);
+
+              var combatRow = function (key, kindLabel, name, stats) {
+                stats = stats || {};
+                var tr = document.createElement("tr");
+                tr.className = "combat-row";
+                tr.dataset.combatantKey = key;
+
+                var nameTd = document.createElement("td");
+                nameTd.className = "combat-name-cell";
+                var tag = document.createElement("span");
+                tag.className = "combat-kind-tag combat-kind-" + kindLabel.toLowerCase();
+                tag.textContent = kindLabel;
+                nameTd.appendChild(tag);
+                nameTd.appendChild(document.createTextNode(" " + name));
+                tr.appendChild(nameTd);
+
+                var initTd = document.createElement("td");
+                var initInput = document.createElement("input");
+                initInput.type = "text";
+                initInput.className = "combat-initiative-input";
+                initInput.dataset.combatField = "initiative";
+                initInput.value = stats.initiative || "";
+                npcRestrictNumericInput(initInput, true);
+                initInput.addEventListener("input", function () { resortRows(); });
+                initTd.appendChild(initInput);
+                tr.appendChild(initTd);
+
+                var hpTd = document.createElement("td");
+                hpTd.className = "combat-hp-cell";
+                var hpCurrentInput = document.createElement("input");
+                hpCurrentInput.type = "text";
+                hpCurrentInput.className = "combat-hp-input";
+                hpCurrentInput.dataset.combatField = "hpCurrent";
+                hpCurrentInput.value = stats.hpCurrent || "";
+                npcRestrictNumericInput(hpCurrentInput, false);
+                var hpMaxInput = document.createElement("input");
+                hpMaxInput.type = "text";
+                hpMaxInput.className = "combat-hp-input";
+                hpMaxInput.dataset.combatField = "hpMax";
+                hpMaxInput.value = stats.hpMax || "";
+                npcRestrictNumericInput(hpMaxInput, false);
+                hpTd.appendChild(hpCurrentInput);
+                hpTd.appendChild(document.createTextNode(" / "));
+                hpTd.appendChild(hpMaxInput);
+                tr.appendChild(hpTd);
+
+                var acTd = document.createElement("td");
+                var acInput = document.createElement("input");
+                acInput.type = "text";
+                acInput.className = "combat-ac-input";
+                acInput.dataset.combatField = "ac";
+                acInput.value = stats.ac || "";
+                npcRestrictNumericInput(acInput, false);
+                acTd.appendChild(acInput);
+                tr.appendChild(acTd);
+
+                var conditionsTd = document.createElement("td");
+                var conditionsGroup = document.createElement("div");
+                conditionsGroup.className = "pc-checkbox-group combat-conditions-group";
+                var selectedConditions = stats.conditions || [];
+                COMBAT_CONDITIONS.forEach(function (condition) {
+                  var optLabel = document.createElement("label");
+                  optLabel.className = "pc-checkbox-option";
+                  var input = document.createElement("input");
+                  input.type = "checkbox";
+                  input.dataset.checkboxGroup = "conditions";
+                  input.value = condition;
+                  input.checked = selectedConditions.indexOf(condition) !== -1;
+                  optLabel.appendChild(input);
+                  optLabel.appendChild(document.createTextNode(" " + condition));
+                  conditionsGroup.appendChild(optLabel);
+                });
+                conditionsTd.appendChild(conditionsGroup);
+                tr.appendChild(conditionsTd);
+
+                return tr;
+              };
+
+              var resortRows = function () {
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+                rows.sort(function (a, b) {
+                  var aInit = parseInt(a.querySelector('[data-combat-field="initiative"]').value, 10);
+                  var bInit = parseInt(b.querySelector('[data-combat-field="initiative"]').value, 10);
+                  if (isNaN(aInit)) aInit = -Infinity;
+                  if (isNaN(bInit)) bInit = -Infinity;
+                  return bInit - aInit;
+                });
+                rows.forEach(function (row) { tbody.appendChild(row); });
+              };
+
+              var collectCombatStatsFromRows = function () {
+                var stats = {};
+                Array.prototype.forEach.call(tbody.querySelectorAll("tr"), function (tr) {
+                  var key = tr.dataset.combatantKey;
+                  var conditionsChecked = tr.querySelectorAll('[data-checkbox-group="conditions"]:checked');
+                  stats[key] = {
+                    initiative: tr.querySelector('[data-combat-field="initiative"]').value,
+                    hpCurrent: tr.querySelector('[data-combat-field="hpCurrent"]').value,
+                    hpMax: tr.querySelector('[data-combat-field="hpMax"]').value,
+                    ac: tr.querySelector('[data-combat-field="ac"]').value,
+                    conditions: Array.prototype.map.call(conditionsChecked, function (el) { return el.value; }),
+                  };
+                });
+                return stats;
+              };
+
+              {{/* Re-derives which rows should exist (current PC roster ∪
+                currently-checked adversary NPCs) every time it's called —
+                on first render and again whenever an adversary checkbox
+                changes. Already-typed values for rows that persist across
+                a re-render are carried forward via collectCombatStatsFromRows
+                first, so toggling one NPC's checkbox never wipes out
+                another row's in-progress edits. */}}
+              var renderRows = function () {
+                var carriedOver = collectCombatStatsFromRows();
+                tbody.innerHTML = "";
+
+                var pcNames = JSON.parse((pcManager && pcManager.dataset.rosterTitles) || "[]");
+                pcNames.forEach(function (name) {
+                  var key = "pc:" + slugifyName(name);
+                  var stats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]) || {};
+                  tbody.appendChild(combatRow(key, "PC", name, stats));
+                });
+
+                var checkedNpcIds = Array.prototype.map.call(
+                  form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]:checked'),
+                  function (el) { return el.value; }
+                );
+                var npcs = loadNpcs();
+                checkedNpcIds.forEach(function (npcId) {
+                  var npc = npcs.filter(function (n) { return n.id === npcId; })[0];
+                  if (!npc) return;
+                  var key = "npc:" + npc.id;
+                  var stats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]);
+                  if (!stats) {
+                    var defaults = npcCombatDefaults(npc);
+                    stats = { initiative: defaults.initiative, hpCurrent: defaults.hpMax, hpMax: defaults.hpMax, ac: defaults.ac, conditions: [] };
+                  }
+                  tbody.appendChild(combatRow(key, "NPC", npcLabel(npc), stats));
+                });
+
+                empty.hidden = tbody.children.length > 0;
+                resortRows();
+              };
+
+              renderRows();
+              Array.prototype.forEach.call(
+                form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]'),
+                function (checkbox) { checkbox.addEventListener("change", renderRows); }
+              );
+
+              wrap._collectCombatStats = collectCombatStatsFromRows;
+              return wrap;
+            };
+
             var collectConflictFromForm = function (form, originalConflict) {
               var conflict = { id: originalConflict.id, createdAt: originalConflict.createdAt };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
@@ -4345,10 +4572,12 @@
               });
               var checkedAdversaries = form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]:checked');
               conflict.adversaryNpcIds = Array.prototype.map.call(checkedAdversaries, function (el) { return el.value; });
+              conflict.combatStats = currentCombatSection ? currentCombatSection._collectCombatStats() : (originalConflict.combatStats || {});
               return conflict;
             };
 
             var clearConflictDetail = function () {
+              currentCombatSection = null;
               conflictDetail.innerHTML = "";
             };
 
@@ -4428,6 +4657,9 @@
               form.appendChild(markRequired(conflictAdversarySelect("Adventurers vs.", conflict.adversaryNpcIds)));
               form.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
               form.appendChild(conflictEditTextarea("Notes", conflict.notes, { field: "notes" }));
+
+              currentCombatSection = renderCombatSection(form, conflict);
+              form.appendChild(currentCombatSection);
 
               conflictDetail.appendChild(form);
 
