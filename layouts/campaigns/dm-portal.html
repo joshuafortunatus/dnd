@@ -4776,15 +4776,22 @@
                 in-memory npcStatBlockCache, if the DM already viewed this
                 exact monster/edition in NPC Tracker this session — free, no
                 network; (3) a live fetch through the same Worker /monster
-                proxy NPC Tracker itself uses, for a Monster Manual NPC
-                that's never been looked at yet this session. Only ever
-                fills a field that's still blank when the result arrives
-                (never overwrites something the DM already typed while
-                waiting), and bails silently if the row's no longer attached
-                to the page (a fast re-render — e.g. toggling the checkbox
-                again — beat the fetch back). */}}
+                proxy NPC Tracker itself uses. Whether to bother with (2)/(3)
+                is decided by what's actually still blank on the row right
+                now, not by whether npc.statBlockOverride merely exists —
+                an override that was saved without ever touching AC/HP (or
+                one from an older schema) would otherwise permanently block
+                the fallback despite genuinely having nothing to show. Only
+                ever fills a field that's still blank when the result
+                arrives (never overwrites something the DM already typed
+                while waiting), and bails silently if the row's no longer
+                attached to the page (a fast re-render — e.g. toggling the
+                checkbox again — beat the fetch back). */}}
               var fillNpcCombatDefaultsAsync = function (npc, tr) {
-                if (npc.statBlockSource !== "monster-manual" || npc.statBlockOverride) return;
+                if (npc.statBlockSource !== "monster-manual") return;
+                var acAlreadyFilled = tr.querySelector('[data-combat-field="ac"]').value;
+                var hpAlreadyFilled = tr.querySelector('[data-combat-field="hpMax"]').value;
+                if (acAlreadyFilled && hpAlreadyFilled) return;
                 var edition = npcNormalizedEdition(npc);
                 var name = npcNormalizedMonsterName(npc);
                 var cacheKey = edition + "|" + name;
@@ -4891,9 +4898,7 @@
                   var qty = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
                   for (var i = 1; i <= qty; i++) {
                     var key = "npc:" + npc.id + ":" + i;
-                    var existingStats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]);
-                    var isFreshRow = !existingStats;
-                    var stats = existingStats;
+                    var stats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]);
                     if (!stats) {
                       var defaults = npcCombatDefaults(npc);
                       stats = { initiative: "", hpCurrent: defaults.hpMax, hpMax: defaults.hpMax, ac: defaults.ac, conditions: [] };
@@ -4901,7 +4906,18 @@
                     var rowLabel = qty > 1 ? npcLabel(npc) + " " + i : npcLabel(npc);
                     var tr = combatRow(key, "NPC", rowLabel, stats);
                     tbody.appendChild(tr);
-                    if (isFreshRow) fillNpcCombatDefaultsAsync(npc, tr);
+                    {{/* Called unconditionally, not gated on "is this a
+                      brand-new row" — renderRows tears down and rebuilds
+                      every row on any checkbox change, so checking a second
+                      NPC while an earlier fetch is still in flight would
+                      otherwise detach that row before it resolves, and the
+                      rebuilt row (now carrying forward the still-blank
+                      carriedOver stats) would never be recognized as
+                      needing a retry. fillNpcCombatDefaultsAsync's own
+                      blank-field check is what actually decides whether to
+                      bother, so calling it every time is safe and self-
+                      healing rather than redundant. */}}
+                    fillNpcCombatDefaultsAsync(npc, tr);
                   }
                 });
 
