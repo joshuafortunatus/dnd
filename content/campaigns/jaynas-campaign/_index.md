@@ -8,4 +8,8 @@ status: "active"
 # static/images/campaigns/<slug>/ — falls back to a plain solid
 # background color if left blank.
 hero_image: "images/campaigns/jaynas-campaign/waterdeep.webp"
+# Gates the whole campaign hub page behind a client-side password prompt
+# (obscurity, not real security — see archetypes/campaigns.md for details
+# and how to regenerate this hash).
+password_hash: "f2c135d8e3a188f59f7bad6b9c4c594264bf37c86ccc76448ac9f3c875e997d2"
 ---
