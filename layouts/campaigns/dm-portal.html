@@ -1623,6 +1623,29 @@
               return wrap;
             };
 
+            var npcEditSelect = function (labelText, options, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "npc-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              wrap.appendChild(label);
+              var select = document.createElement("select");
+              Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+              var placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.textContent = "— Select —";
+              select.appendChild(placeholder);
+              options.forEach(function (opt) {
+                var option = document.createElement("option");
+                option.value = opt;
+                option.textContent = opt;
+                select.appendChild(option);
+              });
+              select.value = options.indexOf(value) !== -1 ? value : "";
+              wrap.appendChild(select);
+              return wrap;
+            };
+
             {{/* Stat Block can come from the Monster Manual reference
               index (a plain <select>, plus a link out to that monster's
               page on aidedd.org so the DM can pull up its real stat block
@@ -1662,7 +1685,7 @@
               };
             };
 
-            var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl) {
+            var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl, nameFieldWrap) {
               var wrap = document.createElement("div");
               wrap.className = "npc-field";
               var label = document.createElement("label");
@@ -1699,7 +1722,13 @@
                 .npc-statblock in style.css) rather than being squeezed into
                 a 14rem column. Empty/hidden unless the Worker proxy is
                 configured (see NPC_PROXY_URL) — otherwise the aidedd.org
-                link above is all there is, same as before this feature. */}}
+                link above is all there is, same as before this feature.
+                Note this panel's hidden/visible state (toggled by
+                npcFetchAndRenderMonsterStatBlock below) is exactly why NPC
+                Name has to be inserted between it and the Monster field
+                rather than appended after: appending after would put Name
+                on a different row than Monster whenever this panel's
+                flex-basis:100% happened to be active. */}}
               var statblockPanel = document.createElement("div");
               statblockPanel.className = "npc-statblock";
               npcFetchAndRenderMonsterStatBlock(statblockPanel, edition, select.value, npc, persistOverride);
@@ -1722,6 +1751,7 @@
 
               var fragment = document.createDocumentFragment();
               fragment.appendChild(wrap);
+              fragment.appendChild(nameFieldWrap);
               fragment.appendChild(statblockPanel);
               return fragment;
             };
@@ -3421,22 +3451,39 @@
               var header = document.createElement("div");
               header.className = "npc-header-fields";
               var nameFieldWrap = markRequired(npcEditInput("NPC Name", npc.name, { field: "name" }));
-              header.appendChild(nameFieldWrap);
               var nameInputEl = nameFieldWrap.querySelector('[data-field="name"]');
 
               {{/* Source is fixed at "+ Add NPC" time (npcAddBtn below) and
                 never shown as an editable toggle here — each NPC just gets
                 the field layout that matches how it was created. */}}
-              header.appendChild(
-                npc.statBlockSource === "monster-manual"
-                  ? npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl)
-                  : npcCustomStatBlockField(npc, isNew, npcNormalizedEdition(npc))
-              );
-              header.appendChild(npcEditInput("MM Page", npc.mmPage, { field: "mmPage" }));
+              if (npc.statBlockSource === "monster-manual") {
+                {{/* npcMonsterField inserts nameFieldWrap itself, between
+                  the narrow Monster select and the full-width stat block
+                  panel, so Name and Monster stay locked on the same row
+                  regardless of whether that panel is currently visible —
+                  appending nameFieldWrap separately here would put it on
+                  its own row whenever the panel's flex-basis:100% happened
+                  to be in play. */}}
+                header.appendChild(markRequired(npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl, nameFieldWrap)));
+              } else {
+                header.appendChild(nameFieldWrap);
+                header.appendChild(npcCustomStatBlockField(npc, isNew, npcNormalizedEdition(npc)));
+              }
+              {{/* Own full-width row (wrapper carries npc-field-wide so it
+                always breaks onto a new line, whether or not the Monster
+                Manual stat block panel above it is currently visible —
+                npcFetchAndRenderMonsterStatBlock hides that panel, and its
+                flex-basis:100% line break, until a monster is actually
+                picked), with Monster Manual Page and Alignment sharing
+                that row rather than each getting their own. */}}
+              var mmAlignmentRow = document.createElement("div");
+              mmAlignmentRow.className = "npc-field-wide npc-header-subrow";
+              mmAlignmentRow.appendChild(npcEditInput("Monster Manual Page", npc.mmPage, { field: "mmPage" }));
+              mmAlignmentRow.appendChild(npcEditSelect("Alignment", DND_ALIGNMENTS, npc.alignment, { field: "alignment" }));
+              header.appendChild(mmAlignmentRow);
               form.appendChild(header);
 
               form.appendChild(npcEditTextarea("Stat Block Alterations", npc.statBlockAlterations, { field: "statBlockAlterations" }));
-              form.appendChild(npcEditTextarea("Alignment", npc.alignment, { field: "alignment" }));
               form.appendChild(npcEditTextarea("Personality", npc.personality, { field: "personality" }));
               form.appendChild(npcEditTextarea("Appearance", npc.appearance, { field: "appearance" }));
               form.appendChild(npcEditTextarea("Secret", npc.secret, { field: "secret" }));
