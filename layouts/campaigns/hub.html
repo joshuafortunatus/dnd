@@ -2,6 +2,7 @@
   {{ $slug := .File.ContentBaseName }}
   {{ $dmPage := .GetPage "dm" }}
   {{ $proxyURL := site.Params.ddb_proxy_url | default "" }}
+  {{ $hash := .Params.password_hash | default "" }}
   <div class="hub-topline">
     <h1>{{ .Title }}</h1>
     <a class="hub-symbol-link" href="{{ .Site.Home.RelPermalink }}">
@@ -10,6 +11,22 @@
     <a class="hub-hero-back" href="{{ .Site.Home.RelPermalink }}">&larr; All campaigns</a>
   </div>
 
+  {{/* Same client-side obscurity gate as the DM Portal (see
+    layouts/campaigns/dm-portal.html and archetypes/dm-portal.md) — a
+    SHA-256 hash embedded in the rendered HTML, not a real credential
+    check. Blank password_hash (the default, e.g. That's Fair) skips the
+    gate entirely and renders wide open, same as before this existed. */}}
+  <div class="hub-gate" id="hub-gate" data-hash="{{ $hash }}" data-storage-key="hub-auth-{{ $slug }}">
+    {{ if ne $hash "" }}
+      <form class="dm-portal-form" id="hub-gate-form">
+        <label for="hub-gate-password">Campaign password</label>
+        <input type="password" id="hub-gate-password" autocomplete="current-password" required>
+        <button type="submit">Enter</button>
+        <p class="dm-portal-error" id="hub-gate-error" hidden>Incorrect password.</p>
+      </form>
+    {{ end }}
+
+    <div class="dm-portal-content" id="hub-gate-content" {{ if ne $hash "" }}hidden{{ end }}>
   {{ with .Content }}<div class="hub-summary">{{ . }}</div>{{ end }}
 
   {{ $related := .RegularPagesRecursive }}
@@ -270,4 +287,51 @@
         });
     })();
   </script>
+    </div>
+
+    {{ if ne $hash "" }}
+      <script>
+        (function () {
+          var gate = document.getElementById("hub-gate");
+          var hash = gate.dataset.hash;
+          var storageKey = gate.dataset.storageKey;
+          var form = document.getElementById("hub-gate-form");
+          var content = document.getElementById("hub-gate-content");
+          var error = document.getElementById("hub-gate-error");
+
+          function reveal() {
+            form.hidden = true;
+            content.hidden = false;
+          }
+
+          function toHex(buffer) {
+            return Array.from(new Uint8Array(buffer))
+              .map(function (b) { return b.toString(16).padStart(2, "0"); })
+              .join("");
+          }
+
+          if (window.localStorage.getItem(storageKey) === hash) {
+            reveal();
+          }
+
+          form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var value = document.getElementById("hub-gate-password").value;
+            window.crypto.subtle
+              .digest("SHA-256", new TextEncoder().encode(value))
+              .then(function (buffer) {
+                var entered = toHex(buffer);
+                if (entered === hash) {
+                  window.localStorage.setItem(storageKey, hash);
+                  error.hidden = true;
+                  reveal();
+                } else {
+                  error.hidden = false;
+                }
+              });
+          });
+        })();
+      </script>
+    {{ end }}
+  </div>
 {{ end }}
