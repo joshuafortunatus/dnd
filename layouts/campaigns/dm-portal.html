@@ -59,20 +59,36 @@
     {{ end }}
 
       <div class="dm-portal-content" id="dm-portal-content" {{ if ne $hash "" }}hidden{{ end }}>
-        <select class="dm-section-select" id="dm-section-select">
-          {{ range $sections }}
-            <option value="{{ .id }}">{{ .label }}</option>
-          {{ end }}
-        </select>
-        <div class="dm-section-nav" id="dm-section-nav">
-          {{ range $sections }}
-            <button type="button" class="dm-section-btn" data-section="{{ .id }}">{{ partial "tab-icon.html" .icon }}<span class="tab-label-text">{{ .label }}</span></button>
-          {{ end }}
-        </div>
-
         <div class="dm-sync-control" id="dm-sync-control" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}"></div>
 
-        {{ range $sections }}
+        {{/* Landing menu — the first thing a DM sees on entering the
+          portal (and every time they come back to it via the Menu
+          button below), rather than always dropping straight into
+          Character Manager. Picking a tile is what actually reveals
+          the section nav + panel experience further down. */}}
+        <div class="dm-landing" id="dm-landing">
+          <div class="dm-landing-grid">
+            {{ range $sections }}
+              <button type="button" class="dm-landing-btn" data-section="{{ .id }}">{{ partial "tab-icon.html" .icon }}<span class="tab-label-text">{{ .label }}</span></button>
+            {{ end }}
+          </div>
+        </div>
+
+        <div class="dm-section-experience" id="dm-section-experience" hidden>
+          <button type="button" class="dm-section-menu-back" id="dm-section-menu-back">&larr; Menu</button>
+
+          <select class="dm-section-select" id="dm-section-select">
+            {{ range $sections }}
+              <option value="{{ .id }}">{{ .label }}</option>
+            {{ end }}
+          </select>
+          <div class="dm-section-nav" id="dm-section-nav">
+            {{ range $sections }}
+              <button type="button" class="dm-section-btn" data-section="{{ .id }}">{{ partial "tab-icon.html" .icon }}<span class="tab-label-text">{{ .label }}</span></button>
+            {{ end }}
+          </div>
+
+          {{ range $sections }}
           <div class="dm-section-panel" data-section="{{ .id }}" hidden>
             {{ if eq .id "character-manager" }}
               {{/* Consolidates what used to be two separate top-level
@@ -294,7 +310,8 @@
               <p class="entry-date">{{ .label }} is coming soon.</p>
             {{ end }}
           </div>
-        {{ end }}
+          {{ end }}
+        </div>
       </div>
 
       {{/*
@@ -518,12 +535,14 @@
             enter. */}}
           window.dmPortalSetSyncToken = setSyncToken;
 
+          var landingEl = document.getElementById("dm-landing");
+          var experienceEl = document.getElementById("dm-section-experience");
+          var menuBackBtn = document.getElementById("dm-section-menu-back");
           var sectionNav = document.getElementById("dm-section-nav");
           var sectionSelect = document.getElementById("dm-section-select");
           var sectionButtons = sectionNav.querySelectorAll(".dm-section-btn");
           var sectionPanels = document.querySelectorAll(".dm-section-panel");
-          var knownSections = Array.prototype.map.call(sectionPanels, function (p) { return p.dataset.section; });
-          var currentSection = knownSections.length ? knownSections[0] : "";
+          var currentSection = "";
 
           function selectSection(section) {
             Array.prototype.forEach.call(sectionButtons, function (b) {
@@ -535,12 +554,6 @@
             sectionSelect.value = section;
             currentSection = section;
           }
-
-          // Always land on the first section (Character Importer) on a
-          // fresh visit — every other section reads from the roster it
-          // manages, so that's the natural anchor point rather than
-          // whichever section happened to be open last time.
-          if (knownSections.length) selectSection(knownSections[0]);
 
           {{/* Switching sections mid-edit would otherwise silently discard
             whatever's typed into the currently-open record (its detail
@@ -564,6 +577,38 @@
             b.addEventListener("click", function () { goToSection(b.dataset.section); });
           });
           sectionSelect.addEventListener("change", function () { goToSection(sectionSelect.value); });
+
+          {{/* Land on the menu of section tiles first, every single time
+            the portal opens — never straight into Character Manager, and
+            never whichever section happened to be open last (nothing
+            persists this, on purpose — same "blank landing state on
+            every visit" rule the Character Manager chooser and every
+            section-reset hook already follow). Picking a tile is a fresh
+            entry (no dirty state can exist yet, since Menu already
+            discarded anything unsaved on the way out), so it skips
+            straight to selectSection instead of going through
+            goToSection's dirty-check. */}}
+          var enterSection = function (section) {
+            landingEl.hidden = true;
+            experienceEl.hidden = false;
+            selectSection(section);
+          };
+
+          var goToLanding = function () {
+            if (currentSection && !confirmLeaveIfDirty(isAnyFormDirty)) return;
+            discardAllUnsaved();
+            sectionResetHooks.forEach(function (fn) { fn(); });
+            Array.prototype.forEach.call(sectionButtons, function (b) { b.classList.remove("is-active"); });
+            Array.prototype.forEach.call(sectionPanels, function (p) { p.hidden = true; });
+            currentSection = "";
+            experienceEl.hidden = true;
+            landingEl.hidden = false;
+          };
+
+          Array.prototype.forEach.call(landingEl.querySelectorAll(".dm-landing-btn"), function (b) {
+            b.addEventListener("click", function () { enterSection(b.dataset.section); });
+          });
+          menuBackBtn.addEventListener("click", goToLanding);
 
           {{/* Character Manager: the outer chooser that PC Manager and NPC
             Tracker (both below) now live inside. Neither manager's own

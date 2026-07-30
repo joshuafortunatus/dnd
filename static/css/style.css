@@ -186,6 +186,43 @@ body.is-home {
 
 .hub-summary { margin-top: 1.5rem; }
 
+.hub-landing { margin-top: 2rem; }
+.hub-landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+.hub-landing-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 1.5rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.hub-landing-btn:hover { color: var(--text); border-color: var(--accent); }
+.hub-landing-btn .tab-icon { width: 32px; height: 32px; }
+
+.hub-tabs-menu-back {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  display: block;
+}
+.hub-tabs-menu-back:hover { color: var(--text); }
+
 .hub-tabs { margin-top: 2rem; }
 .hub-tab-select { display: none; }
 .hub-tab-radio {
@@ -212,7 +249,7 @@ body.is-home {
 }
 .hub-tab-link { color: var(--accent); margin-right: 0; }
 .hub-tab-link:hover { color: var(--text); }
-.tab-icon { width: 22px; height: 22px; flex-shrink: 0; }
+.tab-icon { width: 30px; height: 30px; flex-shrink: 0; }
 .hub-panel {
   display: none;
   padding-top: 1.5rem;
@@ -317,6 +354,42 @@ body.is-home {
   margin: 0;
 }
 .dm-portal-content { margin-top: 2rem; }
+
+.dm-landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+.dm-landing-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 1.5rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.dm-landing-btn:hover { color: var(--text); border-color: var(--accent); }
+.dm-landing-btn .tab-icon { width: 32px; height: 32px; }
+
+.dm-section-menu-back {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  display: block;
+}
+.dm-section-menu-back:hover { color: var(--text); }
 
 .dm-section-select { display: none; }
 .dm-section-nav {

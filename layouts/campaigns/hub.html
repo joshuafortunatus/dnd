@@ -37,7 +37,28 @@
   {{ $locations := where $related "Type" "locations" }}
   {{ $misc := where $related "Type" "misc" }}
 
-  <div class="hub-tabs">
+  {{/* Landing menu — the first thing a visitor sees on entering the hub,
+    rather than dropping straight into Sessions. Picking a tile is what
+    actually reveals the tab bar + panel experience below (hub-experience,
+    still hidden at this point). Resets to this menu every time the page
+    loads (nothing persists which tile was picked last), same "blank
+    landing state on every visit" rule the DM Portal menu follows. */}}
+  <div class="hub-landing" id="hub-landing">
+    <div class="hub-landing-grid">
+      <button type="button" class="hub-landing-btn" data-target="sessions">{{ partial "tab-icon.html" "calendar" }}<span class="tab-label-text">Sessions</span></button>
+      <button type="button" class="hub-landing-btn" data-target="quests">{{ partial "tab-icon.html" "flag" }}<span class="tab-label-text">Quests</span></button>
+      <button type="button" class="hub-landing-btn" data-target="lore">{{ partial "tab-icon.html" "book" }}<span class="tab-label-text">Lore</span></button>
+      <button type="button" class="hub-landing-btn" data-target="characters">{{ partial "tab-icon.html" "person" }}<span class="tab-label-text">Characters</span></button>
+      <button type="button" class="hub-landing-btn" data-target="locations">{{ partial "tab-icon.html" "map-pin" }}<span class="tab-label-text">Locations</span></button>
+      <button type="button" class="hub-landing-btn" data-target="images">{{ partial "tab-icon.html" "folder" }}<span class="tab-label-text">Files</span></button>
+      <button type="button" class="hub-landing-btn" data-target="misc">{{ partial "tab-icon.html" "dots" }}<span class="tab-label-text">Misc.</span></button>
+      {{ with $dmPage }}<a class="hub-landing-btn" href="{{ .RelPermalink }}">{{ partial "tab-icon.html" "shield" }}<span class="tab-label-text">DM Portal</span></a>{{ end }}
+    </div>
+  </div>
+
+  <div class="hub-tabs" id="hub-experience" hidden>
+    <button type="button" class="hub-tabs-menu-back" id="hub-tabs-menu-back">&larr; Menu</button>
+
     <select class="hub-tab-select" onchange="if (this.value === 'dm') { window.location.href = this.options[this.selectedIndex].dataset.href; } else { document.getElementById('tab-' + this.value).checked = true; }">
       <option value="sessions">Sessions</option>
       <option value="quests">Quests</option>
@@ -162,6 +183,31 @@
       {{ end }}
     </div>
   </div>
+
+  <script>
+    (function () {
+      var landing = document.getElementById("hub-landing");
+      var experience = document.getElementById("hub-experience");
+      var menuBackBtn = document.getElementById("hub-tabs-menu-back");
+      if (!landing || !experience) return;
+
+      var enterExperience = function (target) {
+        var radio = document.getElementById("tab-" + target);
+        if (radio) radio.checked = true;
+        landing.hidden = true;
+        experience.hidden = false;
+      };
+
+      Array.prototype.forEach.call(landing.querySelectorAll(".hub-landing-btn[data-target]"), function (btn) {
+        btn.addEventListener("click", function () { enterExperience(btn.dataset.target); });
+      });
+
+      menuBackBtn.addEventListener("click", function () {
+        experience.hidden = true;
+        landing.hidden = false;
+      });
+    })();
+  </script>
 
   <script>
     (function () {
