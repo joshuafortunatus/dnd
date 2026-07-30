@@ -37,8 +37,27 @@
   {{ $locations := where $related "Type" "locations" }}
   {{ $misc := where $related "Type" "misc" }}
 
-  <div class="hub-tabs">
-    <select class="hub-tab-select" onchange="if (this.value === 'dm') { window.location.href = this.options[this.selectedIndex].dataset.href; } else { document.getElementById('tab-' + this.value).checked = true; }">
+  {{/* Landing menu — the first thing a visitor sees on entering the hub,
+    rather than dropping straight into Sessions. Picking a tile is what
+    actually reveals the tab bar + panel experience below (hub-experience,
+    still hidden at this point). Resets to this menu every time the page
+    loads (nothing persists which tile was picked last), same "blank
+    landing state on every visit" rule the DM Portal menu follows. */}}
+  <div class="hub-landing" id="hub-landing">
+    <div class="hub-landing-grid">
+      <button type="button" class="hub-landing-btn" data-target="sessions">{{ partial "tab-icon.html" "calendar" }}<span class="tab-label-text">Sessions</span></button>
+      <button type="button" class="hub-landing-btn" data-target="quests">{{ partial "tab-icon.html" "flag" }}<span class="tab-label-text">Quests</span></button>
+      <button type="button" class="hub-landing-btn" data-target="lore">{{ partial "tab-icon.html" "book" }}<span class="tab-label-text">Lore</span></button>
+      <button type="button" class="hub-landing-btn" data-target="characters">{{ partial "tab-icon.html" "person" }}<span class="tab-label-text">Characters</span></button>
+      <button type="button" class="hub-landing-btn" data-target="locations">{{ partial "tab-icon.html" "map-pin" }}<span class="tab-label-text">Locations</span></button>
+      <button type="button" class="hub-landing-btn" data-target="images">{{ partial "tab-icon.html" "folder" }}<span class="tab-label-text">Files</span></button>
+      <button type="button" class="hub-landing-btn" data-target="misc">{{ partial "tab-icon.html" "dots" }}<span class="tab-label-text">Misc.</span></button>
+      {{ with $dmPage }}<a class="hub-landing-btn" href="{{ .RelPermalink }}">{{ partial "tab-icon.html" "shield" }}<span class="tab-label-text">DM Portal</span></a>{{ end }}
+    </div>
+  </div>
+
+  <div class="hub-tabs" id="hub-experience" hidden>
+    <select class="hub-tab-select" id="hub-tab-select">
       <option value="sessions">Sessions</option>
       <option value="quests">Quests</option>
       <option value="lore">Lore</option>
@@ -49,23 +68,18 @@
       {{ with $dmPage }}<option value="dm" data-href="{{ .RelPermalink }}">DM Portal</option>{{ end }}
     </select>
 
-    <input type="radio" name="hub-tab" id="tab-sessions" class="hub-tab-radio" checked>
-    <label for="tab-sessions" class="hub-tab-label">Sessions</label>
-    <input type="radio" name="hub-tab" id="tab-quests" class="hub-tab-radio">
-    <label for="tab-quests" class="hub-tab-label">Quests</label>
-    <input type="radio" name="hub-tab" id="tab-lore" class="hub-tab-radio">
-    <label for="tab-lore" class="hub-tab-label">Lore</label>
-    <input type="radio" name="hub-tab" id="tab-characters" class="hub-tab-radio">
-    <label for="tab-characters" class="hub-tab-label">Characters</label>
-    <input type="radio" name="hub-tab" id="tab-locations" class="hub-tab-radio">
-    <label for="tab-locations" class="hub-tab-label">Locations</label>
-    <input type="radio" name="hub-tab" id="tab-images" class="hub-tab-radio">
-    <label for="tab-images" class="hub-tab-label">Files</label>
-    <input type="radio" name="hub-tab" id="tab-misc" class="hub-tab-radio">
-    <label for="tab-misc" class="hub-tab-label">Misc.</label>
-    {{ with $dmPage }}<a class="hub-tab-label hub-tab-link" href="{{ .RelPermalink }}">DM Portal</a>{{ end }}
+    <div class="hub-tab-nav" id="hub-tab-nav">
+      <button type="button" class="hub-tab-btn" data-tab="sessions">{{ partial "tab-icon.html" "calendar" }}<span class="tab-label-text">Sessions</span></button>
+      <button type="button" class="hub-tab-btn" data-tab="quests">{{ partial "tab-icon.html" "flag" }}<span class="tab-label-text">Quests</span></button>
+      <button type="button" class="hub-tab-btn" data-tab="lore">{{ partial "tab-icon.html" "book" }}<span class="tab-label-text">Lore</span></button>
+      <button type="button" class="hub-tab-btn" data-tab="characters">{{ partial "tab-icon.html" "person" }}<span class="tab-label-text">Characters</span></button>
+      <button type="button" class="hub-tab-btn" data-tab="locations">{{ partial "tab-icon.html" "map-pin" }}<span class="tab-label-text">Locations</span></button>
+      <button type="button" class="hub-tab-btn" data-tab="images">{{ partial "tab-icon.html" "folder" }}<span class="tab-label-text">Files</span></button>
+      <button type="button" class="hub-tab-btn" data-tab="misc">{{ partial "tab-icon.html" "dots" }}<span class="tab-label-text">Misc.</span></button>
+      {{ with $dmPage }}<a class="hub-tab-btn hub-tab-link" href="{{ .RelPermalink }}">{{ partial "tab-icon.html" "shield" }}<span class="tab-label-text">DM Portal</span></a>{{ end }}
+    </div>
 
-    <div class="hub-panel" id="panel-sessions">
+    <div class="hub-panel" id="panel-sessions" data-tab="sessions" hidden>
       {{ if $sessions }}
         <label class="sort-toggle">
           <input type="checkbox" id="sessions-sort-newest" checked>
@@ -84,7 +98,7 @@
       </div>
     </div>
 
-    <div class="hub-panel" id="panel-quests">
+    <div class="hub-panel" id="panel-quests" data-tab="quests" hidden>
       {{ range $quests.ByTitle }}
         <article class="hub-entry">
           {{ if ne .Title "Quest Log" }}<h3>{{ .Title }}</h3>{{ end }}
@@ -95,7 +109,7 @@
       {{ end }}
     </div>
 
-    <div class="hub-panel" id="panel-lore">
+    <div class="hub-panel" id="panel-lore" data-tab="lore" hidden>
       {{ range $lore.ByTitle }}
         <article class="hub-entry">
           {{ .Content }}
@@ -105,7 +119,7 @@
       {{ end }}
     </div>
 
-    <div class="hub-panel" id="panel-characters">
+    <div class="hub-panel" id="panel-characters" data-tab="characters" hidden>
       <h2>Playable Characters</h2>
       {{/* Sourced live from the DM Portal's imported roster (Cloudflare
         KV, public read-only for this one key — see
@@ -126,7 +140,7 @@
       {{ end }}
     </div>
 
-    <div class="hub-panel" id="panel-locations">
+    <div class="hub-panel" id="panel-locations" data-tab="locations" hidden>
       {{ range $locations.ByTitle }}
         <article class="hub-entry">
           {{ .Content }}
@@ -136,7 +150,7 @@
       {{ end }}
     </div>
 
-    <div class="hub-panel" id="panel-images">
+    <div class="hub-panel" id="panel-images" data-tab="images" hidden>
       {{/* Runtime-fetched, not build-time — files the DM uploaded and
         marked "sent to players" via the DM Portal's File Library section
         (Cloudflare R2, proxied through worker/ddb-character-proxy.js's
@@ -151,7 +165,7 @@
       <p class="entry-date" id="hub-shared-files-empty" hidden>Nothing shared yet.</p>
     </div>
 
-    <div class="hub-panel" id="panel-misc">
+    <div class="hub-panel" id="panel-misc" data-tab="misc" hidden>
       {{ range $misc.ByTitle }}
         <article class="hub-entry">
           <h3>{{ .Title }}</h3>
@@ -162,6 +176,49 @@
       {{ end }}
     </div>
   </div>
+
+  <script>
+    (function () {
+      var landing = document.getElementById("hub-landing");
+      var experience = document.getElementById("hub-experience");
+      var tabButtons = document.querySelectorAll(".hub-tab-btn[data-tab]");
+      var tabPanels = document.querySelectorAll(".hub-panel[data-tab]");
+      var tabSelect = document.getElementById("hub-tab-select");
+      if (!landing || !experience) return;
+
+      var selectTab = function (tab) {
+        Array.prototype.forEach.call(tabButtons, function (b) {
+          b.classList.toggle("is-active", b.dataset.tab === tab);
+        });
+        Array.prototype.forEach.call(tabPanels, function (p) {
+          p.hidden = p.dataset.tab !== tab;
+        });
+        tabSelect.value = tab;
+      };
+
+      var enterExperience = function (tab) {
+        landing.hidden = true;
+        experience.hidden = false;
+        selectTab(tab);
+      };
+
+      Array.prototype.forEach.call(landing.querySelectorAll(".hub-landing-btn[data-target]"), function (btn) {
+        btn.addEventListener("click", function () { enterExperience(btn.dataset.target); });
+      });
+
+      Array.prototype.forEach.call(tabButtons, function (b) {
+        b.addEventListener("click", function () { selectTab(b.dataset.tab); });
+      });
+
+      tabSelect.addEventListener("change", function () {
+        if (tabSelect.value === "dm") {
+          window.location.href = tabSelect.options[tabSelect.selectedIndex].dataset.href;
+          return;
+        }
+        selectTab(tabSelect.value);
+      });
+    })();
+  </script>
 
   <script>
     (function () {

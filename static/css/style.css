@@ -186,42 +186,64 @@ body.is-home {
 
 .hub-summary { margin-top: 1.5rem; }
 
+.hub-landing { margin-top: 2rem; }
+.hub-landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+.hub-landing-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 1.5rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.hub-landing-btn:hover { color: var(--text); border-color: var(--accent); }
+.hub-landing-btn .tab-icon { width: 32px; height: 32px; }
+
 .hub-tabs { margin-top: 2rem; }
 .hub-tab-select { display: none; }
-.hub-tab-radio {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+.hub-tab-nav {
+  display: flex;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
 }
-.hub-tab-label {
-  display: inline-block;
+.hub-tab-btn {
+  flex: 1;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
   padding: 0.5rem 0;
-  margin-right: 1.75rem;
   cursor: pointer;
   color: var(--text-dim);
-  font-size: 1.15rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: none;
+  border: none;
   border-bottom: 2px solid transparent;
+  text-align: center;
 }
-.hub-tab-radio:checked + .hub-tab-label {
+.hub-tab-btn:hover { color: var(--text); }
+.hub-tab-btn.is-active {
   color: var(--text);
   border-bottom-color: var(--accent);
 }
-.hub-tab-link { color: var(--accent); margin-right: 0; }
+.hub-tab-link { color: var(--accent); }
 .hub-tab-link:hover { color: var(--text); }
+.tab-icon { width: 30px; height: 30px; flex-shrink: 0; }
 .hub-panel {
-  display: none;
   padding-top: 1.5rem;
   margin-top: 0.5rem;
-  border-top: 1px solid var(--border);
-}
-#tab-sessions:checked ~ #panel-sessions,
-#tab-quests:checked ~ #panel-quests,
-#tab-lore:checked ~ #panel-lore,
-#tab-characters:checked ~ #panel-characters,
-#tab-locations:checked ~ #panel-locations,
-#tab-images:checked ~ #panel-images,
-#tab-misc:checked ~ #panel-misc {
-  display: block;
 }
 
 .sort-toggle {
@@ -313,23 +335,50 @@ body.is-home {
 }
 .dm-portal-content { margin-top: 2rem; }
 
+.dm-landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+.dm-landing-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 1.5rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.dm-landing-btn:hover { color: var(--text); border-color: var(--accent); }
+.dm-landing-btn .tab-icon { width: 32px; height: 32px; }
+
 .dm-section-select { display: none; }
 .dm-section-nav {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.25rem 1.75rem;
+  gap: 0.5rem 1.75rem;
   border-bottom: 1px solid var(--border);
 }
 .dm-section-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-dim);
   font-family: inherit;
-  font-size: 1.15rem;
+  font-size: 0.9rem;
   padding: 0.5rem 0;
   cursor: pointer;
-  text-align: left;
+  text-align: center;
 }
 .dm-section-btn:hover { color: var(--text); }
 .dm-section-btn.is-active {
@@ -1387,8 +1436,8 @@ body.is-home {
 .file-library-field-static-label { color: var(--text-dim); font-size: 0.85rem; }
 
 @media (max-width: 640px), (max-height: 500px) and (max-width: 950px) and (orientation: landscape) {
-  /* Seven tab labels wrap awkwardly on a narrow phone screen — swap to a
-     native select that drives the same hidden radios. The landscape
+  /* Eight tab buttons wrap awkwardly on a narrow phone screen — swap to a
+     native select that drives the same tab-switching JS. The landscape
      condition is capped at 950px width so it only catches phones (which
      top out around 930px wide in landscape) — iPads (1024px+), laptops,
      and desktops keep the horizontal design no matter how short the
@@ -1400,7 +1449,7 @@ body.is-home {
     padding: 0.5rem 0.7rem;
     font-size: 1.05rem;
   }
-  .hub-tab-label { display: none; }
+  .hub-tab-nav { display: none; }
   .hub-symbol-link { display: none; }
 
   .dm-section-select {
