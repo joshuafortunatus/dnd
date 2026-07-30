@@ -196,6 +196,7 @@ body.is-home {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.6rem;
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -364,6 +365,7 @@ body.is-home {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.6rem;
   background: var(--bg-raised);
   border: 1px solid var(--border);
