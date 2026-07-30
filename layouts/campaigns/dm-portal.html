@@ -30,14 +30,14 @@
     reads from the same roster it manages (Playable via PC Manager, NPC
     via NPC Tracker — see the "character-manager" panel below). */}}
   {{ $sections := slice
-    (dict "id" "character-manager" "label" "Character Manager")
-    (dict "id" "campaign-journal" "label" "Campaign Journal")
-    (dict "id" "campaign-conflicts" "label" "Campaign Conflicts")
-    (dict "id" "file-library" "label" "File Library")
-    (dict "id" "travel-planner" "label" "Travel Planner")
-    (dict "id" "magic-item-tracker" "label" "Magic Item Tracker")
-    (dict "id" "settlement-tracker" "label" "Settlement Tracker")
-    (dict "id" "bastion-tracker" "label" "Bastion Tracker")
+    (dict "id" "character-manager" "label" "Character Manager" "icon" "person")
+    (dict "id" "campaign-journal" "label" "Campaign Journal" "icon" "notebook")
+    (dict "id" "campaign-conflicts" "label" "Campaign Conflicts" "icon" "swords")
+    (dict "id" "file-library" "label" "File Library" "icon" "folder")
+    (dict "id" "travel-planner" "label" "Travel Planner" "icon" "compass")
+    (dict "id" "magic-item-tracker" "label" "Magic Item Tracker" "icon" "gem")
+    (dict "id" "settlement-tracker" "label" "Settlement Tracker" "icon" "building")
+    (dict "id" "bastion-tracker" "label" "Bastion Tracker" "icon" "tower")
   }}
 
   <div class="hub-topline">
@@ -66,7 +66,7 @@
         </select>
         <div class="dm-section-nav" id="dm-section-nav">
           {{ range $sections }}
-            <button type="button" class="dm-section-btn" data-section="{{ .id }}">{{ .label }}</button>
+            <button type="button" class="dm-section-btn" data-section="{{ .id }}">{{ partial "tab-icon.html" .icon }}<span class="tab-label-text">{{ .label }}</span></button>
           {{ end }}
         </div>
 
