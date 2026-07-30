@@ -75,8 +75,6 @@
         </div>
 
         <div class="dm-section-experience" id="dm-section-experience" hidden>
-          <button type="button" class="dm-section-menu-back" id="dm-section-menu-back">&larr; Menu</button>
-
           <select class="dm-section-select" id="dm-section-select">
             {{ range $sections }}
               <option value="{{ .id }}">{{ .label }}</option>
@@ -537,7 +535,6 @@
 
           var landingEl = document.getElementById("dm-landing");
           var experienceEl = document.getElementById("dm-section-experience");
-          var menuBackBtn = document.getElementById("dm-section-menu-back");
           var sectionNav = document.getElementById("dm-section-nav");
           var sectionSelect = document.getElementById("dm-section-select");
           var sectionButtons = sectionNav.querySelectorAll(".dm-section-btn");
@@ -582,33 +579,20 @@
             the portal opens — never straight into Character Manager, and
             never whichever section happened to be open last (nothing
             persists this, on purpose — same "blank landing state on
-            every visit" rule the Character Manager chooser and every
-            section-reset hook already follow). Picking a tile is a fresh
-            entry (no dirty state can exist yet, since Menu already
-            discarded anything unsaved on the way out), so it skips
-            straight to selectSection instead of going through
-            goToSection's dirty-check. */}}
+            every visit" rule the Character Manager chooser already
+            follows). Picking a tile is a fresh entry (nothing else could
+            be dirty yet, since the page just loaded straight to the
+            landing menu), so it skips straight to selectSection instead
+            of going through goToSection's dirty-check. */}}
           var enterSection = function (section) {
             landingEl.hidden = true;
             experienceEl.hidden = false;
             selectSection(section);
           };
 
-          var goToLanding = function () {
-            if (currentSection && !confirmLeaveIfDirty(isAnyFormDirty)) return;
-            discardAllUnsaved();
-            sectionResetHooks.forEach(function (fn) { fn(); });
-            Array.prototype.forEach.call(sectionButtons, function (b) { b.classList.remove("is-active"); });
-            Array.prototype.forEach.call(sectionPanels, function (p) { p.hidden = true; });
-            currentSection = "";
-            experienceEl.hidden = true;
-            landingEl.hidden = false;
-          };
-
           Array.prototype.forEach.call(landingEl.querySelectorAll(".dm-landing-btn"), function (b) {
             b.addEventListener("click", function () { enterSection(b.dataset.section); });
           });
-          menuBackBtn.addEventListener("click", goToLanding);
 
           {{/* Character Manager: the outer chooser that PC Manager and NPC
             Tracker (both below) now live inside. Neither manager's own
