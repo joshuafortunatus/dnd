@@ -165,7 +165,6 @@ body.is-home {
   gap: 1rem;
 }
 .hub-topline h1 { margin: 0; font-size: 2.5rem; }
-.hub-topline h1.dm-portal-title { font-size: 1.35rem; }
 .hub-symbol-link {
   position: absolute;
   left: 50%;
