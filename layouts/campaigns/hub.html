@@ -3,6 +3,10 @@
   {{ $dmPage := .GetPage "dm" }}
   {{ $proxyURL := site.Params.ddb_proxy_url | default "" }}
   {{ $hash := .Params.password_hash | default "" }}
+  {{/* Trial: players can add session recaps straight from this page, no
+    password — see worker/ddb-character-proxy.js's OPEN_SESSIONS_TRIAL_SLUG.
+    Scoped to one campaign on purpose while this proves out. */}}
+  {{ $sessionsEditable := eq $slug "borderlands" }}
   <div class="hub-topline">
     <h1>{{ .Title }}</h1>
     <a class="hub-symbol-link" href="{{ .Site.Home.RelPermalink }}">
@@ -80,20 +84,44 @@
     </div>
 
     <div class="hub-panel" id="panel-sessions" data-tab="sessions" hidden>
-      {{ if $sessions }}
+      {{ if $sessionsEditable }}
+        <div class="hub-session-editor" id="hub-session-editor" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}">
+          <button type="button" class="hub-session-add-btn" id="hub-session-add-btn">+ Add Session</button>
+          <form class="hub-session-form" id="hub-session-form" hidden>
+            <div class="hub-session-field">
+              <label for="hub-session-title">Title</label>
+              <input type="text" id="hub-session-title" placeholder="Session 11" required>
+            </div>
+            <div class="hub-session-field">
+              <label for="hub-session-date">Date</label>
+              <input type="date" id="hub-session-date" required>
+            </div>
+            <div class="hub-session-field">
+              <label for="hub-session-recap">Recap (one bullet per line)</label>
+              <textarea id="hub-session-recap" rows="4"></textarea>
+            </div>
+            <div class="hub-session-form-actions">
+              <button type="submit">Save</button>
+              <button type="button" id="hub-session-cancel-btn">Cancel</button>
+            </div>
+            <p class="hub-session-error" id="hub-session-error" hidden>Couldn&rsquo;t save. Try again.</p>
+          </form>
+        </div>
+      {{ end }}
+      {{ if or $sessions $sessionsEditable }}
         <label class="sort-toggle">
           <input type="checkbox" id="sessions-sort-newest" checked>
           Newest first
         </label>
       {{ end }}
-      <div class="session-list">
+      <div class="session-list" id="session-list">
         {{ range $sessions.ByDate }}
-          <article class="hub-entry">
+          <article class="hub-entry" data-date="{{ .Date.Format "2006-01-02" }}">
             <h3>{{ .Title }}{{ if not .Date.IsZero }}<span class="entry-date">{{ .Date.Format "Jan 2, 2006" }}</span>{{ end }}</h3>
             {{ .Content }}
           </article>
         {{ else }}
-          <p class="entry-date">No sessions yet.</p>
+          <p class="entry-date" id="session-list-empty">No sessions yet.</p>
         {{ end }}
       </div>
     </div>
@@ -342,6 +370,126 @@
         .catch(function () {
           showEmpty();
         });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var editor = document.getElementById("hub-session-editor");
+      if (!editor) return;
+      var slug = editor.dataset.slug;
+      var proxyUrl = (editor.dataset.proxyUrl || "").replace(/\/$/, "");
+      var list = document.getElementById("session-list");
+      var emptyMsg = document.getElementById("session-list-empty");
+      var addBtn = document.getElementById("hub-session-add-btn");
+      var form = document.getElementById("hub-session-form");
+      var titleInput = document.getElementById("hub-session-title");
+      var dateInput = document.getElementById("hub-session-date");
+      var recapInput = document.getElementById("hub-session-recap");
+      var cancelBtn = document.getElementById("hub-session-cancel-btn");
+      var error = document.getElementById("hub-session-error");
+      if (!proxyUrl) return;
+
+      var syncUrl = proxyUrl + "/sync/" + slug + "/sessions";
+      var liveSessions = [];
+
+      var renderEntry = function (entry) {
+        var article = document.createElement("article");
+        article.className = "hub-entry";
+        article.dataset.live = "true";
+        article.dataset.date = entry.date || "";
+
+        var h3 = document.createElement("h3");
+        h3.textContent = entry.title || "Untitled session";
+        if (entry.date) {
+          var dateSpan = document.createElement("span");
+          dateSpan.className = "entry-date";
+          var parsed = new Date(entry.date + "T00:00:00");
+          dateSpan.textContent = isNaN(parsed.getTime())
+            ? entry.date
+            : parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+          h3.appendChild(dateSpan);
+        }
+        article.appendChild(h3);
+
+        var bullets = (entry.recap || "").split("\n").map(function (line) { return line.trim(); }).filter(Boolean);
+        if (bullets.length) {
+          var ul = document.createElement("ul");
+          bullets.forEach(function (line) {
+            var li = document.createElement("li");
+            li.textContent = line;
+            ul.appendChild(li);
+          });
+          article.appendChild(ul);
+        }
+        return article;
+      };
+
+      var renderLive = function () {
+        Array.prototype.forEach.call(list.querySelectorAll('.hub-entry[data-live="true"]'), function (a) { a.remove(); });
+        liveSessions.forEach(function (entry) { list.appendChild(renderEntry(entry)); });
+
+        var articles = Array.prototype.slice.call(list.querySelectorAll(".hub-entry"));
+        articles.sort(function (a, b) { return (a.dataset.date || "").localeCompare(b.dataset.date || ""); });
+        articles.forEach(function (a) { list.appendChild(a); });
+
+        if (emptyMsg) emptyMsg.hidden = articles.length > 0;
+      };
+
+      fetch(syncUrl)
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (remote) {
+          liveSessions = remote || [];
+          renderLive();
+        })
+        .catch(function () {});
+
+      var showForm = function () {
+        form.hidden = false;
+        addBtn.hidden = true;
+        error.hidden = true;
+        titleInput.value = "";
+        dateInput.value = new Date().toISOString().slice(0, 10);
+        recapInput.value = "";
+        titleInput.focus();
+      };
+
+      var hideForm = function () {
+        form.hidden = true;
+        addBtn.hidden = false;
+      };
+
+      addBtn.addEventListener("click", showForm);
+      cancelBtn.addEventListener("click", hideForm);
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var title = titleInput.value.trim();
+        if (!title) return;
+
+        var entry = {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+          title: title,
+          date: dateInput.value,
+          recap: recapInput.value,
+        };
+        var updated = liveSessions.concat([entry]);
+
+        fetch(syncUrl, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        })
+          .then(function (res) {
+            if (!res.ok) throw new Error("save failed");
+            liveSessions = updated;
+            renderLive();
+            hideForm();
+          })
+          .catch(function () {
+            error.hidden = false;
+          });
+      });
     })();
   </script>
     </div>
