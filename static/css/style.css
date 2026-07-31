@@ -518,6 +518,96 @@ body.is-home {
 }
 .dm-section-panel { padding-top: 1.5rem; }
 
+.pc-form-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1rem;
+}
+
+/* High-contrast on purpose — this is the one control that has to stay
+   legible and obviously clickable no matter what section it's dropped
+   into (dark boxed inputs, pale prose text, etc.), unlike every other
+   button here which blends into the section's own palette. */
+.dm-mode-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  background: var(--bg);
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.2rem;
+}
+.dm-mode-toggle-btn {
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+}
+.dm-mode-toggle-btn:hover { color: var(--accent); }
+.dm-mode-toggle-btn.is-active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* View mode: a read-friendly skin over the same forms Edit mode uses,
+   scoped to just Character Manager, Campaign Journal, and Campaign
+   Conflicts (the three ".dm-view-scope" containers) — not every section.
+   Fields are locked (readOnly/disabled, applied in JS) rather than
+   rebuilt, so this only needs to strip the boxed input look and hide
+   every mutating control (Save/Cancel/Delete/Add/Remove, matched by the
+   *-save-btn/*-cancel-btn/*-delete-btn/*-add-btn/*-remove class-suffix
+   convention every section already follows). Record-chooser <select>
+   elements (id ends in "-select") are deliberately left alone in both
+   CSS and JS, since switching between records has to keep working while
+   browsing in View mode.
+
+   Deliberately NOT hiding the *-form-actions row itself (only the
+   individual buttons inside it) — the Edit/View toggle lives inside
+   that same row (see createModeToggleEl in the <script> below), and an
+   earlier version of this rule hid the whole row, toggle included,
+   the instant View mode turned on. That left no way back to Edit short
+   of clearing localStorage by hand — never repeat that mistake here. */
+.dm-view-scope.view-mode [class*="-save-btn"],
+.dm-view-scope.view-mode [class*="-cancel-btn"],
+.dm-view-scope.view-mode [class*="-delete-btn"],
+.dm-view-scope.view-mode [class*="-add-btn"],
+.dm-view-scope.view-mode [class*="-edit-btn"],
+.dm-view-scope.view-mode [class*="-send-btn"],
+.dm-view-scope.view-mode [class*="-remove"],
+.dm-view-scope.view-mode [class*="-edit-actions"],
+.dm-view-scope.view-mode [class*="-top-controls"],
+.dm-view-scope.view-mode .confirm-delete-wrap,
+.dm-view-scope.view-mode .pc-manager-form {
+  display: none !important;
+}
+.dm-view-scope.view-mode input:not([id$="-select"]),
+.dm-view-scope.view-mode textarea {
+  background: transparent;
+  border-color: transparent;
+  padding-left: 0;
+  padding-right: 0;
+  cursor: default;
+}
+.dm-view-scope.view-mode textarea.autosize-textarea { overflow: hidden; }
+.dm-view-scope.view-mode select:not([id$="-select"]) {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border-color: transparent;
+  color: inherit;
+  opacity: 1;
+  padding-left: 0;
+}
+.dm-view-scope.view-mode input[type="checkbox"]:disabled,
+.dm-view-scope.view-mode input[type="radio"]:disabled {
+  opacity: 0.85;
+}
+
 /* Shared inline "Are you sure? Yes / No" prompt — appears in place of
    any remove button in the portal when clicked. */
 .confirm-delete-wrap {
@@ -981,6 +1071,13 @@ body.is-home {
 .journal-field textarea, .pc-field textarea, .conflict-field textarea, .bastion-field textarea {
   min-height: 5rem;
   resize: vertical;
+}
+/* Autosizing textareas grow with content via JS instead, so a manual drag
+   handle would just get overwritten on the next keystroke, and the
+   scrollbar would flash before the height catches up. */
+textarea.autosize-textarea {
+  resize: none;
+  overflow: hidden;
 }
 /* Combined selector, not just .conflict-adversary-toggle, so this reliably
    overrides .combat-conditions-toggle's max-width regardless of source
