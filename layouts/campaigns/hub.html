@@ -392,6 +392,7 @@
 
       var syncUrl = proxyUrl + "/sync/" + slug + "/sessions";
       var liveSessions = [];
+      var editingId = null;
 
       {{/* Date input must default to the visitor's own local date, not
         UTC — toISOString() is UTC, which rolls over to the next day
@@ -425,6 +426,7 @@
 
       var removeEntry = function (id) {
         if (!window.confirm("Remove this session?")) return;
+        if (editingId === id) hideForm();
         saveSessions(liveSessions.filter(function (e) { return e.id !== id; }), renderLive);
       };
 
@@ -445,6 +447,12 @@
             : parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
           h3.appendChild(dateSpan);
         }
+        var editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "hub-session-edit-btn";
+        editBtn.textContent = "Edit";
+        editBtn.addEventListener("click", function () { showForm(entry); });
+        h3.appendChild(editBtn);
         var removeBtn = document.createElement("button");
         removeBtn.type = "button";
         removeBtn.className = "hub-session-remove-btn";
@@ -485,14 +493,22 @@
         })
         .catch(function () {});
 
-      var showForm = function () {
+      var showForm = function (entry) {
+        editingId = entry ? entry.id : null;
         form.hidden = false;
         addBtn.hidden = true;
         error.hidden = true;
-        var sessionCount = list.querySelectorAll(".hub-entry").length;
-        titleInput.value = "Session " + (sessionCount + 1);
-        dateInput.value = todayLocal();
-        recapInput.value = "";
+        form.querySelector("button[type='submit']").textContent = entry ? "Update" : "Save";
+        if (entry) {
+          titleInput.value = entry.title || "";
+          dateInput.value = entry.date || "";
+          recapInput.value = entry.recap || "";
+        } else {
+          var sessionCount = list.querySelectorAll(".hub-entry").length;
+          titleInput.value = "Session " + (sessionCount + 1);
+          dateInput.value = todayLocal();
+          recapInput.value = "";
+        }
         titleInput.focus();
         titleInput.select();
       };
@@ -500,9 +516,10 @@
       var hideForm = function () {
         form.hidden = true;
         addBtn.hidden = false;
+        editingId = null;
       };
 
-      addBtn.addEventListener("click", showForm);
+      addBtn.addEventListener("click", function () { showForm(); });
       cancelBtn.addEventListener("click", hideForm);
 
       form.addEventListener("submit", function (e) {
@@ -510,13 +527,12 @@
         var title = titleInput.value.trim();
         if (!title) return;
 
-        var entry = {
-          id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-          title: title,
-          date: dateInput.value,
-          recap: recapInput.value,
-        };
-        saveSessions(liveSessions.concat([entry]), function () {
+        var fields = { title: title, date: dateInput.value, recap: recapInput.value };
+        var updated = editingId
+          ? liveSessions.map(function (e) { return e.id === editingId ? Object.assign({}, e, fields) : e; })
+          : liveSessions.concat([Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2) }, fields)]);
+
+        saveSessions(updated, function () {
           renderLive();
           hideForm();
         });
