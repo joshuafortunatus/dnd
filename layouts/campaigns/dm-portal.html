@@ -450,6 +450,40 @@
             return fieldWrap;
           };
 
+          {{/* Shared DOM shape behind every Save/Cancel/Delete-style
+            section's own editInput/editTextarea (PC Manager, Travel
+            Planner, NPC Tracker, Settlement Tracker, Campaign Journal,
+            Campaign Conflicts, Bastion Tracker, File Library) — each still
+            keeps its own field-prefixed CSS class (so existing stylesheet
+            rules keep matching unchanged) but delegates the actual
+            element-building here instead of repeating it per section. */}}
+          var makeFieldInput = function (prefix, labelText, value, dataAttrs) {
+            var wrap = document.createElement("div");
+            wrap.className = prefix + "-field";
+            var label = document.createElement("label");
+            label.textContent = labelText;
+            var input = document.createElement("input");
+            input.type = "text";
+            input.value = value || "";
+            Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+            wrap.appendChild(label);
+            wrap.appendChild(input);
+            return wrap;
+          };
+
+          var makeFieldTextarea = function (prefix, labelText, value, dataAttrs) {
+            var wrap = document.createElement("div");
+            wrap.className = prefix + "-field " + prefix + "-field-wide";
+            var label = document.createElement("label");
+            label.textContent = labelText;
+            var textarea = document.createElement("textarea");
+            textarea.value = value || "";
+            Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
+            wrap.appendChild(label);
+            wrap.appendChild(textarea);
+            return wrap;
+          };
+
           {{/* Defense in depth for the placeholder-on-Add pattern described
             above: the beforeunload guard can only warn before a close, it
             can't force cleanup to run afterward — a crash, force-quit, or
@@ -789,30 +823,11 @@
             syncPullers.push(pullPcData);
 
             var pcFieldInput = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "pc-field";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var input = document.createElement("input");
-              input.type = "text";
-              input.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(input);
-              return wrap;
+              return makeFieldInput("pc", labelText, value, dataAttrs);
             };
 
             var pcFieldTextarea = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "pc-field pc-field-wide";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var textarea = document.createElement("textarea");
-              textarea.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(textarea);
-              return wrap;
+              return makeFieldTextarea("pc", labelText, value, dataAttrs);
             };
 
             var pcFieldStatic = function (labelText, value) {
@@ -1198,199 +1213,245 @@
             }
           }
 
+          {{/* Generic "select a record -> edit -> Save/Cancel/Delete"
+            controller shared by every simple flat-record DM Portal section
+            (Settlement Tracker, Campaign Journal, Bastion Tracker, Travel
+            Planner) — NPC Tracker and Campaign Conflicts stay hand-rolled
+            since their combat-table/stat-block widgets go well beyond this
+            shape. Each call site still owns its own field rendering
+            (renderFields) and form-to-record collection (collectFromForm);
+            this only owns the load/save/sync/dirty-tracking/select-list
+            machinery that would otherwise be duplicated per section. */}}
+          var createRecordTracker = function (config) {
+            var container = document.getElementById(config.containerId);
+            if (!container) return;
+            var storageKey = container.dataset.storageKey;
+            var select = document.getElementById(config.selectId);
+            var detail = document.getElementById(config.detailId);
+            var addBtn = document.getElementById(config.addBtnId);
+            var dirty = false;
+            var currentValue = "";
+            var unsavedNewId = null;
+            var pendingNew = null;
 
-          var travelPlanner = document.getElementById("travel-planner");
-          if (travelPlanner) {
-            var tpStorageKey = travelPlanner.dataset.storageKey;
-            var tpSelect = document.getElementById("travel-planner-select");
-            var tpDetail = document.getElementById("travel-planner-detail");
-            var tpAddBtn = document.getElementById("travel-planner-add-btn");
-            var tpDirty = false;
-            var tpCurrentValue = "";
-            var tpIsDirty = function () { return tpDirty || Boolean(unsavedNewPlanId); };
-            registerDirtyTracker(tpIsDirty, function () { cancelTravelForm(); });
-            registerSectionResetHook(function () { cancelTravelForm(); });
+            var isDirty = function () { return dirty || Boolean(unsavedNewId); };
 
-            var loadPlans = function () {
+            var load = function () {
               try {
-                return JSON.parse(window.localStorage.getItem(tpStorageKey) || "[]");
+                return JSON.parse(window.localStorage.getItem(storageKey) || "[]");
               } catch (e) {
                 return [];
               }
             };
 
-            var writePlansLocal = function (plans) {
-              window.localStorage.setItem(tpStorageKey, JSON.stringify(plans));
+            var writeLocal = function (records) {
+              window.localStorage.setItem(storageKey, JSON.stringify(records));
             };
 
-            var savePlans = function (plans) {
-              writePlansLocal(plans);
-              syncPush("travel-plans", plans);
-            };
-
-            var tpIsValid = function (plan) { return Boolean(plan.origin && plan.origin.trim() && plan.destination && plan.destination.trim()); };
-
-            var pullTravelPlans = function () {
-              syncPull("travel-plans").then(function (remote) {
-                if (remote) {
-                  var prunedRemote = pruneOrphanedDrafts(remote, tpIsValid, unsavedNewPlanId);
-                  writePlansLocal(prunedRemote);
-                  if (prunedRemote.length !== remote.length) syncPush("travel-plans", prunedRemote);
-                  renderSelect();
-                  clearDetail();
-                } else if (syncEnabled()) {
-                  syncPush("travel-plans", loadPlans());
-                }
-              });
-            };
-            syncPullers.push(pullTravelPlans);
-
-            var planLabel = function (plan) {
-              return (plan.origin || "?") + " - " + (plan.destination || "?");
-            };
-
-            var blankStage = function () {
-              return {
-                start: "", end: "", distance: "", terrain: "", weather: "",
-                pace: "", paceDays: { fast: "", normal: "", slow: "" },
-                notes: "", challenges: "", elapsedTime: "",
-              };
-            };
-
-            var editInput = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "travel-field";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var input = document.createElement("input");
-              input.type = "text";
-              input.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(input);
-              return wrap;
-            };
-
-            var editTextarea = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "travel-field travel-field-wide";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var textarea = document.createElement("textarea");
-              textarea.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(textarea);
-              return wrap;
-            };
-
-            var collectPlanFromForm = function (form, originalPlan) {
-              var plan = {
-                id: originalPlan.id,
-                createdAt: originalPlan.createdAt,
-                origin: "",
-                destination: "",
-                stages: [blankStage(), blankStage(), blankStage()],
-              };
-              Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
-                var field = el.dataset.field;
-                var stageIndex = el.dataset.stageIndex;
-                if (stageIndex === undefined) {
-                  plan[field] = el.value;
-                  return;
-                }
-                var i = parseInt(stageIndex, 10);
-                if (field === "pace") {
-                  if (el.checked) plan.stages[i].pace = el.value;
-                } else if (field === "paceDays") {
-                  plan.stages[i].paceDays = plan.stages[i].paceDays || {};
-                  plan.stages[i].paceDays[el.dataset.pace] = el.value;
-                } else {
-                  plan.stages[i][field] = el.value;
-                }
-              });
-              return plan;
+            var save = function (records) {
+              writeLocal(records);
+              syncPush(config.syncKey, records);
             };
 
             var clearDetail = function () {
-              tpDetail.innerHTML = "";
+              detail.innerHTML = "";
             };
 
             var renderSelect = function () {
-              var plans = loadPlans().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
-              var currentValue = tpSelect.value;
-              tpSelect.innerHTML = "";
+              var records = load().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var currentSelectValue = select.value;
+              select.innerHTML = "";
               var placeholder = document.createElement("option");
               placeholder.value = "";
-              placeholder.textContent = "— Select a travel plan —";
-              tpSelect.appendChild(placeholder);
-              plans.forEach(function (plan) {
+              placeholder.textContent = config.selectPlaceholder;
+              select.appendChild(placeholder);
+              records.forEach(function (record) {
                 var option = document.createElement("option");
-                option.value = plan.id;
-                option.textContent = planLabel(plan);
-                tpSelect.appendChild(option);
+                option.value = record.id;
+                option.textContent = config.label(record);
+                select.appendChild(option);
               });
-              tpSelect.value = plans.some(function (p) { return p.id === currentValue; }) ? currentValue : "";
-              return plans;
+              select.value = records.some(function (r) { return r.id === currentSelectValue; }) ? currentSelectValue : "";
+              return records;
             };
 
-            var unsavedNewPlanId = null;
-            var pendingNewPlan = null;
-
-            {{/* A "+ Add"ed plan is never written to storage until its first
-              valid Save — nothing to discard here but the in-memory draft. */}}
-            var discardUnsavedNewPlan = function () {
-              unsavedNewPlanId = null;
-              pendingNewPlan = null;
+            var discardUnsavedNew = function () {
+              unsavedNewId = null;
+              pendingNew = null;
             };
 
-            var cancelTravelForm = function () {
-              tpDirty = false;
-              discardUnsavedNewPlan();
-              tpSelect.value = "";
-              tpCurrentValue = "";
+            var cancelForm = function () {
+              dirty = false;
+              discardUnsavedNew();
+              select.value = "";
+              currentValue = "";
               clearDetail();
             };
 
-            var renderForm = function (planId, isNew) {
-              if (isNew) unsavedNewPlanId = planId;
-              var plan = isNew ? pendingNewPlan : loadPlans().filter(function (p) { return p.id === planId; })[0];
-              tpDetail.innerHTML = "";
-              if (!plan) return;
-              tpDirty = false;
+            registerDirtyTracker(isDirty, cancelForm);
+            registerSectionResetHook(cancelForm);
+
+            var pull = function () {
+              syncPull(config.syncKey).then(function (remote) {
+                if (remote) {
+                  var prunedRemote = pruneOrphanedDrafts(remote, config.isValid, unsavedNewId);
+                  writeLocal(prunedRemote);
+                  if (prunedRemote.length !== remote.length) syncPush(config.syncKey, prunedRemote);
+                  renderSelect();
+                  clearDetail();
+                } else if (syncEnabled()) {
+                  syncPush(config.syncKey, load());
+                }
+              });
+            };
+            syncPullers.push(pull);
+
+            var renderForm = function (recordId, isNew) {
+              if (isNew) unsavedNewId = recordId;
+              var record = isNew ? pendingNew : load().filter(function (r) { return r.id === recordId; })[0];
+              detail.innerHTML = "";
+              if (!record) return;
+              dirty = false;
 
               var actions = document.createElement("div");
-              actions.className = "travel-form-actions";
+              actions.className = config.cssPrefix + "-form-actions";
               var saveBtn = document.createElement("button");
               saveBtn.type = "button";
-              saveBtn.className = "travel-save-btn";
+              saveBtn.className = config.cssPrefix + "-save-btn";
               saveBtn.textContent = "Save";
               var cancelBtn = document.createElement("button");
               cancelBtn.type = "button";
-              cancelBtn.className = "travel-cancel-btn";
+              cancelBtn.className = config.cssPrefix + "-cancel-btn";
               cancelBtn.textContent = "Cancel";
               var deleteBtn = document.createElement("button");
               deleteBtn.type = "button";
-              deleteBtn.className = "travel-delete-btn";
+              deleteBtn.className = config.cssPrefix + "-delete-btn";
               deleteBtn.textContent = "Remove";
               actions.appendChild(saveBtn);
               actions.appendChild(cancelBtn);
               actions.appendChild(deleteBtn);
-              tpDetail.appendChild(actions);
+              detail.appendChild(actions);
 
               var error = document.createElement("p");
-              error.className = "travel-form-error";
+              error.className = config.cssPrefix + "-form-error";
               error.hidden = true;
-              error.textContent = "Origin and Destination are required.";
-              tpDetail.appendChild(error);
+              error.textContent = config.requiredError;
+              detail.appendChild(error);
 
               var form = document.createElement("div");
-              form.className = "travel-edit-form";
+              form.className = config.cssPrefix + "-edit-form";
+              config.renderFields(form, record);
+              detail.appendChild(form);
 
+              form.addEventListener("input", function () { dirty = true; });
+              form.addEventListener("change", function () { dirty = true; });
+
+              saveBtn.addEventListener("click", function () {
+                var updated = config.collectFromForm(form, record);
+                if (!config.isValid(updated)) {
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var allRecords = load();
+                var idx = -1;
+                allRecords.forEach(function (r, rIdx) { if (r.id === record.id) idx = rIdx; });
+                if (idx !== -1) { allRecords[idx] = updated; } else { allRecords.push(updated); }
+                save(allRecords);
+                discardUnsavedNew();
+                dirty = false;
+                renderSelect();
+                select.value = "";
+                currentValue = "";
+                clearDetail();
+              });
+
+              cancelBtn.addEventListener("click", cancelForm);
+
+              wireConfirmDelete(deleteBtn, function () {
+                if (recordId === unsavedNewId) {
+                  discardUnsavedNew();
+                } else {
+                  var remaining = load().filter(function (r) { return r.id !== record.id; });
+                  save(remaining);
+                  renderSelect();
+                }
+                dirty = false;
+                select.value = "";
+                currentValue = "";
+                clearDetail();
+              });
+            };
+
+            var initialRecords = load();
+            var prunedInitialRecords = pruneOrphanedDrafts(initialRecords, config.isValid, unsavedNewId);
+            if (prunedInitialRecords.length !== initialRecords.length) save(prunedInitialRecords);
+            renderSelect();
+            pull();
+
+            select.addEventListener("change", function () {
+              var nextValue = select.value;
+              if (!confirmLeaveIfDirty(isDirty)) {
+                select.value = currentValue;
+                return;
+              }
+              currentValue = nextValue;
+              discardUnsavedNew();
+              if (nextValue) {
+                renderForm(nextValue);
+              } else {
+                clearDetail();
+              }
+            });
+
+            addBtn.addEventListener("click", function () {
+              if (!confirmLeaveIfDirty(isDirty)) return;
+              discardUnsavedNew();
+              pendingNew = config.makeBlank(load());
+              pendingNew.id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+              pendingNew.createdAt = Date.now();
+              select.value = "";
+              currentValue = "";
+              renderForm(pendingNew.id, true);
+            });
+          };
+
+          {{/* Travel Planner: uses the shared createRecordTracker
+            controller above. The sheet has 3 fixed Stage slots, each with
+            its own pace radio group — the one part of this section that
+            doesn't fit a plain field schema, so it's still built by hand
+            inside renderFields/collectFromForm. */}}
+          var blankStage = function () {
+            return {
+              start: "", end: "", distance: "", terrain: "", weather: "",
+              pace: "", paceDays: { fast: "", normal: "", slow: "" },
+              notes: "", challenges: "", elapsedTime: "",
+            };
+          };
+
+          var blankStages = function () {
+            return [blankStage(), blankStage(), blankStage()];
+          };
+
+          createRecordTracker({
+            containerId: "travel-planner",
+            selectId: "travel-planner-select",
+            detailId: "travel-planner-detail",
+            addBtnId: "travel-planner-add-btn",
+            syncKey: "travel-plans",
+            selectPlaceholder: "— Select a travel plan —",
+            requiredError: "Origin and Destination are required.",
+            cssPrefix: "travel",
+            isValid: function (plan) { return Boolean(plan.origin && plan.origin.trim() && plan.destination && plan.destination.trim()); },
+            label: function (plan) { return (plan.origin || "?") + " - " + (plan.destination || "?"); },
+            makeBlank: function () {
+              return { origin: "", destination: "", stages: blankStages() };
+            },
+            renderFields: function (form, plan) {
               var header = document.createElement("div");
               header.className = "travel-header-fields";
-              header.appendChild(markRequired(editInput("Origin", plan.origin, { field: "origin" })));
-              header.appendChild(markRequired(editInput("Destination", plan.destination, { field: "destination" })));
+              header.appendChild(markRequired(makeFieldInput("travel", "Origin", plan.origin, { field: "origin" })));
+              header.appendChild(markRequired(makeFieldInput("travel", "Destination", plan.destination, { field: "destination" })));
               form.appendChild(header);
 
               plan.stages.forEach(function (stage, i) {
@@ -1402,11 +1463,11 @@
 
                 var grid = document.createElement("div");
                 grid.className = "travel-stage-grid";
-                grid.appendChild(editInput("Start", stage.start, { field: "start", stageIndex: i }));
-                grid.appendChild(editInput("End", stage.end, { field: "end", stageIndex: i }));
-                grid.appendChild(editInput("Distance", stage.distance, { field: "distance", stageIndex: i }));
-                grid.appendChild(editInput("Terrain", stage.terrain, { field: "terrain", stageIndex: i }));
-                grid.appendChild(editInput("Weather", stage.weather, { field: "weather", stageIndex: i }));
+                grid.appendChild(makeFieldInput("travel", "Start", stage.start, { field: "start", stageIndex: i }));
+                grid.appendChild(makeFieldInput("travel", "End", stage.end, { field: "end", stageIndex: i }));
+                grid.appendChild(makeFieldInput("travel", "Distance", stage.distance, { field: "distance", stageIndex: i }));
+                grid.appendChild(makeFieldInput("travel", "Terrain", stage.terrain, { field: "terrain", stageIndex: i }));
+                grid.appendChild(makeFieldInput("travel", "Weather", stage.weather, { field: "weather", stageIndex: i }));
                 section.appendChild(grid);
 
                 var paceWrap = document.createElement("div");
@@ -1438,92 +1499,41 @@
                 });
                 section.appendChild(paceWrap);
 
-                section.appendChild(editTextarea("Narrative Notes", stage.notes, { field: "notes", stageIndex: i }));
-                section.appendChild(editTextarea("Challenges", stage.challenges, { field: "challenges", stageIndex: i }));
-                section.appendChild(editInput("Elapsed Time (Days/Hrs)", stage.elapsedTime, { field: "elapsedTime", stageIndex: i }));
+                section.appendChild(makeFieldTextarea("travel", "Narrative Notes", stage.notes, { field: "notes", stageIndex: i }));
+                section.appendChild(makeFieldTextarea("travel", "Challenges", stage.challenges, { field: "challenges", stageIndex: i }));
+                section.appendChild(makeFieldInput("travel", "Elapsed Time (Days/Hrs)", stage.elapsedTime, { field: "elapsedTime", stageIndex: i }));
 
                 form.appendChild(section);
               });
-
-              tpDetail.appendChild(form);
-
-              form.addEventListener("input", function () { tpDirty = true; });
-              form.addEventListener("change", function () { tpDirty = true; });
-
-              saveBtn.addEventListener("click", function () {
-                var updated = collectPlanFromForm(form, plan);
-                if (!updated.origin.trim() || !updated.destination.trim()) {
-                  error.hidden = false;
-                  return;
-                }
-                error.hidden = true;
-                var allPlans = loadPlans();
-                var idx = -1;
-                allPlans.forEach(function (p, pIdx) { if (p.id === plan.id) idx = pIdx; });
-                if (idx !== -1) { allPlans[idx] = updated; } else { allPlans.push(updated); }
-                savePlans(allPlans);
-                unsavedNewPlanId = null;
-                pendingNewPlan = null;
-                tpDirty = false;
-                renderSelect();
-                tpSelect.value = "";
-                tpCurrentValue = "";
-                clearDetail();
-              });
-
-              cancelBtn.addEventListener("click", cancelTravelForm);
-
-              wireConfirmDelete(deleteBtn, function () {
-                if (planId === unsavedNewPlanId) {
-                  discardUnsavedNewPlan();
-                } else {
-                  var remaining = loadPlans().filter(function (p) { return p.id !== plan.id; });
-                  savePlans(remaining);
-                  renderSelect();
-                }
-                tpDirty = false;
-                tpSelect.value = "";
-                tpCurrentValue = "";
-                clearDetail();
-              });
-            };
-
-            var initialPlans = loadPlans();
-            var prunedInitialPlans = pruneOrphanedDrafts(initialPlans, tpIsValid, unsavedNewPlanId);
-            if (prunedInitialPlans.length !== initialPlans.length) savePlans(prunedInitialPlans);
-            renderSelect();
-            pullTravelPlans();
-
-            tpSelect.addEventListener("change", function () {
-              var nextValue = tpSelect.value;
-              if (!confirmLeaveIfDirty(tpIsDirty)) {
-                tpSelect.value = tpCurrentValue;
-                return;
-              }
-              tpCurrentValue = nextValue;
-              discardUnsavedNewPlan();
-              if (nextValue) {
-                renderForm(nextValue);
-              } else {
-                clearDetail();
-              }
-            });
-
-            tpAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(tpIsDirty)) return;
-              discardUnsavedNewPlan();
-              pendingNewPlan = {
-                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-                createdAt: Date.now(),
+            },
+            collectFromForm: function (form, originalPlan) {
+              var plan = {
+                id: originalPlan.id,
+                createdAt: originalPlan.createdAt,
                 origin: "",
                 destination: "",
-                stages: [blankStage(), blankStage(), blankStage()],
+                stages: blankStages(),
               };
-              tpSelect.value = "";
-              tpCurrentValue = "";
-              renderForm(pendingNewPlan.id, true);
-            });
-          }
+              Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
+                var field = el.dataset.field;
+                var stageIndex = el.dataset.stageIndex;
+                if (stageIndex === undefined) {
+                  plan[field] = el.value;
+                  return;
+                }
+                var i = parseInt(stageIndex, 10);
+                if (field === "pace") {
+                  if (el.checked) plan.stages[i].pace = el.value;
+                } else if (field === "paceDays") {
+                  plan.stages[i].paceDays = plan.stages[i].paceDays || {};
+                  plan.stages[i].paceDays[el.dataset.pace] = el.value;
+                } else {
+                  plan.stages[i][field] = el.value;
+                }
+              });
+              return plan;
+            },
+          });
 
           {{/* NPC Tracker: same select+add-button+detail pattern as Travel
             Planner above, but flat — one record per NPC with no nested
@@ -1626,30 +1636,11 @@
             };
 
             var npcEditInput = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "npc-field";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var input = document.createElement("input");
-              input.type = "text";
-              input.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(input);
-              return wrap;
+              return makeFieldInput("npc", labelText, value, dataAttrs);
             };
 
             var npcEditTextarea = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "npc-field npc-field-wide";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var textarea = document.createElement("textarea");
-              textarea.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(textarea);
-              return wrap;
+              return makeFieldTextarea("npc", labelText, value, dataAttrs);
             };
 
             var npcEditSelect = function (labelText, options, value, dataAttrs) {
@@ -3695,114 +3686,74 @@
             Tracker sheet (reference/tracking_sheets/settlement-tracker.pdf).
             Kept as its own self-contained block for the same reason NPC
             Tracker is. */}}
-          var settlementTracker = document.getElementById("settlement-tracker");
-          if (settlementTracker) {
-            var settlementStorageKey = settlementTracker.dataset.storageKey;
-            var settlementSelect = document.getElementById("settlement-tracker-select");
-            var settlementDetail = document.getElementById("settlement-tracker-detail");
-            var settlementAddBtn = document.getElementById("settlement-tracker-add-btn");
-            var settlementDirty = false;
-            var settlementCurrentValue = "";
-            var settlementIsDirty = function () { return settlementDirty || Boolean(unsavedNewSettlementId); };
-            registerDirtyTracker(settlementIsDirty, function () { cancelSettlementForm(); });
-            registerSectionResetHook(function () { cancelSettlementForm(); });
+          {{/* Settlement Tracker: uses the shared createRecordTracker
+            controller above — its only unique parts are field layout
+            (renderFields) and form-to-record collection
+            (collectFromForm). */}}
+          var SETTLEMENT_SIZES = [
+            { value: "village", label: "Village (pop. up to 500)" },
+            { value: "town", label: "Town (pop. 501–5,000)" },
+            { value: "city", label: "City (pop. 5,001+)" },
+          ];
 
-            var loadSettlements = function () {
-              try {
-                return JSON.parse(window.localStorage.getItem(settlementStorageKey) || "[]");
-              } catch (e) {
-                return [];
-              }
-            };
-
-            var writeSettlementsLocal = function (settlements) {
-              window.localStorage.setItem(settlementStorageKey, JSON.stringify(settlements));
-            };
-
-            var saveSettlements = function (settlements) {
-              writeSettlementsLocal(settlements);
-              syncPush("settlements", settlements);
-            };
-
-            var settlementIsValid = function (settlement) { return Boolean(settlement.name && settlement.name.trim()); };
-
-            var pullSettlements = function () {
-              syncPull("settlements").then(function (remote) {
-                if (remote) {
-                  var prunedRemote = pruneOrphanedDrafts(remote, settlementIsValid, unsavedNewSettlementId);
-                  writeSettlementsLocal(prunedRemote);
-                  if (prunedRemote.length !== remote.length) syncPush("settlements", prunedRemote);
-                  renderSettlementSelect();
-                  clearSettlementDetail();
-                } else if (syncEnabled()) {
-                  syncPush("settlements", loadSettlements());
-                }
-              });
-            };
-            syncPullers.push(pullSettlements);
-
-            var settlementLabel = function (settlement) {
-              return settlement.name || "Unnamed Settlement";
-            };
-
-            var settlementEditInput = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "settlement-field";
-              var label = document.createElement("label");
-              label.textContent = labelText;
+          var settlementEditRadioGroup = function (labelText, value, name) {
+            var wrap = document.createElement("div");
+            wrap.className = "settlement-field settlement-field-wide";
+            var label = document.createElement("label");
+            label.textContent = labelText;
+            wrap.appendChild(label);
+            var group = document.createElement("div");
+            group.className = "settlement-radio-group";
+            SETTLEMENT_SIZES.forEach(function (opt) {
+              var optLabel = document.createElement("label");
+              optLabel.className = "settlement-radio-option";
               var input = document.createElement("input");
-              input.type = "text";
-              input.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(input);
-              return wrap;
-            };
+              input.type = "radio";
+              input.name = name;
+              input.value = opt.value;
+              input.checked = value === opt.value;
+              optLabel.appendChild(input);
+              optLabel.appendChild(document.createTextNode(" " + opt.label));
+              group.appendChild(optLabel);
+            });
+            wrap.appendChild(group);
+            return wrap;
+          };
 
-            var settlementEditTextarea = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "settlement-field settlement-field-wide";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var textarea = document.createElement("textarea");
-              textarea.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(textarea);
-              return wrap;
-            };
+          createRecordTracker({
+            containerId: "settlement-tracker",
+            selectId: "settlement-tracker-select",
+            detailId: "settlement-tracker-detail",
+            addBtnId: "settlement-tracker-add-btn",
+            syncKey: "settlements",
+            selectPlaceholder: "— Select a settlement —",
+            requiredError: "Settlement Name is required.",
+            cssPrefix: "settlement",
+            isValid: function (settlement) { return Boolean(settlement.name && settlement.name.trim()); },
+            label: function (settlement) { return settlement.name || "Unnamed Settlement"; },
+            makeBlank: function () {
+              return {
+                name: "", size: "", gpValue: "",
+                definingTrait: "", claimToFame: "", currentCalamity: "", localLeader: "",
+                noteworthyPeople: "", noteworthyPlaces: "",
+              };
+            },
+            renderFields: function (form, settlement) {
+              var header = document.createElement("div");
+              header.className = "settlement-header-fields";
+              header.appendChild(markRequired(makeFieldInput("settlement", "Settlement Name", settlement.name, { field: "name" })));
+              header.appendChild(makeFieldInput("settlement", "GP Value of Most Expensive Item for Sale", settlement.gpValue, { field: "gpValue" }));
+              form.appendChild(header);
 
-            var SETTLEMENT_SIZES = [
-              { value: "village", label: "Village (pop. up to 500)" },
-              { value: "town", label: "Town (pop. 501–5,000)" },
-              { value: "city", label: "City (pop. 5,001+)" },
-            ];
-
-            var settlementEditRadioGroup = function (labelText, value, name) {
-              var wrap = document.createElement("div");
-              wrap.className = "settlement-field settlement-field-wide";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              wrap.appendChild(label);
-              var group = document.createElement("div");
-              group.className = "settlement-radio-group";
-              SETTLEMENT_SIZES.forEach(function (opt) {
-                var optLabel = document.createElement("label");
-                optLabel.className = "settlement-radio-option";
-                var input = document.createElement("input");
-                input.type = "radio";
-                input.name = name;
-                input.value = opt.value;
-                input.checked = value === opt.value;
-                optLabel.appendChild(input);
-                optLabel.appendChild(document.createTextNode(" " + opt.label));
-                group.appendChild(optLabel);
-              });
-              wrap.appendChild(group);
-              return wrap;
-            };
-
-            var collectSettlementFromForm = function (form, originalSettlement) {
+              form.appendChild(settlementEditRadioGroup("Size", settlement.size, "settlement-size"));
+              form.appendChild(makeFieldTextarea("settlement", "Defining Trait", settlement.definingTrait, { field: "definingTrait" }));
+              form.appendChild(makeFieldTextarea("settlement", "Claim to Fame", settlement.claimToFame, { field: "claimToFame" }));
+              form.appendChild(makeFieldTextarea("settlement", "Current Calamity", settlement.currentCalamity, { field: "currentCalamity" }));
+              form.appendChild(makeFieldTextarea("settlement", "Local Leader", settlement.localLeader, { field: "localLeader" }));
+              form.appendChild(makeFieldTextarea("settlement", "Noteworthy People", settlement.noteworthyPeople, { field: "noteworthyPeople" }));
+              form.appendChild(makeFieldTextarea("settlement", "Noteworthy Places", settlement.noteworthyPlaces, { field: "noteworthyPlaces" }));
+            },
+            collectFromForm: function (form, originalSettlement) {
               var settlement = { id: originalSettlement.id, createdAt: originalSettlement.createdAt };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 settlement[el.dataset.field] = el.value;
@@ -3810,451 +3761,83 @@
               var checkedSize = form.querySelector('input[name="settlement-size"]:checked');
               settlement.size = checkedSize ? checkedSize.value : "";
               return settlement;
-            };
-
-            var clearSettlementDetail = function () {
-              settlementDetail.innerHTML = "";
-            };
-
-            var renderSettlementSelect = function () {
-              var settlements = loadSettlements().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
-              var currentValue = settlementSelect.value;
-              settlementSelect.innerHTML = "";
-              var placeholder = document.createElement("option");
-              placeholder.value = "";
-              placeholder.textContent = "— Select a settlement —";
-              settlementSelect.appendChild(placeholder);
-              settlements.forEach(function (settlement) {
-                var option = document.createElement("option");
-                option.value = settlement.id;
-                option.textContent = settlementLabel(settlement);
-                settlementSelect.appendChild(option);
-              });
-              settlementSelect.value = settlements.some(function (s) { return s.id === currentValue; }) ? currentValue : "";
-              return settlements;
-            };
-
-            var unsavedNewSettlementId = null;
-            var pendingNewSettlement = null;
-
-            {{/* A "+ Add"ed settlement is never written to storage until its
-              first valid Save — nothing to discard here but the in-memory
-              draft. */}}
-            var discardUnsavedNewSettlement = function () {
-              unsavedNewSettlementId = null;
-              pendingNewSettlement = null;
-            };
-
-            var cancelSettlementForm = function () {
-              settlementDirty = false;
-              discardUnsavedNewSettlement();
-              settlementSelect.value = "";
-              settlementCurrentValue = "";
-              clearSettlementDetail();
-            };
-
-            var renderSettlementForm = function (settlementId, isNew) {
-              if (isNew) unsavedNewSettlementId = settlementId;
-              var settlement = isNew ? pendingNewSettlement : loadSettlements().filter(function (s) { return s.id === settlementId; })[0];
-              settlementDetail.innerHTML = "";
-              if (!settlement) return;
-              settlementDirty = false;
-
-              var actions = document.createElement("div");
-              actions.className = "settlement-form-actions";
-              var saveBtn = document.createElement("button");
-              saveBtn.type = "button";
-              saveBtn.className = "settlement-save-btn";
-              saveBtn.textContent = "Save";
-              var cancelBtn = document.createElement("button");
-              cancelBtn.type = "button";
-              cancelBtn.className = "settlement-cancel-btn";
-              cancelBtn.textContent = "Cancel";
-              var deleteBtn = document.createElement("button");
-              deleteBtn.type = "button";
-              deleteBtn.className = "settlement-delete-btn";
-              deleteBtn.textContent = "Remove";
-              actions.appendChild(saveBtn);
-              actions.appendChild(cancelBtn);
-              actions.appendChild(deleteBtn);
-              settlementDetail.appendChild(actions);
-
-              var error = document.createElement("p");
-              error.className = "settlement-form-error";
-              error.hidden = true;
-              error.textContent = "Settlement Name is required.";
-              settlementDetail.appendChild(error);
-
-              var form = document.createElement("div");
-              form.className = "settlement-edit-form";
-
-              var header = document.createElement("div");
-              header.className = "settlement-header-fields";
-              header.appendChild(markRequired(settlementEditInput("Settlement Name", settlement.name, { field: "name" })));
-              header.appendChild(settlementEditInput("GP Value of Most Expensive Item for Sale", settlement.gpValue, { field: "gpValue" }));
-              form.appendChild(header);
-
-              form.appendChild(settlementEditRadioGroup("Size", settlement.size, "settlement-size"));
-              form.appendChild(settlementEditTextarea("Defining Trait", settlement.definingTrait, { field: "definingTrait" }));
-              form.appendChild(settlementEditTextarea("Claim to Fame", settlement.claimToFame, { field: "claimToFame" }));
-              form.appendChild(settlementEditTextarea("Current Calamity", settlement.currentCalamity, { field: "currentCalamity" }));
-              form.appendChild(settlementEditTextarea("Local Leader", settlement.localLeader, { field: "localLeader" }));
-              form.appendChild(settlementEditTextarea("Noteworthy People", settlement.noteworthyPeople, { field: "noteworthyPeople" }));
-              form.appendChild(settlementEditTextarea("Noteworthy Places", settlement.noteworthyPlaces, { field: "noteworthyPlaces" }));
-
-              settlementDetail.appendChild(form);
-
-              form.addEventListener("input", function () { settlementDirty = true; });
-              form.addEventListener("change", function () { settlementDirty = true; });
-
-              saveBtn.addEventListener("click", function () {
-                var updated = collectSettlementFromForm(form, settlement);
-                if (!updated.name || !updated.name.trim()) {
-                  error.hidden = false;
-                  return;
-                }
-                error.hidden = true;
-                var allSettlements = loadSettlements();
-                var idx = -1;
-                allSettlements.forEach(function (s, sIdx) { if (s.id === settlement.id) idx = sIdx; });
-                if (idx !== -1) { allSettlements[idx] = updated; } else { allSettlements.push(updated); }
-                saveSettlements(allSettlements);
-                unsavedNewSettlementId = null;
-                pendingNewSettlement = null;
-                settlementDirty = false;
-                renderSettlementSelect();
-                settlementSelect.value = "";
-                settlementCurrentValue = "";
-                clearSettlementDetail();
-              });
-
-              cancelBtn.addEventListener("click", cancelSettlementForm);
-
-              wireConfirmDelete(deleteBtn, function () {
-                if (settlementId === unsavedNewSettlementId) {
-                  discardUnsavedNewSettlement();
-                } else {
-                  var remaining = loadSettlements().filter(function (s) { return s.id !== settlement.id; });
-                  saveSettlements(remaining);
-                  renderSettlementSelect();
-                }
-                settlementDirty = false;
-                settlementSelect.value = "";
-                settlementCurrentValue = "";
-                clearSettlementDetail();
-              });
-            };
-
-            var initialSettlements = loadSettlements();
-            var prunedInitialSettlements = pruneOrphanedDrafts(initialSettlements, settlementIsValid, unsavedNewSettlementId);
-            if (prunedInitialSettlements.length !== initialSettlements.length) saveSettlements(prunedInitialSettlements);
-            renderSettlementSelect();
-            pullSettlements();
-
-            settlementSelect.addEventListener("change", function () {
-              var nextValue = settlementSelect.value;
-              if (!confirmLeaveIfDirty(settlementIsDirty)) {
-                settlementSelect.value = settlementCurrentValue;
-                return;
-              }
-              settlementCurrentValue = nextValue;
-              discardUnsavedNewSettlement();
-              if (nextValue) {
-                renderSettlementForm(nextValue);
-              } else {
-                clearSettlementDetail();
-              }
-            });
-
-            settlementAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(settlementIsDirty)) return;
-              discardUnsavedNewSettlement();
-              pendingNewSettlement = {
-                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-                createdAt: Date.now(),
-                name: "", size: "", gpValue: "",
-                definingTrait: "", claimToFame: "", currentCalamity: "", localLeader: "",
-                noteworthyPeople: "", noteworthyPlaces: "",
-              };
-              settlementSelect.value = "";
-              settlementCurrentValue = "";
-              renderSettlementForm(pendingNewSettlement.id, true);
-            });
-          }
+            },
+          });
 
           {{/* Campaign Journal: same select+add-button+detail pattern as
             NPC Tracker above, matching D&D Beyond's official Campaign
             Journal sheet (reference/tracking_sheets/campaign-journal-sheet.pdf).
             Kept as its own self-contained block for the same reason NPC
             Tracker is. */}}
-          var campaignJournal = document.getElementById("campaign-journal");
-          if (campaignJournal) {
-            var journalStorageKey = campaignJournal.dataset.storageKey;
-            var journalSelect = document.getElementById("campaign-journal-select");
-            var journalDetail = document.getElementById("campaign-journal-detail");
-            var journalAddBtn = document.getElementById("campaign-journal-add-btn");
-            var journalDirty = false;
-            var journalCurrentValue = "";
-            var journalIsDirty = function () { return journalDirty || Boolean(unsavedNewJournalId); };
-            registerDirtyTracker(journalIsDirty, function () { cancelJournalForm(); });
-            registerSectionResetHook(function () { cancelJournalForm(); });
+          {{/* Campaign Journal: uses the shared createRecordTracker
+            controller above. loadJournalEntries is kept as its own
+            standalone function (rather than folded into the tracker
+            config) since Campaign Conflicts below reads it directly to
+            tie a conflict to a session and to build the session picker. */}}
+          var journalStorageKey = document.getElementById("campaign-journal").dataset.storageKey;
+          var loadJournalEntries = function () {
+            try {
+              return JSON.parse(window.localStorage.getItem(journalStorageKey) || "[]");
+            } catch (e) {
+              return [];
+            }
+          };
 
-            var loadJournalEntries = function () {
-              try {
-                return JSON.parse(window.localStorage.getItem(journalStorageKey) || "[]");
-              } catch (e) {
-                return [];
-              }
-            };
+          var nextJournalSessionNumber = function (entries) {
+            var max = 0;
+            entries.forEach(function (e) {
+              var n = parseInt(e.sessionNumber, 10);
+              if (!isNaN(n) && n > max) max = n;
+            });
+            return String(max + 1);
+          };
 
-            var writeJournalEntriesLocal = function (entries) {
-              window.localStorage.setItem(journalStorageKey, JSON.stringify(entries));
-            };
+          var todayForJournal = function () {
+            var d = new Date();
+            var pad = function (n) { return n < 10 ? "0" + n : String(n); };
+            return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+          };
 
-            var saveJournalEntries = function (entries) {
-              writeJournalEntriesLocal(entries);
-              syncPush("journal", entries);
-            };
+          createRecordTracker({
+            containerId: "campaign-journal",
+            selectId: "campaign-journal-select",
+            detailId: "campaign-journal-detail",
+            addBtnId: "campaign-journal-add-btn",
+            syncKey: "journal",
+            selectPlaceholder: "— Select a session —",
+            requiredError: "Session/Adventure Title is required.",
+            cssPrefix: "journal",
+            isValid: function (entry) { return Boolean(entry.title && entry.title.trim()); },
+            label: function (entry) { return entry.title || "Untitled Session"; },
+            {{/* Auto-filled but still editable — same plain text fields as
+              before, just prefilled with a sensible default at creation
+              time. */}}
+            makeBlank: function (existingEntries) {
+              return {
+                sessionNumber: nextJournalSessionNumber(existingEntries), sessionDate: todayForJournal(), title: "",
+                priorEvents: "", plannedSummary: "", notes: "",
+              };
+            },
+            renderFields: function (form, entry) {
+              var header = document.createElement("div");
+              header.className = "journal-header-fields";
+              header.appendChild(makeFieldInput("journal", "Session Number", entry.sessionNumber, { field: "sessionNumber" }));
+              header.appendChild(makeFieldInput("journal", "Session Date", entry.sessionDate, { field: "sessionDate" }));
+              header.appendChild(markRequired(makeFieldInput("journal", "Session/Adventure Title", entry.title, { field: "title" })));
+              form.appendChild(header);
 
-            var journalIsValid = function (entry) { return Boolean(entry.title && entry.title.trim()); };
-
-            var pullJournalEntries = function () {
-              syncPull("journal").then(function (remote) {
-                if (remote) {
-                  var prunedRemote = pruneOrphanedDrafts(remote, journalIsValid, unsavedNewJournalId);
-                  writeJournalEntriesLocal(prunedRemote);
-                  if (prunedRemote.length !== remote.length) syncPush("journal", prunedRemote);
-                  renderJournalSelect();
-                  clearJournalDetail();
-                } else if (syncEnabled()) {
-                  syncPush("journal", loadJournalEntries());
-                }
-              });
-            };
-            syncPullers.push(pullJournalEntries);
-
-            var journalLabel = function (entry) {
-              return entry.title || "Untitled Session";
-            };
-
-            var journalEditInput = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "journal-field";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var input = document.createElement("input");
-              input.type = "text";
-              input.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(input);
-              return wrap;
-            };
-
-            var journalEditTextarea = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "journal-field journal-field-wide";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var textarea = document.createElement("textarea");
-              textarea.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(textarea);
-              return wrap;
-            };
-
-            var collectJournalFromForm = function (form, originalEntry) {
+              form.appendChild(makeFieldTextarea("journal", "Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
+              form.appendChild(makeFieldTextarea("journal", "What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
+              form.appendChild(makeFieldTextarea("journal", "Additional Notes", entry.notes, { field: "notes" }));
+            },
+            collectFromForm: function (form, originalEntry) {
               var entry = { id: originalEntry.id, createdAt: originalEntry.createdAt };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 entry[el.dataset.field] = el.value;
               });
               return entry;
-            };
-
-            var clearJournalDetail = function () {
-              journalDetail.innerHTML = "";
-            };
-
-            var renderJournalSelect = function () {
-              var entries = loadJournalEntries().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
-              var currentValue = journalSelect.value;
-              journalSelect.innerHTML = "";
-              var placeholder = document.createElement("option");
-              placeholder.value = "";
-              placeholder.textContent = "— Select a session —";
-              journalSelect.appendChild(placeholder);
-              entries.forEach(function (entry) {
-                var option = document.createElement("option");
-                option.value = entry.id;
-                option.textContent = journalLabel(entry);
-                journalSelect.appendChild(option);
-              });
-              journalSelect.value = entries.some(function (e) { return e.id === currentValue; }) ? currentValue : "";
-              return entries;
-            };
-
-            var unsavedNewJournalId = null;
-            var pendingNewJournalEntry = null;
-
-            {{/* A "+ Add"ed entry is never written to storage until its
-              first valid Save — nothing to discard here but the in-memory
-              draft. */}}
-            var discardUnsavedNewJournal = function () {
-              unsavedNewJournalId = null;
-              pendingNewJournalEntry = null;
-            };
-
-            var cancelJournalForm = function () {
-              journalDirty = false;
-              discardUnsavedNewJournal();
-              journalSelect.value = "";
-              journalCurrentValue = "";
-              clearJournalDetail();
-            };
-
-            var renderJournalForm = function (entryId, isNew) {
-              if (isNew) unsavedNewJournalId = entryId;
-              var entry = isNew ? pendingNewJournalEntry : loadJournalEntries().filter(function (e) { return e.id === entryId; })[0];
-              journalDetail.innerHTML = "";
-              if (!entry) return;
-              journalDirty = false;
-
-              var actions = document.createElement("div");
-              actions.className = "journal-form-actions";
-              var saveBtn = document.createElement("button");
-              saveBtn.type = "button";
-              saveBtn.className = "journal-save-btn";
-              saveBtn.textContent = "Save";
-              var cancelBtn = document.createElement("button");
-              cancelBtn.type = "button";
-              cancelBtn.className = "journal-cancel-btn";
-              cancelBtn.textContent = "Cancel";
-              var deleteBtn = document.createElement("button");
-              deleteBtn.type = "button";
-              deleteBtn.className = "journal-delete-btn";
-              deleteBtn.textContent = "Remove";
-              actions.appendChild(saveBtn);
-              actions.appendChild(cancelBtn);
-              actions.appendChild(deleteBtn);
-              journalDetail.appendChild(actions);
-
-              var error = document.createElement("p");
-              error.className = "journal-form-error";
-              error.hidden = true;
-              error.textContent = "Session/Adventure Title is required.";
-              journalDetail.appendChild(error);
-
-              var form = document.createElement("div");
-              form.className = "journal-edit-form";
-
-              var header = document.createElement("div");
-              header.className = "journal-header-fields";
-              header.appendChild(journalEditInput("Session Number", entry.sessionNumber, { field: "sessionNumber" }));
-              header.appendChild(journalEditInput("Session Date", entry.sessionDate, { field: "sessionDate" }));
-              header.appendChild(markRequired(journalEditInput("Session/Adventure Title", entry.title, { field: "title" })));
-              form.appendChild(header);
-
-              form.appendChild(journalEditTextarea("Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
-              form.appendChild(journalEditTextarea("What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
-              form.appendChild(journalEditTextarea("Additional Notes", entry.notes, { field: "notes" }));
-
-              journalDetail.appendChild(form);
-
-              form.addEventListener("input", function () { journalDirty = true; });
-              form.addEventListener("change", function () { journalDirty = true; });
-
-              saveBtn.addEventListener("click", function () {
-                var updated = collectJournalFromForm(form, entry);
-                if (!updated.title || !updated.title.trim()) {
-                  error.hidden = false;
-                  return;
-                }
-                error.hidden = true;
-                var allEntries = loadJournalEntries();
-                var idx = -1;
-                allEntries.forEach(function (e, eIdx) { if (e.id === entry.id) idx = eIdx; });
-                if (idx !== -1) { allEntries[idx] = updated; } else { allEntries.push(updated); }
-                saveJournalEntries(allEntries);
-                unsavedNewJournalId = null;
-                pendingNewJournalEntry = null;
-                journalDirty = false;
-                renderJournalSelect();
-                journalSelect.value = "";
-                journalCurrentValue = "";
-                clearJournalDetail();
-              });
-
-              cancelBtn.addEventListener("click", cancelJournalForm);
-
-              wireConfirmDelete(deleteBtn, function () {
-                if (entryId === unsavedNewJournalId) {
-                  discardUnsavedNewJournal();
-                } else {
-                  var remaining = loadJournalEntries().filter(function (e) { return e.id !== entry.id; });
-                  saveJournalEntries(remaining);
-                  renderJournalSelect();
-                }
-                journalDirty = false;
-                journalSelect.value = "";
-                journalCurrentValue = "";
-                clearJournalDetail();
-              });
-            };
-
-            var initialJournalEntries = loadJournalEntries();
-            var prunedInitialJournalEntries = pruneOrphanedDrafts(initialJournalEntries, journalIsValid, unsavedNewJournalId);
-            if (prunedInitialJournalEntries.length !== initialJournalEntries.length) saveJournalEntries(prunedInitialJournalEntries);
-            renderJournalSelect();
-            pullJournalEntries();
-
-            journalSelect.addEventListener("change", function () {
-              var nextValue = journalSelect.value;
-              if (!confirmLeaveIfDirty(journalIsDirty)) {
-                journalSelect.value = journalCurrentValue;
-                return;
-              }
-              journalCurrentValue = nextValue;
-              discardUnsavedNewJournal();
-              if (nextValue) {
-                renderJournalForm(nextValue);
-              } else {
-                clearJournalDetail();
-              }
-            });
-
-            var nextJournalSessionNumber = function (entries) {
-              var max = 0;
-              entries.forEach(function (e) {
-                var n = parseInt(e.sessionNumber, 10);
-                if (!isNaN(n) && n > max) max = n;
-              });
-              return String(max + 1);
-            };
-
-            var todayForJournal = function () {
-              var d = new Date();
-              var pad = function (n) { return n < 10 ? "0" + n : String(n); };
-              return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
-            };
-
-            journalAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(journalIsDirty)) return;
-              discardUnsavedNewJournal();
-              pendingNewJournalEntry = {
-                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-                createdAt: Date.now(),
-                {{/* Auto-filled but still editable — same plain text
-                  fields as before, just prefilled with a sensible
-                  default at creation time. */}}
-                sessionNumber: nextJournalSessionNumber(loadJournalEntries()), sessionDate: todayForJournal(), title: "",
-                priorEvents: "", plannedSummary: "", notes: "",
-              };
-              journalSelect.value = "";
-              journalCurrentValue = "";
-              renderJournalForm(pendingNewJournalEntry.id, true);
-            });
-          }
+            },
+          });
 
           {{/* Campaign Conflicts: same select+add-button+detail pattern as
             NPC Tracker above, matching D&D Beyond's official Campaign
@@ -4358,30 +3941,11 @@
             };
 
             var conflictEditInput = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "conflict-field";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var input = document.createElement("input");
-              input.type = "text";
-              input.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(input);
-              return wrap;
+              return makeFieldInput("conflict", labelText, value, dataAttrs);
             };
 
             var conflictEditTextarea = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "conflict-field conflict-field-wide";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var textarea = document.createElement("textarea");
-              textarea.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(textarea);
-              return wrap;
+              return makeFieldTextarea("conflict", labelText, value, dataAttrs);
             };
 
             {{/* Collapsed toggle + checklist dropdown, same interaction
@@ -5343,93 +4907,72 @@
             Tracker sheet (reference/tracking_sheets/bastion-sheet.pdf).
             The sheet has 6 fixed Special Facility slots, handled the same
             fixed-slot way as Travel Planner's 3 stages above. */}}
-          var bastionTracker = document.getElementById("bastion-tracker");
-          if (bastionTracker) {
-            var bastionStorageKey = bastionTracker.dataset.storageKey;
-            var bastionSelect = document.getElementById("bastion-tracker-select");
-            var bastionDetail = document.getElementById("bastion-tracker-detail");
-            var bastionAddBtn = document.getElementById("bastion-tracker-add-btn");
-            var bastionDirty = false;
-            var bastionCurrentValue = "";
-            var bastionIsDirty = function () { return bastionDirty || Boolean(unsavedNewBastionId); };
-            registerDirtyTracker(bastionIsDirty, function () { cancelBastionForm(); });
-            registerSectionResetHook(function () { cancelBastionForm(); });
+          {{/* Bastion Tracker: uses the shared createRecordTracker
+            controller above. The sheet has 6 fixed Special Facility slots,
+            handled the same fixed-slot way as Travel Planner's 3 stages
+            below. */}}
+          var blankFacility = function () {
+            return { name: "", space: "", order: "", hirelings: "", notes: "" };
+          };
 
-            var loadBastions = function () {
-              try {
-                return JSON.parse(window.localStorage.getItem(bastionStorageKey) || "[]");
-              } catch (e) {
-                return [];
-              }
-            };
+          var blankFacilities = function () {
+            return [blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility()];
+          };
 
-            var writeBastionsLocal = function (bastions) {
-              window.localStorage.setItem(bastionStorageKey, JSON.stringify(bastions));
-            };
+          createRecordTracker({
+            containerId: "bastion-tracker",
+            selectId: "bastion-tracker-select",
+            detailId: "bastion-tracker-detail",
+            addBtnId: "bastion-tracker-add-btn",
+            syncKey: "bastions",
+            selectPlaceholder: "— Select a bastion —",
+            requiredError: "Bastion's Name is required.",
+            cssPrefix: "bastion",
+            isValid: function (bastion) { return Boolean(bastion.bastionName && bastion.bastionName.trim()); },
+            label: function (bastion) { return bastion.bastionName || "Unnamed Bastion"; },
+            makeBlank: function () {
+              return {
+                bastionName: "", characterName: "", level: "", basicFacilities: "", bastionDefenders: "",
+                facilities: blankFacilities(),
+              };
+            },
+            renderFields: function (form, bastion) {
+              var header = document.createElement("div");
+              header.className = "bastion-header-fields";
+              header.appendChild(markRequired(makeFieldInput("bastion", "Bastion's Name", bastion.bastionName, { field: "bastionName" })));
+              header.appendChild(makeFieldInput("bastion", "Character's Name", bastion.characterName, { field: "characterName" }));
+              header.appendChild(makeFieldInput("bastion", "Level", bastion.level, { field: "level" }));
+              header.appendChild(makeFieldInput("bastion", "Bastion Defenders", bastion.bastionDefenders, { field: "bastionDefenders" }));
+              form.appendChild(header);
 
-            var saveBastions = function (bastions) {
-              writeBastionsLocal(bastions);
-              syncPush("bastions", bastions);
-            };
+              form.appendChild(makeFieldTextarea("bastion", "Basic Facilities", bastion.basicFacilities, { field: "basicFacilities" }));
 
-            var bastionIsValid = function (bastion) { return Boolean(bastion.bastionName && bastion.bastionName.trim()); };
+              var facilities = bastion.facilities && bastion.facilities.length === 6 ? bastion.facilities : blankFacilities();
+              facilities.forEach(function (facility, i) {
+                var section = document.createElement("div");
+                section.className = "bastion-facility";
+                var heading = document.createElement("h3");
+                heading.textContent = "Special Facility " + (i + 1);
+                section.appendChild(heading);
 
-            var pullBastions = function () {
-              syncPull("bastions").then(function (remote) {
-                if (remote) {
-                  var prunedRemote = pruneOrphanedDrafts(remote, bastionIsValid, unsavedNewBastionId);
-                  writeBastionsLocal(prunedRemote);
-                  if (prunedRemote.length !== remote.length) syncPush("bastions", prunedRemote);
-                  renderBastionSelect();
-                  clearBastionDetail();
-                } else if (syncEnabled()) {
-                  syncPush("bastions", loadBastions());
-                }
+                var grid = document.createElement("div");
+                grid.className = "bastion-facility-grid";
+                grid.appendChild(makeFieldInput("bastion", "Special Facility", facility.name, { field: "name", facilityIndex: i }));
+                grid.appendChild(makeFieldInput("bastion", "Space", facility.space, { field: "space", facilityIndex: i }));
+                grid.appendChild(makeFieldInput("bastion", "Order", facility.order, { field: "order", facilityIndex: i }));
+                grid.appendChild(makeFieldInput("bastion", "Hirelings", facility.hirelings, { field: "hirelings", facilityIndex: i }));
+                section.appendChild(grid);
+
+                section.appendChild(makeFieldTextarea("bastion", "Notes", facility.notes, { field: "notes", facilityIndex: i }));
+                form.appendChild(section);
               });
-            };
-            syncPullers.push(pullBastions);
-
-            var bastionLabel = function (bastion) {
-              return bastion.bastionName || "Unnamed Bastion";
-            };
-
-            var blankFacility = function () {
-              return { name: "", space: "", order: "", hirelings: "", notes: "" };
-            };
-
-            var bastionEditInput = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "bastion-field";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var input = document.createElement("input");
-              input.type = "text";
-              input.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(input);
-              return wrap;
-            };
-
-            var bastionEditTextarea = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "bastion-field bastion-field-wide";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var textarea = document.createElement("textarea");
-              textarea.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(textarea);
-              return wrap;
-            };
-
-            var collectBastionFromForm = function (form, originalBastion) {
+            },
+            collectFromForm: function (form, originalBastion) {
               var bastion = {
                 id: originalBastion.id,
                 createdAt: originalBastion.createdAt,
                 bastionName: "", characterName: "", level: "", basicFacilities: "", bastionDefenders: "",
-                facilities: [blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility()],
+                facilities: blankFacilities(),
               };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 var field = el.dataset.field;
@@ -5441,192 +4984,8 @@
                 bastion.facilities[parseInt(facilityIndex, 10)][field] = el.value;
               });
               return bastion;
-            };
-
-            var clearBastionDetail = function () {
-              bastionDetail.innerHTML = "";
-            };
-
-            var renderBastionSelect = function () {
-              var bastions = loadBastions().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
-              var currentValue = bastionSelect.value;
-              bastionSelect.innerHTML = "";
-              var placeholder = document.createElement("option");
-              placeholder.value = "";
-              placeholder.textContent = "— Select a bastion —";
-              bastionSelect.appendChild(placeholder);
-              bastions.forEach(function (bastion) {
-                var option = document.createElement("option");
-                option.value = bastion.id;
-                option.textContent = bastionLabel(bastion);
-                bastionSelect.appendChild(option);
-              });
-              bastionSelect.value = bastions.some(function (b) { return b.id === currentValue; }) ? currentValue : "";
-              return bastions;
-            };
-
-            var unsavedNewBastionId = null;
-            var pendingNewBastion = null;
-
-            {{/* A "+ Add"ed bastion is never written to storage until its
-              first valid Save — nothing to discard here but the in-memory
-              draft. */}}
-            var discardUnsavedNewBastion = function () {
-              unsavedNewBastionId = null;
-              pendingNewBastion = null;
-            };
-
-            var cancelBastionForm = function () {
-              bastionDirty = false;
-              discardUnsavedNewBastion();
-              bastionSelect.value = "";
-              bastionCurrentValue = "";
-              clearBastionDetail();
-            };
-
-            var renderBastionForm = function (bastionId, isNew) {
-              if (isNew) unsavedNewBastionId = bastionId;
-              var bastion = isNew ? pendingNewBastion : loadBastions().filter(function (b) { return b.id === bastionId; })[0];
-              bastionDetail.innerHTML = "";
-              if (!bastion) return;
-              bastionDirty = false;
-
-              var actions = document.createElement("div");
-              actions.className = "bastion-form-actions";
-              var saveBtn = document.createElement("button");
-              saveBtn.type = "button";
-              saveBtn.className = "bastion-save-btn";
-              saveBtn.textContent = "Save";
-              var cancelBtn = document.createElement("button");
-              cancelBtn.type = "button";
-              cancelBtn.className = "bastion-cancel-btn";
-              cancelBtn.textContent = "Cancel";
-              var deleteBtn = document.createElement("button");
-              deleteBtn.type = "button";
-              deleteBtn.className = "bastion-delete-btn";
-              deleteBtn.textContent = "Remove";
-              actions.appendChild(saveBtn);
-              actions.appendChild(cancelBtn);
-              actions.appendChild(deleteBtn);
-              bastionDetail.appendChild(actions);
-
-              var error = document.createElement("p");
-              error.className = "bastion-form-error";
-              error.hidden = true;
-              error.textContent = "Bastion's Name is required.";
-              bastionDetail.appendChild(error);
-
-              var form = document.createElement("div");
-              form.className = "bastion-edit-form";
-
-              var header = document.createElement("div");
-              header.className = "bastion-header-fields";
-              header.appendChild(markRequired(bastionEditInput("Bastion's Name", bastion.bastionName, { field: "bastionName" })));
-              header.appendChild(bastionEditInput("Character's Name", bastion.characterName, { field: "characterName" }));
-              header.appendChild(bastionEditInput("Level", bastion.level, { field: "level" }));
-              header.appendChild(bastionEditInput("Bastion Defenders", bastion.bastionDefenders, { field: "bastionDefenders" }));
-              form.appendChild(header);
-
-              form.appendChild(bastionEditTextarea("Basic Facilities", bastion.basicFacilities, { field: "basicFacilities" }));
-
-              var facilities = bastion.facilities && bastion.facilities.length === 6 ? bastion.facilities : [blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility()];
-              facilities.forEach(function (facility, i) {
-                var section = document.createElement("div");
-                section.className = "bastion-facility";
-                var heading = document.createElement("h3");
-                heading.textContent = "Special Facility " + (i + 1);
-                section.appendChild(heading);
-
-                var grid = document.createElement("div");
-                grid.className = "bastion-facility-grid";
-                grid.appendChild(bastionEditInput("Special Facility", facility.name, { field: "name", facilityIndex: i }));
-                grid.appendChild(bastionEditInput("Space", facility.space, { field: "space", facilityIndex: i }));
-                grid.appendChild(bastionEditInput("Order", facility.order, { field: "order", facilityIndex: i }));
-                grid.appendChild(bastionEditInput("Hirelings", facility.hirelings, { field: "hirelings", facilityIndex: i }));
-                section.appendChild(grid);
-
-                section.appendChild(bastionEditTextarea("Notes", facility.notes, { field: "notes", facilityIndex: i }));
-                form.appendChild(section);
-              });
-
-              bastionDetail.appendChild(form);
-
-              form.addEventListener("input", function () { bastionDirty = true; });
-              form.addEventListener("change", function () { bastionDirty = true; });
-
-              saveBtn.addEventListener("click", function () {
-                var updated = collectBastionFromForm(form, bastion);
-                if (!updated.bastionName || !updated.bastionName.trim()) {
-                  error.hidden = false;
-                  return;
-                }
-                error.hidden = true;
-                var allBastions = loadBastions();
-                var idx = -1;
-                allBastions.forEach(function (b, bIdx) { if (b.id === bastion.id) idx = bIdx; });
-                if (idx !== -1) { allBastions[idx] = updated; } else { allBastions.push(updated); }
-                saveBastions(allBastions);
-                unsavedNewBastionId = null;
-                pendingNewBastion = null;
-                bastionDirty = false;
-                renderBastionSelect();
-                bastionSelect.value = "";
-                bastionCurrentValue = "";
-                clearBastionDetail();
-              });
-
-              cancelBtn.addEventListener("click", cancelBastionForm);
-
-              wireConfirmDelete(deleteBtn, function () {
-                if (bastionId === unsavedNewBastionId) {
-                  discardUnsavedNewBastion();
-                } else {
-                  var remaining = loadBastions().filter(function (b) { return b.id !== bastion.id; });
-                  saveBastions(remaining);
-                  renderBastionSelect();
-                }
-                bastionDirty = false;
-                bastionSelect.value = "";
-                bastionCurrentValue = "";
-                clearBastionDetail();
-              });
-            };
-
-            var initialBastions = loadBastions();
-            var prunedInitialBastions = pruneOrphanedDrafts(initialBastions, bastionIsValid, unsavedNewBastionId);
-            if (prunedInitialBastions.length !== initialBastions.length) saveBastions(prunedInitialBastions);
-            renderBastionSelect();
-            pullBastions();
-
-            bastionSelect.addEventListener("change", function () {
-              var nextValue = bastionSelect.value;
-              if (!confirmLeaveIfDirty(bastionIsDirty)) {
-                bastionSelect.value = bastionCurrentValue;
-                return;
-              }
-              bastionCurrentValue = nextValue;
-              discardUnsavedNewBastion();
-              if (nextValue) {
-                renderBastionForm(nextValue);
-              } else {
-                clearBastionDetail();
-              }
-            });
-
-            bastionAddBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(bastionIsDirty)) return;
-              discardUnsavedNewBastion();
-              pendingNewBastion = {
-                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-                createdAt: Date.now(),
-                bastionName: "", characterName: "", level: "", basicFacilities: "", bastionDefenders: "",
-                facilities: [blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility()],
-              };
-              bastionSelect.value = "";
-              bastionCurrentValue = "";
-              renderBastionForm(pendingNewBastion.id, true);
-            });
-          }
+            },
+          });
 
           {{/* File Library: unlike every other section, the interactive UI
             (upload form, list, detail) only exists in the DOM when
@@ -5930,17 +5289,7 @@
             };
 
             var flEditInput = function (labelText, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "file-library-field";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              var input = document.createElement("input");
-              input.type = "text";
-              input.value = value || "";
-              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
-              wrap.appendChild(label);
-              wrap.appendChild(input);
-              return wrap;
+              return makeFieldInput("file-library", labelText, value, dataAttrs);
             };
 
             var flEditSelect = function (labelText, value, options, dataAttrs) {
