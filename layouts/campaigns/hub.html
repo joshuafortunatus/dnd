@@ -393,6 +393,31 @@
       var syncUrl = proxyUrl + "/sync/" + slug + "/sessions";
       var liveSessions = [];
 
+      var saveSessions = function (updated, onSuccess) {
+        fetch(syncUrl, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        })
+          .then(function (res) {
+            if (!res.ok) throw new Error("save failed");
+            liveSessions = updated;
+            onSuccess();
+          })
+          .catch(function () {
+            if (form.hidden) {
+              window.alert("Couldn’t save. Try again.");
+            } else {
+              error.hidden = false;
+            }
+          });
+      };
+
+      var removeEntry = function (id) {
+        if (!window.confirm("Remove this session?")) return;
+        saveSessions(liveSessions.filter(function (e) { return e.id !== id; }), renderLive);
+      };
+
       var renderEntry = function (entry) {
         var article = document.createElement("article");
         article.className = "hub-entry";
@@ -410,6 +435,12 @@
             : parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
           h3.appendChild(dateSpan);
         }
+        var removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "hub-session-remove-btn";
+        removeBtn.textContent = "Remove";
+        removeBtn.addEventListener("click", function () { removeEntry(entry.id); });
+        h3.appendChild(removeBtn);
         article.appendChild(h3);
 
         var bullets = (entry.recap || "").split("\n").map(function (line) { return line.trim(); }).filter(Boolean);
@@ -475,22 +506,10 @@
           date: dateInput.value,
           recap: recapInput.value,
         };
-        var updated = liveSessions.concat([entry]);
-
-        fetch(syncUrl, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updated),
-        })
-          .then(function (res) {
-            if (!res.ok) throw new Error("save failed");
-            liveSessions = updated;
-            renderLive();
-            hideForm();
-          })
-          .catch(function () {
-            error.hidden = false;
-          });
+        saveSessions(liveSessions.concat([entry]), function () {
+          renderLive();
+          hideForm();
+        });
       });
     })();
   </script>
