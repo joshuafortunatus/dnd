@@ -239,6 +239,7 @@ body.is-home {
 }
 .hub-tab-link { color: var(--accent); }
 .hub-tab-link:hover { color: var(--text); }
+.hub-landing-btn.hub-tab-link { border-color: var(--accent); }
 .tab-icon { width: 30px; height: 30px; flex-shrink: 0; }
 .hub-panel {
   padding-top: 1.5rem;

@@ -52,7 +52,7 @@
       <button type="button" class="hub-landing-btn" data-target="locations">{{ partial "tab-icon.html" "map-pin" }}<span class="tab-label-text">Locations</span></button>
       <button type="button" class="hub-landing-btn" data-target="images">{{ partial "tab-icon.html" "folder" }}<span class="tab-label-text">Files</span></button>
       <button type="button" class="hub-landing-btn" data-target="misc">{{ partial "tab-icon.html" "dots" }}<span class="tab-label-text">Misc.</span></button>
-      {{ with $dmPage }}<a class="hub-landing-btn" href="{{ .RelPermalink }}">{{ partial "tab-icon.html" "shield" }}<span class="tab-label-text">DM Portal</span></a>{{ end }}
+      {{ with $dmPage }}<a class="hub-landing-btn hub-tab-link" href="{{ .RelPermalink }}">{{ partial "tab-icon.html" "shield" }}<span class="tab-label-text">DM Portal</span></a>{{ end }}
     </div>
   </div>
 
