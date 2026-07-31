@@ -307,6 +307,7 @@ body.is-home {
 .hub-session-form-actions button[type="button"] { border-color: var(--border); color: var(--text-dim); }
 .hub-session-form-actions button[type="button"]:hover { color: var(--text); }
 .hub-session-error { color: #d16a6a; font-size: 0.9rem; margin: 0; }
+.hub-session-edit-btn,
 .hub-session-remove-btn {
   background: none;
   border: none;
@@ -318,6 +319,7 @@ body.is-home {
   text-decoration: underline;
   cursor: pointer;
 }
+.hub-session-edit-btn:hover { color: var(--accent); }
 .hub-session-remove-btn:hover { color: #d16a6a; }
 
 #panel-characters h2,
