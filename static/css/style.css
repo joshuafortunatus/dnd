@@ -667,34 +667,6 @@ body.is-home {
 .travel-field textarea { min-height: 5rem; resize: vertical; }
 .travel-field-wide { margin-bottom: 1.25rem; }
 
-.travel-save-btn,
-.travel-cancel-btn,
-.travel-delete-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 4px;
-  padding: 0.4rem 1rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-.travel-save-btn:hover { background: rgba(201, 162, 39, 0.15); }
-.travel-cancel-btn { border-color: var(--border); color: var(--text-dim); }
-.travel-cancel-btn:hover { color: var(--text); }
-.travel-delete-btn { border-color: var(--border); color: var(--text-dim); }
-.travel-delete-btn:hover { color: #d16a6a; border-color: #d16a6a; }
-.travel-form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-.travel-form-error {
-  color: #d16a6a;
-  font-size: 0.9rem;
-  margin: -1rem 0 1.5rem;
-}
-
 .travel-pace-group {
   display: flex;
   flex-wrap: wrap;
@@ -719,36 +691,6 @@ body.is-home {
   font-size: 0.9rem;
   font-family: inherit;
 }
-
-.travel-planner-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.travel-planner-select {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 0.5rem 0.7rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  flex: 1 1 20rem;
-  max-width: 24rem;
-}
-.travel-planner-add-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-.travel-planner-add-btn:hover { background: rgba(201, 162, 39, 0.15); }
 
 .npc-tracker-detail { margin-bottom: 2rem; }
 
@@ -973,64 +915,6 @@ body.is-home {
 
 .character-manager-back { margin-top: 0; margin-bottom: 1.25rem; }
 
-.npc-save-btn,
-.npc-cancel-btn,
-.npc-delete-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 4px;
-  padding: 0.4rem 1rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-.npc-save-btn:hover { background: rgba(201, 162, 39, 0.15); }
-.npc-cancel-btn { border-color: var(--border); color: var(--text-dim); }
-.npc-cancel-btn:hover { color: var(--text); }
-.npc-delete-btn { border-color: var(--border); color: var(--text-dim); }
-.npc-delete-btn:hover { color: #d16a6a; border-color: #d16a6a; }
-.npc-form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-.npc-form-error {
-  color: #d16a6a;
-  font-size: 0.9rem;
-  margin: -1rem 0 1.5rem;
-}
-
-.npc-tracker-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.npc-tracker-select {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 0.5rem 0.7rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  flex: 1 1 20rem;
-  max-width: 24rem;
-}
-.npc-tracker-add-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-.npc-tracker-add-btn:hover { background: rgba(201, 162, 39, 0.15); }
-
 .settlement-tracker-detail { margin-bottom: 2rem; }
 
 .settlement-header-fields {
@@ -1058,64 +942,6 @@ body.is-home {
 
 .settlement-radio-group { display: flex; flex-wrap: wrap; gap: 1.25rem; }
 .settlement-radio-option { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text); font-size: 0.95rem; cursor: pointer; }
-
-.settlement-save-btn,
-.settlement-cancel-btn,
-.settlement-delete-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 4px;
-  padding: 0.4rem 1rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-.settlement-save-btn:hover { background: rgba(201, 162, 39, 0.15); }
-.settlement-cancel-btn { border-color: var(--border); color: var(--text-dim); }
-.settlement-cancel-btn:hover { color: var(--text); }
-.settlement-delete-btn { border-color: var(--border); color: var(--text-dim); }
-.settlement-delete-btn:hover { color: #d16a6a; border-color: #d16a6a; }
-.settlement-form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-.settlement-form-error {
-  color: #d16a6a;
-  font-size: 0.9rem;
-  margin: -1rem 0 1.5rem;
-}
-
-.settlement-tracker-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.settlement-tracker-select {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 0.5rem 0.7rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  flex: 1 1 20rem;
-  max-width: 24rem;
-}
-.settlement-tracker-add-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  font-size: 1.05rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-.settlement-tracker-add-btn:hover { background: rgba(201, 162, 39, 0.15); }
 
 .campaign-journal-detail,
 .campaign-conflicts-detail,
@@ -1347,6 +1173,9 @@ body.is-home {
 .magic-item-checkbox-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .magic-item-checkbox { width: 1.1rem; height: 1.1rem; cursor: pointer; accent-color: var(--accent); }
 
+.travel-save-btn, .travel-cancel-btn, .travel-delete-btn,
+.npc-save-btn, .npc-cancel-btn, .npc-delete-btn,
+.settlement-save-btn, .settlement-cancel-btn, .settlement-delete-btn,
 .journal-save-btn, .journal-cancel-btn, .journal-delete-btn,
 .conflict-save-btn, .conflict-cancel-btn, .conflict-delete-btn,
 .bastion-save-btn, .bastion-cancel-btn, .bastion-delete-btn,
@@ -1360,35 +1189,43 @@ body.is-home {
   font-family: inherit;
   cursor: pointer;
 }
+.travel-save-btn:hover, .npc-save-btn:hover, .settlement-save-btn:hover,
 .journal-save-btn:hover, .conflict-save-btn:hover, .bastion-save-btn:hover, .file-library-save-btn:hover {
   background: rgba(201, 162, 39, 0.15);
 }
+.travel-cancel-btn, .npc-cancel-btn, .settlement-cancel-btn,
 .journal-cancel-btn, .conflict-cancel-btn, .bastion-cancel-btn, .file-library-cancel-btn {
   border-color: var(--border);
   color: var(--text-dim);
 }
+.travel-cancel-btn:hover, .npc-cancel-btn:hover, .settlement-cancel-btn:hover,
 .journal-cancel-btn:hover, .conflict-cancel-btn:hover, .bastion-cancel-btn:hover, .file-library-cancel-btn:hover {
   color: var(--text);
 }
+.travel-delete-btn, .npc-delete-btn, .settlement-delete-btn,
 .journal-delete-btn, .conflict-delete-btn, .bastion-delete-btn, .file-library-delete-btn {
   border-color: var(--border);
   color: var(--text-dim);
 }
+.travel-delete-btn:hover, .npc-delete-btn:hover, .settlement-delete-btn:hover,
 .journal-delete-btn:hover, .conflict-delete-btn:hover, .bastion-delete-btn:hover, .file-library-delete-btn:hover {
   color: #d16a6a;
   border-color: #d16a6a;
 }
+.travel-form-actions, .npc-form-actions, .settlement-form-actions,
 .journal-form-actions, .conflict-form-actions, .bastion-form-actions, .file-library-form-actions {
   display: flex;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
+.travel-form-error, .npc-form-error, .settlement-form-error,
 .journal-form-error, .conflict-form-error, .bastion-form-error, .file-library-form-error {
   color: #d16a6a;
   font-size: 0.9rem;
   margin: -1rem 0 1.5rem;
 }
 
+.travel-planner-controls, .npc-tracker-controls, .settlement-tracker-controls,
 .campaign-journal-controls, .campaign-conflicts-controls, .bastion-tracker-controls {
   display: flex;
   flex-wrap: wrap;
@@ -1396,6 +1233,7 @@ body.is-home {
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
+.travel-planner-select, .npc-tracker-select, .settlement-tracker-select,
 .campaign-journal-select, .campaign-conflicts-select, .bastion-tracker-select {
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -1407,6 +1245,7 @@ body.is-home {
   flex: 1 1 20rem;
   max-width: 24rem;
 }
+.travel-planner-add-btn, .npc-tracker-add-btn, .settlement-tracker-add-btn,
 .campaign-journal-add-btn, .campaign-conflicts-add-btn, .bastion-tracker-add-btn {
   background: var(--bg-raised);
   border: 1px solid var(--accent);
@@ -1417,6 +1256,7 @@ body.is-home {
   font-family: inherit;
   cursor: pointer;
 }
+.travel-planner-add-btn:hover, .npc-tracker-add-btn:hover, .settlement-tracker-add-btn:hover,
 .campaign-journal-add-btn:hover, .campaign-conflicts-add-btn:hover, .bastion-tracker-add-btn:hover {
   background: rgba(201, 162, 39, 0.15);
 }
