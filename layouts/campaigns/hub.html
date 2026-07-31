@@ -159,7 +159,7 @@
         <div class="hub-table-editor" id="hub-lore-editor"
           data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}" data-sync-key="hub-lore"
           data-add-label="+ Add Lore" data-empty-label="No lore yet."
-          data-columns='[{"key":"subject","label":"Subject","type":"text","required":true},{"key":"type","label":"Type","type":"text"},{"key":"summary","label":"Summary","type":"textarea"}]'>
+          data-columns='[{"key":"subject","label":"Subject","type":"text","required":true},{"key":"type","label":"Type","type":"select","options":["History","Knowledge & Experience"]},{"key":"summary","label":"Summary","type":"textarea"}]'>
         </div>
       {{ end }}
       {{ range $lore.ByTitle }}
@@ -764,7 +764,23 @@
             var tr = document.createElement("tr");
             columns.forEach(function (col) {
               var td = document.createElement("td");
-              td.textContent = col.type === "checkbox" ? (entry[col.key] ? "✔" : "") : (entry[col.key] || "");
+              if (col.type === "checkbox") {
+                {{/* A live toggle, not just a checkmark — once published,
+                  flipping it saves immediately without opening Edit. */}}
+                var toggle = document.createElement("input");
+                toggle.type = "checkbox";
+                toggle.checked = Boolean(entry[col.key]);
+                toggle.addEventListener("change", function () {
+                  var fields = {};
+                  fields[col.key] = toggle.checked;
+                  saveEntries(entries.map(function (e) {
+                    return e.id === entry.id ? Object.assign({}, e, fields) : e;
+                  }), renderAll);
+                });
+                td.appendChild(toggle);
+              } else {
+                td.textContent = entry[col.key] || "";
+              }
               tr.appendChild(td);
             });
             var actionsTd = document.createElement("td");
