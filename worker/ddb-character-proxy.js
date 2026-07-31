@@ -87,12 +87,16 @@
  *   GET  /sync/<slug>/<key>                — read a stored JSON blob (Authorization: Bearer <SYNC_SECRET>,
  *                                             EXCEPT key=characters, which is a public read — the
  *                                             campaign hub page's Characters tab fetches it directly,
- *                                             unauthenticated, so any visitor can see the roster)
+ *                                             unauthenticated, so any visitor can see the roster — and
+ *                                             EXCEPT key=sessions for slug=borderlands, a trial letting
+ *                                             players add session recaps with no auth at all (see
+ *                                             OPEN_SESSIONS_TRIAL_SLUG below))
  *   PUT  /sync/<slug>/<key>  (JSON body)   — write a stored JSON blob (Authorization: Bearer <SYNC_SECRET>,
- *                                             always required, including for key=characters)
+ *                                             always required, EXCEPT key=sessions for slug=borderlands
+ *                                             per the trial above)
  *   <slug> is a campaign slug; <key> is one of: characters, pc-manager,
  *     travel-plans, npcs, settlements, journal, conflicts, magic-items,
- *     bastions, files
+ *     bastions, files, sessions
  *   GET  /monster?url=<aidedd.org monster page URL>  — aidedd.org proxy (no auth), url must be
  *                                             https://www.aidedd.org/monster/<slug> (2024) or
  *                                             https://www.aidedd.org/dnd/monstres.php?vo=<slug> (2014)
@@ -123,8 +127,13 @@
 const ALLOWED_ORIGINS = ["https://joshuafortunatus.github.io", "http://localhost:1313"];
 const ALLOWED_SYNC_KEYS = [
   "characters", "pc-manager", "travel-plans", "npcs", "settlements",
-  "journal", "conflicts", "magic-items", "bastions", "files",
+  "journal", "conflicts", "magic-items", "bastions", "files", "sessions",
 ];
+
+/* Trial: letting players add session recaps straight from the public
+ * campaign page, no password. Scoped to one campaign (borderlands) and
+ * left wide open on purpose — no gate yet, revisit once this proves out. */
+const OPEN_SESSIONS_TRIAL_SLUG = "borderlands";
 
 /* Sanity default, not a hard platform fact — Workers' request body size
  * ceiling can change by plan tier; re-check current Cloudflare docs before
@@ -199,7 +208,8 @@ export default {
       // only, no DM notes) to any visitor, not just the DM. Writes still
       // always require the secret.
       const isPublicRosterRead = key === "characters" && request.method === "GET";
-      if (!isPublicRosterRead && !authorized(request, env)) {
+      const isOpenSessionsTrial = key === "sessions" && slug === OPEN_SESSIONS_TRIAL_SLUG;
+      if (!isPublicRosterRead && !isOpenSessionsTrial && !authorized(request, env)) {
         return new Response("Unauthorized.", { status: 401, headers: corsHeaders(request) });
       }
       if (!env.PORTAL_DATA) {
