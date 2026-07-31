@@ -448,10 +448,12 @@
         form.hidden = false;
         addBtn.hidden = true;
         error.hidden = true;
-        titleInput.value = "";
+        var sessionCount = list.querySelectorAll(".hub-entry").length;
+        titleInput.value = "Session " + (sessionCount + 1);
         dateInput.value = new Date().toISOString().slice(0, 10);
         recapInput.value = "";
         titleInput.focus();
+        titleInput.select();
       };
 
       var hideForm = function () {
