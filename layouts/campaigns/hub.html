@@ -267,7 +267,16 @@
       var tabSelect = document.getElementById("hub-tab-select");
       if (!landing || !experience) return;
 
+      {{/* Same "blank state on every visit" rule the DM Portal's
+        registerSectionResetHook already enforces for every tool there —
+        an in-progress Add/Edit form (Sessions, Quests, Lore, NPCs,
+        Locations, Misc.) is discarded unconditionally the moment you
+        switch away from its tab, not just when it's empty. Each
+        section's script registers its own hideForm here. */}}
+      window.hubResetHooks = window.hubResetHooks || [];
+
       var selectTab = function (tab) {
+        window.hubResetHooks.forEach(function (fn) { fn(); });
         Array.prototype.forEach.call(tabButtons, function (b) {
           b.classList.toggle("is-active", b.dataset.tab === tab);
         });
@@ -571,6 +580,8 @@
         addBtn.hidden = false;
         editingId = null;
       };
+      window.hubResetHooks = window.hubResetHooks || [];
+      window.hubResetHooks.push(hideForm);
 
       addBtn.addEventListener("click", function () { showForm(); });
       cancelBtn.addEventListener("click", hideForm);
@@ -757,6 +768,8 @@
           addBtn.hidden = false;
           editingId = null;
         };
+        window.hubResetHooks = window.hubResetHooks || [];
+        window.hubResetHooks.push(hideForm);
 
         renderAll = function () {
           tbody.innerHTML = "";
@@ -969,6 +982,8 @@
         addBtn.hidden = false;
         editingId = null;
       };
+      window.hubResetHooks = window.hubResetHooks || [];
+      window.hubResetHooks.push(hideForm);
 
       renderAll = function () {
         list.innerHTML = "";
