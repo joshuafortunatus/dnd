@@ -209,7 +209,7 @@
         <div class="hub-table-editor" id="hub-locations-editor"
           data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}" data-sync-key="hub-locations"
           data-add-label="+ Add Location" data-empty-label="No locations yet."
-          data-columns='[{"key":"name","label":"Name","type":"text","required":true},{"key":"type","label":"Type","type":"select","options":["Town / City","Business","Diplomatic / Military Hub","Trader / Merchant","Place of Worship","Former home/hideout","Coastal Cave"]},{"key":"characteristics","label":"Characteristics","type":"textarea"},{"key":"locale","label":"Locale","type":"text"}]'>
+          data-columns='[{"key":"name","label":"Name","type":"text","required":true},{"key":"type","label":"Type","type":"select","options":["Business","Coastal Cave","Diplomatic / Military Hub","Former home/hideout","Place of Worship","Town / City","Trader / Merchant"]},{"key":"characteristics","label":"Characteristics","type":"textarea"},{"key":"locale","label":"Locale","type":"text"}]'>
         </div>
       {{ end }}
       {{ range $locations.ByTitle }}
