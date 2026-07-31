@@ -388,6 +388,7 @@ body.is-home {
 .hub-table-edit-btn:hover { color: var(--accent); }
 .hub-table-remove-btn:hover { color: #d16a6a; }
 .hub-table { margin-top: 1rem; }
+.hub-table td input[type="checkbox"] { cursor: pointer; }
 
 #panel-characters h2,
 #panel-images h2 {
