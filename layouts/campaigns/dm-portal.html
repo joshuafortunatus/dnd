@@ -101,7 +101,7 @@
                 (registerSectionResetHook), the same "blank landing
                 state on every visit" rule every other section already
                 follows — it doesn't remember which kind was open last. */}}
-              <div class="character-manager" id="character-manager">
+              <div class="character-manager dm-view-scope" id="character-manager">
                 <div class="npc-source-chooser character-manager-chooser" id="character-manager-chooser">
                   <p class="npc-source-chooser-prompt">Which kind of character?</p>
                   <div class="npc-source-chooser-choices">
@@ -192,7 +192,7 @@
                 sheet (reference/tracking_sheets/campaign-journal-sheet.pdf)
                 — one record per session, same select+add-button pattern
                 as NPC Tracker. */}}
-              <div class="campaign-journal" id="campaign-journal" data-storage-key="dm-portal-journal-{{ $slug }}">
+              <div class="campaign-journal dm-view-scope" id="campaign-journal" data-storage-key="dm-portal-journal-{{ $slug }}">
                 <div class="campaign-journal-controls">
                   <select class="campaign-journal-select" id="campaign-journal-select">
                     <option value="">&mdash; Select a session &mdash;</option>
@@ -206,7 +206,7 @@
                 sheet (reference/tracking_sheets/campaign-conflict-sheet.pdf)
                 — one record per conflict, same select+add-button pattern
                 as NPC Tracker. */}}
-              <div class="campaign-conflicts" id="campaign-conflicts" data-storage-key="dm-portal-conflicts-{{ $slug }}">
+              <div class="campaign-conflicts dm-view-scope" id="campaign-conflicts" data-storage-key="dm-portal-conflicts-{{ $slug }}">
                 <div class="campaign-conflicts-controls">
                   <select class="campaign-conflicts-select" id="campaign-conflicts-select">
                     <option value="">&mdash; Select a conflict &mdash;</option>
@@ -471,6 +471,17 @@
             return wrap;
           };
 
+          {{/* Grows a textarea to fit its content instead of scrolling
+            internally, since these fields hold free-form prose that
+            regularly runs past the CSS min-height. Runs on every input and
+            once on a rAF after creation, because scrollHeight reads 0 until
+            the element is actually attached to the document (which happens
+            in the caller, after makeFieldTextarea returns). */}}
+          var autosizeTextarea = function (textarea) {
+            textarea.style.height = "auto";
+            textarea.style.height = textarea.scrollHeight + "px";
+          };
+
           var makeFieldTextarea = function (prefix, labelText, value, dataAttrs) {
             var wrap = document.createElement("div");
             wrap.className = prefix + "-field " + prefix + "-field-wide";
@@ -479,6 +490,9 @@
             var textarea = document.createElement("textarea");
             textarea.value = value || "";
             Object.keys(dataAttrs || {}).forEach(function (k) { textarea.dataset[k] = dataAttrs[k]; });
+            textarea.classList.add("autosize-textarea");
+            textarea.addEventListener("input", function () { autosizeTextarea(textarea); });
+            window.requestAnimationFrame(function () { autosizeTextarea(textarea); });
             wrap.appendChild(label);
             wrap.appendChild(textarea);
             return wrap;
@@ -627,6 +641,114 @@
           Array.prototype.forEach.call(landingEl.querySelectorAll(".dm-landing-btn"), function (b) {
             b.addEventListener("click", function () { enterSection(b.dataset.section); });
           });
+
+          {{/* View mode: a read-friendly alternative skin over the
+            existing edit forms in Character Manager, Campaign Journal,
+            and Campaign Conflicts ONLY (the three ".dm-view-scope"
+            containers) — every other section (Travel Planner, Settlement
+            Tracker, Bastion Tracker, File Library, Magic Item Tracker)
+            is untouched, and Edit mode itself is untouched everywhere,
+            still the exact same always-editable forms as before.
+
+            The toggle only exists alongside a record that's actually
+            open — inline with that record's own Save/Cancel/Remove row —
+            so createModeToggleEl() is called from inside each of those
+            three sections' own render function (createRecordTracker's
+            renderForm for Journal, the hand-rolled renderForm for NPC
+            and Conflicts, and pc-manager's renderDetails) rather than
+            existing once, statically, up front. Every call shares the
+            same localStorage-backed state, so flipping it from any one
+            open record's toggle instance is portal-wide.
+
+            Rather than writing a second render path per section, this
+            locks every field already on the page (readOnly for text-like
+            inputs, disabled for select/checkbox/radio — never touching
+            record-chooser <select> elements, whose id always ends in
+            "-select", since browsing between records has to keep
+            working in View mode) and hides every mutating control via
+            the shared class-suffix convention every section already
+            follows (*-save-btn, *-cancel-btn, *-delete-btn, *-add-btn,
+            *-form-actions, *-remove, etc. — see createRecordTracker and
+            pc-manager above). A MutationObserver per scope re-applies
+            the lock to anything that scope re-renders (picking a
+            different record tears down and rebuilds its form) while
+            View mode is active; in Edit mode the observer callback is a
+            no-op, so nothing here can affect Edit mode's behavior. */}}
+          var viewScopeEls = document.querySelectorAll(".dm-view-scope");
+          var portalModeStorageKey = "dm-portal-mode";
+          var currentPortalMode = "view";
+
+          var isRecordChooserSelect = function (el) {
+            return el.tagName === "SELECT" && /-select$/.test(el.id || "");
+          };
+
+          var lockForViewMode = function (el) {
+            if (isRecordChooserSelect(el)) return;
+            if (el.tagName === "SELECT" || el.type === "checkbox" || el.type === "radio") {
+              el.disabled = true;
+            } else {
+              el.readOnly = true;
+            }
+          };
+
+          var unlockForViewMode = function (el) {
+            if (el.tagName === "SELECT" || el.type === "checkbox" || el.type === "radio") {
+              el.disabled = false;
+            } else {
+              el.readOnly = false;
+            }
+          };
+
+          var sweepViewModeLock = function (lock) {
+            Array.prototype.forEach.call(viewScopeEls, function (scope) {
+              Array.prototype.forEach.call(scope.querySelectorAll("input, textarea, select"), lock ? lockForViewMode : unlockForViewMode);
+            });
+          };
+
+          var viewModeObserver = new MutationObserver(function () {
+            if (currentPortalMode === "view") sweepViewModeLock(true);
+          });
+          Array.prototype.forEach.call(viewScopeEls, function (scope) {
+            viewModeObserver.observe(scope, { childList: true, subtree: true });
+          });
+
+          var applyPortalMode = function (mode) {
+            currentPortalMode = mode;
+            Array.prototype.forEach.call(viewScopeEls, function (scope) {
+              scope.classList.toggle("view-mode", mode === "view");
+            });
+            sweepViewModeLock(mode === "view");
+            Array.prototype.forEach.call(document.querySelectorAll(".dm-mode-toggle-btn"), function (b) {
+              b.classList.toggle("is-active", b.dataset.mode === mode);
+            });
+          };
+
+          {{/* Built fresh by whichever record just opened — see the
+            comment above for why this can't just be static markup. */}}
+          var createModeToggleEl = function () {
+            var toggle = document.createElement("div");
+            toggle.className = "dm-mode-toggle";
+            toggle.setAttribute("role", "group");
+            toggle.setAttribute("aria-label", "Portal mode");
+            ["view", "edit"].forEach(function (mode) {
+              var btn = document.createElement("button");
+              btn.type = "button";
+              btn.className = "dm-mode-toggle-btn";
+              btn.dataset.mode = mode;
+              btn.textContent = mode === "edit" ? "Edit" : "View";
+              btn.classList.toggle("is-active", mode === currentPortalMode);
+              toggle.appendChild(btn);
+            });
+            toggle.addEventListener("click", function (e) {
+              var b = e.target.closest(".dm-mode-toggle-btn");
+              if (!b || b.dataset.mode === currentPortalMode) return;
+              window.localStorage.setItem(portalModeStorageKey, b.dataset.mode);
+              applyPortalMode(b.dataset.mode);
+            });
+            return toggle;
+          };
+
+          applyPortalMode(window.localStorage.getItem(portalModeStorageKey) === "edit" ? "edit" : "view");
 
           {{/* Character Manager: the outer chooser that PC Manager and NPC
             Tracker (both below) now live inside. Neither manager's own
@@ -991,6 +1113,15 @@
               var d = loadPcData()[charKey] || {};
               var rosterEntry = loadRoster().filter(function (e) { return slugifyName(e.name) === charKey; })[0];
 
+              {{/* PC Manager has no Save/Cancel/Remove row of its own
+                (autosaves — see below), so this is its equivalent of the
+                "next to Save/Cancel/Remove, only once a record is open"
+                placement every other view-mode-scoped section uses. */}}
+              var pcActionsRow = document.createElement("div");
+              pcActionsRow.className = "pc-form-actions";
+              pcActionsRow.appendChild(createModeToggleEl());
+              container.appendChild(pcActionsRow);
+
               var form = document.createElement("div");
               form.className = "pc-edit-form";
 
@@ -1315,6 +1446,7 @@
 
               var actions = document.createElement("div");
               actions.className = config.cssPrefix + "-form-actions";
+              if (config.viewModeScope) actions.appendChild(createModeToggleEl());
               var saveBtn = document.createElement("button");
               saveBtn.type = "button";
               saveBtn.className = config.cssPrefix + "-save-btn";
@@ -3442,6 +3574,7 @@
 
               var actions = document.createElement("div");
               actions.className = "npc-form-actions";
+              actions.appendChild(createModeToggleEl());
               var saveBtn = document.createElement("button");
               saveBtn.type = "button";
               saveBtn.className = "npc-save-btn";
@@ -3807,6 +3940,7 @@
             selectPlaceholder: "— Select a session —",
             requiredError: "Session/Adventure Title is required.",
             cssPrefix: "journal",
+            viewModeScope: true,
             isValid: function (entry) { return Boolean(entry.title && entry.title.trim()); },
             label: function (entry) { return entry.title || "Untitled Session"; },
             {{/* Auto-filled but still editable — same plain text fields as
@@ -4659,6 +4793,7 @@
 
               var actions = document.createElement("div");
               actions.className = "conflict-form-actions";
+              actions.appendChild(createModeToggleEl());
               var saveBtn = document.createElement("button");
               saveBtn.type = "button";
               saveBtn.className = "conflict-save-btn";
