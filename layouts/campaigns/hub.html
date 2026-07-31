@@ -191,7 +191,7 @@
         <div class="hub-table-editor" id="hub-npcs-editor"
           data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}" data-sync-key="hub-npcs"
           data-add-label="+ Add NPC" data-empty-label="No NPCs yet."
-          data-columns='[{"key":"name","label":"Name","type":"text","required":true},{"key":"profession","label":"Profession","type":"text"},{"key":"characteristics","label":"Characteristics","type":"textarea"},{"key":"locale","label":"Locale","type":"text"},{"key":"status","label":"Villain Status","type":"text"}]'>
+          data-columns='[{"key":"name","label":"Name","type":"text","required":true},{"key":"profession","label":"Profession","type":"text"},{"key":"characteristics","label":"Characteristics","type":"textarea"},{"key":"locale","label":"Locale","type":"text"},{"key":"status","label":"Villain Status","type":"select","options":["Not suspicious","Suspected","Villain"]}]'>
         </div>
       {{ end }}
       {{ range $npcs.ByTitle }}
@@ -209,7 +209,7 @@
         <div class="hub-table-editor" id="hub-locations-editor"
           data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}" data-sync-key="hub-locations"
           data-add-label="+ Add Location" data-empty-label="No locations yet."
-          data-columns='[{"key":"name","label":"Name","type":"text","required":true},{"key":"type","label":"Type","type":"text"},{"key":"characteristics","label":"Characteristics","type":"textarea"},{"key":"locale","label":"Locale","type":"text"}]'>
+          data-columns='[{"key":"name","label":"Name","type":"text","required":true},{"key":"type","label":"Type","type":"select","options":["Town / City","Business","Diplomatic / Military Hub","Trader / Merchant","Place of Worship","Former home/hideout","Coastal Cave"]},{"key":"characteristics","label":"Characteristics","type":"textarea"},{"key":"locale","label":"Locale","type":"text"}]'>
         </div>
       {{ end }}
       {{ range $locations.ByTitle }}
@@ -628,13 +628,28 @@
 
         columns.forEach(function (col) {
           var isCheckbox = col.type === "checkbox";
+          var isSelect = col.type === "select";
           var wrap = document.createElement("div");
           wrap.className = isCheckbox ? "hub-table-field hub-table-field-checkbox" : "hub-table-field";
           var label = document.createElement("label");
           label.textContent = col.label;
-          var input = document.createElement(col.type === "textarea" ? "textarea" : "input");
-          if (col.type === "textarea") input.rows = 3;
-          else input.type = isCheckbox ? "checkbox" : "text";
+          var input = document.createElement(col.type === "textarea" ? "textarea" : isSelect ? "select" : "input");
+          if (col.type === "textarea") {
+            input.rows = 3;
+          } else if (isSelect) {
+            var blank = document.createElement("option");
+            blank.value = "";
+            blank.textContent = "— Select —";
+            input.appendChild(blank);
+            (col.options || []).forEach(function (opt) {
+              var option = document.createElement("option");
+              option.value = opt;
+              option.textContent = opt;
+              input.appendChild(option);
+            });
+          } else {
+            input.type = isCheckbox ? "checkbox" : "text";
+          }
           var fieldId = container.id + "-" + col.key;
           input.id = fieldId;
           label.htmlFor = fieldId;

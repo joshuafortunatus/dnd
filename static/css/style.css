@@ -344,7 +344,8 @@ body.is-home {
 .hub-table-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .hub-table-field label { color: var(--text-dim); font-size: 0.9rem; }
 .hub-table-field input[type="text"],
-.hub-table-field textarea {
+.hub-table-field textarea,
+.hub-table-field select {
   background: var(--bg-raised);
   border: 1px solid var(--border);
   color: var(--text);
