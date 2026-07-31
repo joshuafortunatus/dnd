@@ -393,6 +393,16 @@
       var syncUrl = proxyUrl + "/sync/" + slug + "/sessions";
       var liveSessions = [];
 
+      {{/* Date input must default to the visitor's own local date, not
+        UTC — toISOString() is UTC, which rolls over to the next day
+        hours before local midnight for anyone west of Greenwich. */}}
+      var todayLocal = function () {
+        var d = new Date();
+        var month = String(d.getMonth() + 1).padStart(2, "0");
+        var day = String(d.getDate()).padStart(2, "0");
+        return d.getFullYear() + "-" + month + "-" + day;
+      };
+
       var saveSessions = function (updated, onSuccess) {
         fetch(syncUrl, {
           method: "PUT",
@@ -481,7 +491,7 @@
         error.hidden = true;
         var sessionCount = list.querySelectorAll(".hub-entry").length;
         titleInput.value = "Session " + (sessionCount + 1);
-        dateInput.value = new Date().toISOString().slice(0, 10);
+        dateInput.value = todayLocal();
         recapInput.value = "";
         titleInput.focus();
         titleInput.select();
