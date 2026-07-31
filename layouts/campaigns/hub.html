@@ -3,10 +3,12 @@
   {{ $dmPage := .GetPage "dm" }}
   {{ $proxyURL := site.Params.ddb_proxy_url | default "" }}
   {{ $hash := .Params.password_hash | default "" }}
-  {{/* Trial: players can add session recaps straight from this page, no
-    password — see worker/ddb-character-proxy.js's OPEN_SESSIONS_TRIAL_SLUG.
-    Scoped to one campaign on purpose while this proves out. */}}
-  {{ $sessionsEditable := eq $slug "borderlands" }}
+  {{/* Trial: players can add/edit/remove sessions, quests, lore, NPCs,
+    locations, and misc. entries straight from this page, no password —
+    see worker/ddb-character-proxy.js's OPEN_TRIAL_EXCLUDED_SLUG /
+    OPEN_TRIAL_KEYS. This is the default for every campaign now; That's
+    Fair is the one grandfathered exception, kept fully static. */}}
+  {{ $editableTrial := ne $slug "thats-fair" }}
   <div class="hub-topline">
     <h1>{{ .Title }}</h1>
     <a class="hub-symbol-link" href="{{ .Site.Home.RelPermalink }}">
@@ -84,7 +86,7 @@
     </div>
 
     <div class="hub-panel" id="panel-sessions" data-tab="sessions" hidden>
-      {{ if $sessionsEditable }}
+      {{ if $editableTrial }}
         <div class="hub-session-editor" id="hub-session-editor" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}">
           <button type="button" class="hub-session-add-btn" id="hub-session-add-btn">+ Add Session</button>
           <form class="hub-session-form" id="hub-session-form" hidden>
@@ -108,7 +110,7 @@
           </form>
         </div>
       {{ end }}
-      {{ if or $sessions $sessionsEditable }}
+      {{ if or $sessions $editableTrial }}
         <label class="sort-toggle">
           <input type="checkbox" id="sessions-sort-newest" checked>
           Newest first
@@ -127,23 +129,45 @@
     </div>
 
     <div class="hub-panel" id="panel-quests" data-tab="quests" hidden>
+      {{/* Empty on purpose — the generic hub-table-editor JS below builds
+        the add button, form, and table entirely from data-columns, so
+        each editable section only needs this one div, not a hand-written
+        form per section. Field shape matches That's Fair's existing
+        quest-log table (reference/... none; see content/campaigns/thats-fair/quests/quest-log.md). */}}
+      {{ if $editableTrial }}
+        <div class="hub-table-editor" id="hub-quests-editor"
+          data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}" data-sync-key="hub-quests"
+          data-add-label="+ Add Quest" data-empty-label="No quests yet."
+          data-columns='[{"key":"quest","label":"Quest","type":"text","required":true},{"key":"beneficiary","label":"Beneficiary","type":"text"},{"key":"completed","label":"Completed","type":"checkbox"}]'>
+        </div>
+      {{ end }}
       {{ range $quests.ByTitle }}
         <article class="hub-entry">
           {{ if ne .Title "Quest Log" }}<h3>{{ .Title }}</h3>{{ end }}
           {{ .Content }}
         </article>
       {{ else }}
-        <p class="entry-date">No quests yet.</p>
+        {{ if not $editableTrial }}<p class="entry-date">No quests yet.</p>{{ end }}
       {{ end }}
     </div>
 
     <div class="hub-panel" id="panel-lore" data-tab="lore" hidden>
+      {{/* Field shape matches content/campaigns/thats-fair/lore/lore.md's
+        Subject/Type/Summary table (its separate "Notable Actions" table
+        is out of scope here — a session-log concept, not core lore). */}}
+      {{ if $editableTrial }}
+        <div class="hub-table-editor" id="hub-lore-editor"
+          data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}" data-sync-key="hub-lore"
+          data-add-label="+ Add Lore" data-empty-label="No lore yet."
+          data-columns='[{"key":"subject","label":"Subject","type":"text","required":true},{"key":"type","label":"Type","type":"text"},{"key":"summary","label":"Summary","type":"textarea"}]'>
+        </div>
+      {{ end }}
       {{ range $lore.ByTitle }}
         <article class="hub-entry">
           {{ .Content }}
         </article>
       {{ else }}
-        <p class="entry-date">No lore yet.</p>
+        {{ if not $editableTrial }}<p class="entry-date">No lore yet.</p>{{ end }}
       {{ end }}
     </div>
 
@@ -159,22 +183,41 @@
       </ul>
 
       <h2>NPCs</h2>
+      {{/* Sync key is "hub-npcs", not "npcs" — that key is already the DM
+        Portal's private NPC Tracker (worker/ddb-character-proxy.js);
+        reusing it here would let this public editor clobber that DM-only
+        data. Field shape matches content/campaigns/thats-fair/npcs/npcs.md. */}}
+      {{ if $editableTrial }}
+        <div class="hub-table-editor" id="hub-npcs-editor"
+          data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}" data-sync-key="hub-npcs"
+          data-add-label="+ Add NPC" data-empty-label="No NPCs yet."
+          data-columns='[{"key":"name","label":"Name","type":"text","required":true},{"key":"profession","label":"Profession","type":"text"},{"key":"characteristics","label":"Characteristics","type":"textarea"},{"key":"locale","label":"Locale","type":"text"},{"key":"status","label":"Villain Status","type":"select","options":["Not suspicious","Suspected","Villain"]}]'>
+        </div>
+      {{ end }}
       {{ range $npcs.ByTitle }}
         <article class="hub-entry">
           {{ .Content }}
         </article>
       {{ else }}
-        <p class="entry-date">No NPCs yet.</p>
+        {{ if not $editableTrial }}<p class="entry-date">No NPCs yet.</p>{{ end }}
       {{ end }}
     </div>
 
     <div class="hub-panel" id="panel-locations" data-tab="locations" hidden>
+      {{/* Field shape matches content/campaigns/thats-fair/locations/locations.md. */}}
+      {{ if $editableTrial }}
+        <div class="hub-table-editor" id="hub-locations-editor"
+          data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}" data-sync-key="hub-locations"
+          data-add-label="+ Add Location" data-empty-label="No locations yet."
+          data-columns='[{"key":"name","label":"Name","type":"text","required":true},{"key":"type","label":"Type","type":"select","options":["Town / City","Business","Diplomatic / Military Hub","Trader / Merchant","Place of Worship","Former home/hideout","Coastal Cave"]},{"key":"characteristics","label":"Characteristics","type":"textarea"},{"key":"locale","label":"Locale","type":"text"}]'>
+        </div>
+      {{ end }}
       {{ range $locations.ByTitle }}
         <article class="hub-entry">
           {{ .Content }}
         </article>
       {{ else }}
-        <p class="entry-date">No locations yet.</p>
+        {{ if not $editableTrial }}<p class="entry-date">No locations yet.</p>{{ end }}
       {{ end }}
     </div>
 
@@ -194,13 +237,23 @@
     </div>
 
     <div class="hub-panel" id="panel-misc" data-tab="misc" hidden>
+      {{/* Misc. has no consistent shape across existing content (a plain
+        narrative hook vs. a whole reference table), so unlike the other
+        sections there's no single table schema to templatize — this
+        stays a simple title + freeform body, same shape as Sessions. */}}
+      {{ if $editableTrial }}
+        <div class="hub-list-editor" id="hub-misc-editor"
+          data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}" data-sync-key="hub-misc"
+          data-add-label="+ Add Entry" data-empty-label="Nothing here yet.">
+        </div>
+      {{ end }}
       {{ range $misc.ByTitle }}
         <article class="hub-entry">
           <h3>{{ .Title }}</h3>
           {{ .Content }}
         </article>
       {{ else }}
-        <p class="entry-date">Nothing here yet.</p>
+        {{ if not $editableTrial }}<p class="entry-date">Nothing here yet.</p>{{ end }}
       {{ end }}
     </div>
   </div>
@@ -534,6 +587,430 @@
 
         saveSessions(updated, function () {
           renderLive();
+          hideForm();
+        });
+      });
+    })();
+  </script>
+
+  {{/* Generic table editor — one instance per .hub-table-editor container
+    (Quests, Lore, NPCs, Locations), each declaring its own columns via
+    data-columns so this single script covers all four instead of
+    duplicating near-identical add/edit/remove logic per section. */}}
+  <script>
+    (function () {
+      var editors = document.querySelectorAll(".hub-table-editor");
+      if (!editors.length) return;
+
+      Array.prototype.forEach.call(editors, function (container) {
+        var slug = container.dataset.slug;
+        var proxyUrl = (container.dataset.proxyUrl || "").replace(/\/$/, "");
+        var syncKey = container.dataset.syncKey;
+        var addLabel = container.dataset.addLabel || "+ Add";
+        var emptyLabel = container.dataset.emptyLabel || "Nothing here yet.";
+        var columns = JSON.parse(container.dataset.columns || "[]");
+        if (!proxyUrl || !columns.length) return;
+
+        var syncUrl = proxyUrl + "/sync/" + slug + "/" + syncKey;
+        var entries = [];
+        var editingId = null;
+        var fieldEls = {};
+
+        var addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "hub-table-add-btn";
+        addBtn.textContent = addLabel;
+        container.appendChild(addBtn);
+
+        var form = document.createElement("form");
+        form.className = "hub-table-form";
+        form.hidden = true;
+
+        columns.forEach(function (col) {
+          var isCheckbox = col.type === "checkbox";
+          var isSelect = col.type === "select";
+          var wrap = document.createElement("div");
+          wrap.className = isCheckbox ? "hub-table-field hub-table-field-checkbox" : "hub-table-field";
+          var label = document.createElement("label");
+          label.textContent = col.label;
+          var input = document.createElement(col.type === "textarea" ? "textarea" : isSelect ? "select" : "input");
+          if (col.type === "textarea") {
+            input.rows = 3;
+          } else if (isSelect) {
+            var blank = document.createElement("option");
+            blank.value = "";
+            blank.textContent = "— Select —";
+            input.appendChild(blank);
+            (col.options || []).forEach(function (opt) {
+              var option = document.createElement("option");
+              option.value = opt;
+              option.textContent = opt;
+              input.appendChild(option);
+            });
+          } else {
+            input.type = isCheckbox ? "checkbox" : "text";
+          }
+          var fieldId = container.id + "-" + col.key;
+          input.id = fieldId;
+          label.htmlFor = fieldId;
+          if (col.required) input.required = true;
+          if (isCheckbox) {
+            wrap.appendChild(input);
+            wrap.appendChild(label);
+          } else {
+            wrap.appendChild(label);
+            wrap.appendChild(input);
+          }
+          form.appendChild(wrap);
+          fieldEls[col.key] = input;
+        });
+
+        var actions = document.createElement("div");
+        actions.className = "hub-table-form-actions";
+        var saveBtn = document.createElement("button");
+        saveBtn.type = "submit";
+        saveBtn.textContent = "Save";
+        var cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.textContent = "Cancel";
+        actions.appendChild(saveBtn);
+        actions.appendChild(cancelBtn);
+        form.appendChild(actions);
+
+        var error = document.createElement("p");
+        error.className = "hub-table-error";
+        error.textContent = "Couldn’t save. Try again.";
+        error.hidden = true;
+        form.appendChild(error);
+
+        container.appendChild(form);
+
+        var table = document.createElement("table");
+        table.className = "hub-table";
+        table.hidden = true;
+        var thead = document.createElement("thead");
+        var headRow = document.createElement("tr");
+        columns.forEach(function (col) {
+          var th = document.createElement("th");
+          th.textContent = col.label;
+          headRow.appendChild(th);
+        });
+        headRow.appendChild(document.createElement("th"));
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+        var tbody = document.createElement("tbody");
+        table.appendChild(tbody);
+        container.appendChild(table);
+
+        var emptyMsg = document.createElement("p");
+        emptyMsg.className = "entry-date hub-table-empty";
+        emptyMsg.textContent = emptyLabel;
+        container.appendChild(emptyMsg);
+
+        var saveEntries = function (updated, onSuccess) {
+          fetch(syncUrl, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updated),
+          })
+            .then(function (res) {
+              if (!res.ok) throw new Error("save failed");
+              entries = updated;
+              onSuccess();
+            })
+            .catch(function () {
+              if (form.hidden) {
+                window.alert("Couldn’t save. Try again.");
+              } else {
+                error.hidden = false;
+              }
+            });
+        };
+
+        var showForm, hideForm, renderAll;
+
+        var removeEntry = function (id) {
+          if (!window.confirm("Remove this entry?")) return;
+          if (editingId === id) hideForm();
+          saveEntries(entries.filter(function (e) { return e.id !== id; }), renderAll);
+        };
+
+        showForm = function (entry) {
+          editingId = entry ? entry.id : null;
+          form.hidden = false;
+          addBtn.hidden = true;
+          error.hidden = true;
+          saveBtn.textContent = entry ? "Update" : "Save";
+          columns.forEach(function (col) {
+            var input = fieldEls[col.key];
+            var value = entry ? entry[col.key] : undefined;
+            if (col.type === "checkbox") input.checked = Boolean(value);
+            else input.value = value || "";
+          });
+          var firstInput = fieldEls[columns[0].key];
+          firstInput.focus();
+          if (firstInput.select) firstInput.select();
+        };
+
+        hideForm = function () {
+          form.hidden = true;
+          addBtn.hidden = false;
+          editingId = null;
+        };
+
+        renderAll = function () {
+          tbody.innerHTML = "";
+          entries.forEach(function (entry) {
+            var tr = document.createElement("tr");
+            columns.forEach(function (col) {
+              var td = document.createElement("td");
+              td.textContent = col.type === "checkbox" ? (entry[col.key] ? "✔" : "") : (entry[col.key] || "");
+              tr.appendChild(td);
+            });
+            var actionsTd = document.createElement("td");
+            var editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "hub-table-edit-btn";
+            editBtn.textContent = "Edit";
+            editBtn.addEventListener("click", function () { showForm(entry); });
+            actionsTd.appendChild(editBtn);
+            var removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "hub-table-remove-btn";
+            removeBtn.textContent = "Remove";
+            removeBtn.addEventListener("click", function () { removeEntry(entry.id); });
+            actionsTd.appendChild(removeBtn);
+            tr.appendChild(actionsTd);
+            tbody.appendChild(tr);
+          });
+          table.hidden = entries.length === 0;
+          emptyMsg.hidden = entries.length > 0;
+        };
+
+        fetch(syncUrl)
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (remote) {
+            entries = remote || [];
+            renderAll();
+          })
+          .catch(function () {});
+
+        addBtn.addEventListener("click", function () { showForm(); });
+        cancelBtn.addEventListener("click", hideForm);
+
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var fields = {};
+          var valid = true;
+          columns.forEach(function (col) {
+            var input = fieldEls[col.key];
+            if (col.type === "checkbox") {
+              fields[col.key] = input.checked;
+            } else {
+              fields[col.key] = input.value.trim();
+              if (col.required && !fields[col.key]) valid = false;
+            }
+          });
+          if (!valid) return;
+
+          var updated = editingId
+            ? entries.map(function (e) { return e.id === editingId ? Object.assign({}, e, fields) : e; })
+            : entries.concat([Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2) }, fields)]);
+
+          saveEntries(updated, function () {
+            renderAll();
+            hideForm();
+          });
+        });
+      });
+    })();
+  </script>
+
+  {{/* Misc. has no consistent column shape to templatize (see the panel
+    comment above), so it gets its own small title+body editor instead of
+    reusing the table factory — same shape as Sessions minus the date. */}}
+  <script>
+    (function () {
+      var container = document.getElementById("hub-misc-editor");
+      if (!container) return;
+      var slug = container.dataset.slug;
+      var proxyUrl = (container.dataset.proxyUrl || "").replace(/\/$/, "");
+      var syncKey = container.dataset.syncKey;
+      var addLabel = container.dataset.addLabel || "+ Add";
+      var emptyLabel = container.dataset.emptyLabel || "Nothing here yet.";
+      if (!proxyUrl) return;
+
+      var syncUrl = proxyUrl + "/sync/" + slug + "/" + syncKey;
+      var entries = [];
+      var editingId = null;
+
+      var addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "hub-table-add-btn";
+      addBtn.textContent = addLabel;
+      container.appendChild(addBtn);
+
+      var form = document.createElement("form");
+      form.className = "hub-table-form";
+      form.hidden = true;
+
+      var titleWrap = document.createElement("div");
+      titleWrap.className = "hub-table-field";
+      var titleLabel = document.createElement("label");
+      titleLabel.textContent = "Title";
+      titleLabel.htmlFor = container.id + "-title";
+      var titleInput = document.createElement("input");
+      titleInput.type = "text";
+      titleInput.id = container.id + "-title";
+      titleInput.required = true;
+      titleWrap.appendChild(titleLabel);
+      titleWrap.appendChild(titleInput);
+      form.appendChild(titleWrap);
+
+      var bodyWrap = document.createElement("div");
+      bodyWrap.className = "hub-table-field";
+      var bodyLabel = document.createElement("label");
+      bodyLabel.textContent = "Body (one bullet per line)";
+      bodyLabel.htmlFor = container.id + "-body";
+      var bodyInput = document.createElement("textarea");
+      bodyInput.id = container.id + "-body";
+      bodyInput.rows = 4;
+      bodyWrap.appendChild(bodyLabel);
+      bodyWrap.appendChild(bodyInput);
+      form.appendChild(bodyWrap);
+
+      var actions = document.createElement("div");
+      actions.className = "hub-table-form-actions";
+      var saveBtn = document.createElement("button");
+      saveBtn.type = "submit";
+      saveBtn.textContent = "Save";
+      var cancelBtn = document.createElement("button");
+      cancelBtn.type = "button";
+      cancelBtn.textContent = "Cancel";
+      actions.appendChild(saveBtn);
+      actions.appendChild(cancelBtn);
+      form.appendChild(actions);
+
+      var error = document.createElement("p");
+      error.className = "hub-table-error";
+      error.textContent = "Couldn’t save. Try again.";
+      error.hidden = true;
+      form.appendChild(error);
+
+      container.appendChild(form);
+
+      var list = document.createElement("div");
+      list.className = "hub-list-entries";
+      container.appendChild(list);
+
+      var emptyMsg = document.createElement("p");
+      emptyMsg.className = "entry-date hub-table-empty";
+      emptyMsg.textContent = emptyLabel;
+      container.appendChild(emptyMsg);
+
+      var saveEntries = function (updated, onSuccess) {
+        fetch(syncUrl, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        })
+          .then(function (res) {
+            if (!res.ok) throw new Error("save failed");
+            entries = updated;
+            onSuccess();
+          })
+          .catch(function () {
+            if (form.hidden) {
+              window.alert("Couldn’t save. Try again.");
+            } else {
+              error.hidden = false;
+            }
+          });
+      };
+
+      var showForm, hideForm, renderAll;
+
+      var removeEntry = function (id) {
+        if (!window.confirm("Remove this entry?")) return;
+        if (editingId === id) hideForm();
+        saveEntries(entries.filter(function (e) { return e.id !== id; }), renderAll);
+      };
+
+      showForm = function (entry) {
+        editingId = entry ? entry.id : null;
+        form.hidden = false;
+        addBtn.hidden = true;
+        error.hidden = true;
+        saveBtn.textContent = entry ? "Update" : "Save";
+        titleInput.value = entry ? entry.title || "" : "";
+        bodyInput.value = entry ? entry.body || "" : "";
+        titleInput.focus();
+        titleInput.select();
+      };
+
+      hideForm = function () {
+        form.hidden = true;
+        addBtn.hidden = false;
+        editingId = null;
+      };
+
+      renderAll = function () {
+        list.innerHTML = "";
+        entries.forEach(function (entry) {
+          var article = document.createElement("article");
+          article.className = "hub-entry";
+          var h3 = document.createElement("h3");
+          h3.textContent = entry.title || "Untitled";
+          var editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "hub-table-edit-btn";
+          editBtn.textContent = "Edit";
+          editBtn.addEventListener("click", function () { showForm(entry); });
+          h3.appendChild(editBtn);
+          var removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "hub-table-remove-btn";
+          removeBtn.textContent = "Remove";
+          removeBtn.addEventListener("click", function () { removeEntry(entry.id); });
+          h3.appendChild(removeBtn);
+          article.appendChild(h3);
+
+          var bullets = (entry.body || "").split("\n").map(function (line) { return line.trim(); }).filter(Boolean);
+          if (bullets.length) {
+            var ul = document.createElement("ul");
+            bullets.forEach(function (line) {
+              var li = document.createElement("li");
+              li.textContent = line;
+              ul.appendChild(li);
+            });
+            article.appendChild(ul);
+          }
+          list.appendChild(article);
+        });
+        emptyMsg.hidden = entries.length > 0;
+      };
+
+      fetch(syncUrl)
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (remote) {
+          entries = remote || [];
+          renderAll();
+        })
+        .catch(function () {});
+
+      addBtn.addEventListener("click", function () { showForm(); });
+      cancelBtn.addEventListener("click", hideForm);
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var title = titleInput.value.trim();
+        if (!title) return;
+        var fields = { title: title, body: bodyInput.value };
+        var updated = editingId
+          ? entries.map(function (e) { return e.id === editingId ? Object.assign({}, e, fields) : e; })
+          : entries.concat([Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2) }, fields)]);
+        saveEntries(updated, function () {
+          renderAll();
           hideForm();
         });
       });

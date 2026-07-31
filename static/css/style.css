@@ -322,6 +322,73 @@ body.is-home {
 .hub-session-edit-btn:hover { color: var(--accent); }
 .hub-session-remove-btn:hover { color: #d16a6a; }
 
+.hub-table-editor, .hub-list-editor { margin-bottom: 1.5rem; }
+.hub-table-add-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.hub-table-add-btn:hover { background: rgba(201, 162, 39, 0.15); }
+.hub-table-form:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  max-width: 32rem;
+}
+.hub-table-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.hub-table-field label { color: var(--text-dim); font-size: 0.9rem; }
+.hub-table-field input[type="text"],
+.hub-table-field textarea,
+.hub-table-field select {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+}
+.hub-table-field textarea { min-height: 4rem; resize: vertical; }
+.hub-table-field-checkbox { flex-direction: row; align-items: center; gap: 0.5rem; }
+.hub-table-field-checkbox input[type="checkbox"] { cursor: pointer; }
+.hub-table-field-checkbox label { font-size: 1.05rem; color: var(--text); }
+.hub-table-form-actions { display: flex; gap: 0.75rem; }
+.hub-table-form-actions button {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.hub-table-form-actions button:hover { background: rgba(201, 162, 39, 0.15); }
+.hub-table-form-actions button[type="button"] { border-color: var(--border); color: var(--text-dim); }
+.hub-table-form-actions button[type="button"]:hover { color: var(--text); }
+.hub-table-error { color: #d16a6a; font-size: 0.9rem; margin: 0; }
+.hub-table-edit-btn, .hub-table-remove-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 0.75rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hub-table-edit-btn:hover { color: var(--accent); }
+.hub-table-remove-btn:hover { color: #d16a6a; }
+.hub-table { margin-top: 1rem; }
+
 #panel-characters h2,
 #panel-images h2 {
   padding-bottom: 0.5rem;
