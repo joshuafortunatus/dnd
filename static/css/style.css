@@ -1191,7 +1191,13 @@ textarea.autosize-textarea {
    theme's own gold accent so a DM scanning the table at the table can
    actually see where one combatant ends and the next begins. */
 .combat-table tbody td { border-bottom: 1px solid rgba(201, 162, 39, 0.45); }
-.combat-name-cell { white-space: nowrap; }
+/* width: 100% — with only two columns left now that Initiative/AC and
+   HP share one Combat Block cell, the table's auto layout was dumping
+   all the table's leftover width into that single remaining flexible
+   column, stretching it far past its own content and leaving a dead gap
+   to the right of the HP module. Claiming the leftover width here
+   instead keeps Combat Block sized to its own content. */
+.combat-name-cell { white-space: nowrap; width: 100%; padding-right: 1.5rem; }
 .combat-name-text-small { font-size: 0.8rem; }
 .combat-name-conditions {
   margin-top: 0.35rem;
@@ -1225,32 +1231,54 @@ textarea.autosize-textarea {
   font-size: 0.8rem;
   font-family: inherit;
 }
-.combat-hp-cell { white-space: nowrap; }
-.combat-initiative-input { width: 3.5rem; }
-.combat-initiative-input {
-  box-sizing: border-box;
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 0.4rem 0.5rem;
-  font-size: 0.95rem;
-  font-family: inherit;
+/* Initiative/AC and the HP module now share one table cell (the
+   "Combat Block") instead of two separate columns — this wrap is what
+   actually lays them out side by side, with a tighter gap between the
+   two stacks than a table cell boundary would otherwise give them.
+   padding-right reserves room for the "+X temp hp" badge, which floats
+   past the Max box via position: absolute (see .combat-hp-temp-badge) —
+   with this cell now sized tightly to its own content instead of
+   stretching to fill the row, the badge's overflow would otherwise land
+   right at (or past) the page's edge and get clipped by the site's
+   global `body { overflow-x: hidden; }`. */
+/* position: relative — anchors the ::before divider below, which is
+   only drawn on body cells (not .combat-block-header), so the line
+   starts at the first row rather than running through the header too.
+   Generous, asymmetric padding (more on the left than the badge-
+   clearance right) gives the line real breathing room on both sides
+   instead of sitting flush against either column's content. */
+.combat-block-cell { white-space: nowrap; padding-right: 3.5rem; padding-left: 1.75rem; position: relative; }
+/* A soft gold gradient fading in/out top and bottom, not a flat
+   var(--border) line — reads as a quiet decorative flourish (echoing
+   the header's own gold underline at low opacity) rather than a plain
+   structural rule. Inset top/bottom (not 0/0) so the fade has room to
+   actually happen instead of clipping at the row edges. */
+.combat-block-cell::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgba(201, 162, 39, 0.5), transparent);
 }
-/* AC sits under Initiative in the same cell, not its own column — a
-   small labeled value like Current/Max/Temp in the HP block, not a bare
-   input the way it was as a standalone column. */
-.combat-init-cell { white-space: nowrap; }
-.combat-ac-group { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
-.combat-ac-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-}
+/* text-align: center — the header label sits over a merged two-stack
+   column now, not a single left-aligned value, so centering it over the
+   whole "Combat Block" cell reads better than a left-aligned title. No
+   divider here (see .combat-block-cell::before) — the line marks off
+   the row content, not the column header. */
+.combat-block-header { text-align: center; }
+/* gap matches .combat-hp-adjust-wrap's own gap below — the
+   Initiative/AC stack sits the same distance from Heal/Damage as
+   Heal/Damage sits from Current/Max, rather than a tighter, unrelated
+   gap of its own. */
+.combat-block-wrap { display: flex; align-items: flex-start; gap: 1rem; }
+/* Same box for both — Initiative and AC read as a matched pair, not one
+   sized to its own value's typical digit count. */
+.combat-initiative-input,
 .combat-ac-input {
   box-sizing: border-box;
-  width: 2.5rem;
+  width: 3.5rem;
   background: var(--bg-raised);
   border: 1px solid var(--border);
   color: var(--text);
@@ -1258,7 +1286,31 @@ textarea.autosize-textarea {
   padding: 0.4rem 0.5rem;
   font-size: 0.95rem;
   font-family: inherit;
+  text-align: center;
 }
+/* display: grid, not flex-direction: column — a grid's implicit column
+   is sized to the widest content across BOTH rows ("Armor Class" is
+   longer than "Initiative"), so every row's cell ends up exactly that
+   same width automatically, no hand-guessed rem value needed. That's
+   what actually fixes the alignment: each .combat-hp-value-group below
+   still centers its own label/box (align-items: center, untouched), but
+   now centers them within an equal, shared width instead of its own
+   (differently sized) content — so both labels center on the same axis,
+   and both fixed-width Initiative/AC boxes land at the same x position
+   as each other. */
+.combat-init-stack { display: grid; grid-template-columns: max-content; gap: 0.5rem; }
+/* width: auto, not the 3.8rem shared with the HP module's value-groups —
+   that fixed width matches the Current/Max *input boxes*, but
+   "Initiative"/"Armor Class" are much longer labels than "Current"/
+   "Max"/"Temp". .combat-hp-value-label deliberately overflows past its
+   group's box on both sides (see that rule's own comment) rather than
+   wrapping, which let "Armor Class" spill into the Heal/Damage stack
+   beside it. auto here lets the grid column above size itself off each
+   group's real content instead of this fixed 3.8rem; the grid item is
+   then stretched back out to that shared column width (default
+   justify-items: stretch), which is what the centering above actually
+   centers within. */
+.combat-init-stack .combat-hp-value-group { width: auto; }
 /* Heal/Damage/Temp HP module — always on the page, not tucked behind a
    toggle (a fight moves too fast for an extra click just to deal damage),
    so it's a plain static block rather than the positioned popover an
@@ -1272,7 +1324,29 @@ textarea.autosize-textarea {
    moment either side's content changes. max-width keeps the whole module
    from stretching to whatever width the table's auto column-sizing hands
    the HP cell (driven mostly by the much wider Combatant column). */
-.combat-hp-adjust-wrap { display: flex; align-items: stretch; gap: 1rem; margin-top: 0.35rem; max-width: 16rem; }
+/* Same font-size/line-height as .combat-hp-value-label (the
+   "Initiative"/"Armor Class" labels beside this module) and the same
+   0.25rem gap .combat-hp-value-group uses internally between ITS OWN
+   label and box (not .combat-init-stack's 0.5rem, which is a different
+   gap — the vertical space *between* the Initiative row and the Armor
+   Class row, not label-to-box) — so "Hit Points" takes up exactly as
+   much height above Heal as "Initiative" takes above its own box,
+   keeping the two rows' tops aligned. margin, not a shared "gap"
+   property, since this title and .combat-hp-adjust-wrap are separate
+   elements rather than flex siblings here. */
+.combat-hp-title {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+/* margin-top: 0 — .combat-hp-title's own margin-bottom above already
+   supplies the label-to-box spacing (see its comment); a separate
+   margin-top here would stack on top of that and push Heal lower than
+   Initiative's box. */
+.combat-hp-adjust-wrap { display: flex; align-items: stretch; gap: 1rem; margin-top: 0; max-width: 16rem; }
 /* A small fixed gap plus flex-grow on the amount field (not
    justify-content: space-between, which spent the wrap's stretched
    leftover height as loose space around all three items equally) —
@@ -1355,6 +1429,15 @@ textarea.autosize-textarea {
   letter-spacing: 0.05em;
   color: var(--text-dim);
 }
+/* Same label-then-value column shape as .combat-hp-value-group (a
+   hidden label spacer, then the slash) rather than a bare span sitting
+   directly in .combat-hp-main-row — a bare span centers on the row's
+   full height, which includes the CURRENT/MAX labels above the boxes,
+   pulling it visibly above the boxes' own vertical center. Mirroring the
+   structure puts the slash at the same vertical offset as Current/Max's
+   boxes instead. width: auto (no fixed 3.8rem) — it only needs to be as
+   wide as the slash glyph itself, not match an input's width. */
+.combat-hp-slash-group { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
 .combat-hp-slash { color: var(--text-dim); font-size: 2rem; align-self: center; }
 /* position: relative — the anchor .combat-hp-temp-badge below positions
    against, so the badge can sit next to Max without being a flex

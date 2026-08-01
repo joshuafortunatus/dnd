@@ -4404,8 +4404,9 @@
               table.className = "combat-table";
               var thead = document.createElement("thead");
               var headRow = document.createElement("tr");
-              ["Combatant", "Initiative", "HP"].forEach(function (label) {
+              ["Combatant", "Combat Block"].forEach(function (label) {
                 var th = document.createElement("th");
+                if (label === "Combat Block") th.className = "combat-block-header";
                 th.textContent = label;
                 headRow.appendChild(th);
               });
@@ -4558,12 +4559,34 @@
                 window.requestAnimationFrame(function () { autosizeTextarea(notesInput); });
                 tr.appendChild(nameTd);
 
-                {{/* AC lives under Initiative in the same cell (not its
-                  own column) — both are single small numbers a DM only
-                  glances at, so pairing them saves a whole column's width
-                  for the wider Combatant/HP cells. */}}
-                var initTd = document.createElement("td");
-                initTd.className = "combat-init-cell";
+                {{/* Current/Max/Temp/Initiative/Armor Class each get a
+                  small muted label stacked over their (still editable)
+                  value, mirroring the reference's labeled-number look
+                  instead of a bare box — shared by the Initiative/AC
+                  stack here and the HP module below. */}}
+                var makeHpValueGroup = function (labelText, inputEl) {
+                  var group = document.createElement("div");
+                  group.className = "combat-hp-value-group";
+                  var label = document.createElement("span");
+                  label.className = "combat-hp-value-label";
+                  label.textContent = labelText;
+                  group.appendChild(label);
+                  group.appendChild(inputEl);
+                  return group;
+                };
+
+                {{/* Initiative and AC share the same Combat Block cell
+                  as the HP module below (not their own column) — both
+                  are single small numbers a DM only glances at, so
+                  pairing them saves a whole column's width for the
+                  wider Combatant cell. Each gets its own labeled
+                  value-group (Initiative, Armor Class) rather than
+                  leaning on a column header alone to say which is
+                  which — appended into combatBlockWrap below, once
+                  the HP module next to it exists too. */}}
+                var initStack = document.createElement("div");
+                initStack.className = "combat-init-stack";
+
                 var initSelect = document.createElement("select");
                 initSelect.className = "combat-initiative-input";
                 initSelect.dataset.combatField = "initiative";
@@ -4579,23 +4602,15 @@
                 });
                 initSelect.value = stats.initiative || "";
                 initSelect.addEventListener("change", function () { resortRows(); });
-                initTd.appendChild(initSelect);
+                initStack.appendChild(makeHpValueGroup("Initiative", initSelect));
 
-                var acGroup = document.createElement("div");
-                acGroup.className = "combat-ac-group";
-                var acLabel = document.createElement("span");
-                acLabel.className = "combat-ac-label";
-                acLabel.textContent = "AC";
                 var acInput = document.createElement("input");
                 acInput.type = "text";
                 acInput.className = "combat-ac-input";
                 acInput.dataset.combatField = "ac";
                 acInput.value = stats.ac || "";
                 npcRestrictNumericInput(acInput, false);
-                acGroup.appendChild(acLabel);
-                acGroup.appendChild(acInput);
-                initTd.appendChild(acGroup);
-                tr.appendChild(initTd);
+                initStack.appendChild(makeHpValueGroup("Armor Class", acInput));
 
                 {{/* PCs get an editable HP cell too, same as NPCs — a
                   player's HP normally lives on their own D&D Beyond sheet,
@@ -4603,8 +4618,8 @@
                   (e.g. no live sheet access at the table). Unlike NPCs, PC
                   rows are never auto-filled from a stat block — they start
                   blank (null) and stay that way until the DM types a value. */}}
-                var hpTd = document.createElement("td");
-                hpTd.className = "combat-hp-cell";
+                var combatBlockTd = document.createElement("td");
+                combatBlockTd.className = "combat-block-cell";
 
                 {{/* Heal/Damage/Temp HP module — mirrors D&D Beyond's own
                   character-sheet HP box (Heal/Damage buttons around an
@@ -4622,20 +4637,6 @@
                   5e rules. */}}
                 var hpAdjustWrap = document.createElement("div");
                 hpAdjustWrap.className = "combat-hp-adjust-wrap";
-
-                {{/* Current/Max/Temp, each a small muted label stacked
-                  over its (still editable) value, mirroring the
-                  reference's labeled-number look instead of a bare box. */}}
-                var makeHpValueGroup = function (labelText, inputEl) {
-                  var group = document.createElement("div");
-                  group.className = "combat-hp-value-group";
-                  var label = document.createElement("span");
-                  label.className = "combat-hp-value-label";
-                  label.textContent = labelText;
-                  group.appendChild(label);
-                  group.appendChild(inputEl);
-                  return group;
-                };
 
                 var hpAdjustStack = document.createElement("div");
                 hpAdjustStack.className = "combat-hp-adjust-stack";
@@ -4677,10 +4678,27 @@
                 hpMaxInput.value = stats.hpMax || "";
                 npcRestrictNumericInput(hpMaxInput, false);
                 hpMainRow.appendChild(makeHpValueGroup("Current", hpCurrentInput));
+
+                {{/* Wrapped in the same label-then-value structure as the
+                  Current/Max groups on either side (hidden label spacer,
+                  then the slash) rather than a bare span — a bare span
+                  centers on this row's full height, which includes the
+                  CURRENT/MAX labels above the boxes, so it lands too high
+                  relative to the boxes themselves. Mirroring the structure
+                  puts the slash at the same vertical offset as the boxes
+                  it sits between. */}}
+                var hpSlashGroup = document.createElement("div");
+                hpSlashGroup.className = "combat-hp-slash-group";
+                var hpSlashSpacer = document.createElement("span");
+                hpSlashSpacer.className = "combat-hp-value-label";
+                hpSlashSpacer.style.visibility = "hidden";
+                hpSlashSpacer.textContent = " ";
+                hpSlashGroup.appendChild(hpSlashSpacer);
                 var hpSlash = document.createElement("span");
                 hpSlash.className = "combat-hp-slash";
                 hpSlash.textContent = "/";
-                hpMainRow.appendChild(hpSlash);
+                hpSlashGroup.appendChild(hpSlash);
+                hpMainRow.appendChild(hpSlashGroup);
 
                 {{/* position: relative — an anchor for the badge below,
                   so it can sit next to Max without being a flex sibling
@@ -4821,9 +4839,13 @@
                   natural widths, and this is what centers each of them
                   on the OTHER's center line regardless of which is
                   wider, rather than both just left-aligning inside
-                  hpTd and happening to look close. */}}
+                  combatBlockTd and happening to look close. */}}
                 var hpModuleStack = document.createElement("div");
                 hpModuleStack.className = "combat-hp-module-stack";
+                var hpTitle = document.createElement("span");
+                hpTitle.className = "combat-hp-title";
+                hpTitle.textContent = "Hit Points";
+                hpModuleStack.appendChild(hpTitle);
                 hpModuleStack.appendChild(hpAdjustWrap);
 
                 {{/* Divider's width is set (below, once the row is
@@ -4905,7 +4927,18 @@
                 hpDeathSavesWrap.appendChild(hpDeathSuccessInput);
 
                 hpModuleStack.appendChild(hpDeathSavesWrap);
-                hpTd.appendChild(hpModuleStack);
+
+                {{/* Initiative/AC sit directly beside the HP module in
+                  one shared flex row (not a separate table column) so
+                  the two stacks read as a single "Combat Block" unit,
+                  pulled in tight rather than spread across the wider
+                  gap a table cell boundary would otherwise put between
+                  them. */}}
+                var combatBlockWrap = document.createElement("div");
+                combatBlockWrap.className = "combat-block-wrap";
+                combatBlockWrap.appendChild(initStack);
+                combatBlockWrap.appendChild(hpModuleStack);
+                combatBlockTd.appendChild(combatBlockWrap);
 
                 {{/* Death Saves only matters once you're at 0 HP (or
                   past it, into overkill) — hidden the rest of the fight
@@ -4929,7 +4962,7 @@
                   if (w) hpDivider.style.width = w + "px";
                 });
 
-                tr.appendChild(hpTd);
+                tr.appendChild(combatBlockTd);
 
                 return tr;
               };
