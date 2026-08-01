@@ -681,8 +681,18 @@
             return el.tagName === "SELECT" && /-select$/.test(el.id || "");
           };
 
+          {{/* The Combatants table is meant to be usable live, at the
+            table, mid-fight — Initiative/HP/AC/Conditions/Notes shouldn't
+            need an Edit-mode click first any more than a paper initiative
+            tracker has a read-only state. Everything else in a conflict
+            record (Adversaries vs., header Notes, Tied to Session) still
+            follows the normal View/Edit lock. */}}
+          var isCombatTableField = function (el) {
+            return Boolean(el.closest(".combat-tracker-wrap"));
+          };
+
           var lockForViewMode = function (el) {
-            if (isRecordChooserSelect(el)) return;
+            if (isRecordChooserSelect(el) || isCombatTableField(el)) return;
             if (el.tagName === "SELECT" || el.type === "checkbox" || el.type === "radio") {
               el.disabled = true;
             } else {
@@ -4394,7 +4404,7 @@
               table.className = "combat-table";
               var thead = document.createElement("thead");
               var headRow = document.createElement("tr");
-              ["Combatant", "Initiative", "HP", "AC", "Conditions"].forEach(function (label) {
+              ["Combatant", "Initiative", "HP"].forEach(function (label) {
                 var th = document.createElement("th");
                 th.textContent = label;
                 headRow.appendChild(th);
@@ -4427,67 +4437,15 @@
                 nameTextSpan.className = "combat-name-text";
                 nameTextSpan.textContent = name;
                 nameTd.appendChild(nameTextSpan);
+                {{/* Created (and wired into refreshConditionsToggle) before
+                  the picker below, but not appended until after it — the
+                  toggle reads "above" the selected-conditions summary in
+                  the DOM/visually, even though the summary element itself
+                  exists first in code. */}}
                 var nameConditionsLine = document.createElement("div");
                 nameConditionsLine.className = "combat-name-conditions";
                 nameConditionsLine.hidden = true;
-                nameTd.appendChild(nameConditionsLine);
-                tr.appendChild(nameTd);
 
-                var initTd = document.createElement("td");
-                var initSelect = document.createElement("select");
-                initSelect.className = "combat-initiative-input";
-                initSelect.dataset.combatField = "initiative";
-                var initPlaceholder = document.createElement("option");
-                initPlaceholder.value = "";
-                initPlaceholder.textContent = "—";
-                initSelect.appendChild(initPlaceholder);
-                COMBAT_INITIATIVE_OPTIONS.forEach(function (n) {
-                  var option = document.createElement("option");
-                  option.value = n;
-                  option.textContent = n;
-                  initSelect.appendChild(option);
-                });
-                initSelect.value = stats.initiative || "";
-                initSelect.addEventListener("change", function () { resortRows(); });
-                initTd.appendChild(initSelect);
-                tr.appendChild(initTd);
-
-                {{/* PCs get an editable HP cell too, same as NPCs — a
-                  player's HP normally lives on their own D&D Beyond sheet,
-                  but the DM may still want to track it here during a fight
-                  (e.g. no live sheet access at the table). Unlike NPCs, PC
-                  rows are never auto-filled from a stat block — they start
-                  blank (null) and stay that way until the DM types a value. */}}
-                var hpTd = document.createElement("td");
-                hpTd.className = "combat-hp-cell";
-                var hpCurrentInput = document.createElement("input");
-                hpCurrentInput.type = "text";
-                hpCurrentInput.className = "combat-hp-input";
-                hpCurrentInput.dataset.combatField = "hpCurrent";
-                hpCurrentInput.value = stats.hpCurrent || "";
-                npcRestrictNumericInput(hpCurrentInput, false);
-                var hpMaxInput = document.createElement("input");
-                hpMaxInput.type = "text";
-                hpMaxInput.className = "combat-hp-input";
-                hpMaxInput.dataset.combatField = "hpMax";
-                hpMaxInput.value = stats.hpMax || "";
-                npcRestrictNumericInput(hpMaxInput, false);
-                hpTd.appendChild(hpCurrentInput);
-                hpTd.appendChild(document.createTextNode(" / "));
-                hpTd.appendChild(hpMaxInput);
-                tr.appendChild(hpTd);
-
-                var acTd = document.createElement("td");
-                var acInput = document.createElement("input");
-                acInput.type = "text";
-                acInput.className = "combat-ac-input";
-                acInput.dataset.combatField = "ac";
-                acInput.value = stats.ac || "";
-                npcRestrictNumericInput(acInput, false);
-                acTd.appendChild(acInput);
-                tr.appendChild(acTd);
-
-                var conditionsTd = document.createElement("td");
                 {{/* Immediate/live, like every other checkbox picklist in
                   this portal (adversary NPCs, PC motivations) — no separate
                   Save/Cancel step, a toggle just is what it is. The toggle
@@ -4495,7 +4453,9 @@
                   "Select conditions" if none are checked yet; while the
                   dropdown is open it reads "Collapse" and gets an accent
                   (gold) highlight so it's obvious clicking it again — or
-                  clicking anywhere outside — closes it back up. */}}
+                  clicking anywhere outside — closes it back up. Lives under
+                  the combatant's name (not its own column) so the summary
+                  line, the picker, and Other notes all read as one block. */}}
                 var conditionsWrap = document.createElement("div");
                 conditionsWrap.className = "combat-conditions-wrap dm-dropdown-wrap";
                 conditionsWrap.dataset.combatField = "conditions";
@@ -4577,8 +4537,399 @@
 
                 conditionsWrap.appendChild(conditionsToggle);
                 conditionsWrap.appendChild(conditionsDropdown);
-                conditionsTd.appendChild(conditionsWrap);
-                tr.appendChild(conditionsTd);
+                nameTd.appendChild(conditionsWrap);
+                nameTd.appendChild(nameConditionsLine);
+
+                {{/* Free-text, unlike Conditions — a spot for whatever
+                  doesn't fit a structured field (e.g. multi-line marching
+                  orders, "owes Tink a favor"), not a picklist. A textarea,
+                  not a single-line input, so it can actually hold more than
+                  one line — grows with autosizeTextarea (same helper
+                  makeFieldTextarea's fields use) rather than scrolling
+                  internally or blowing out the row's fixed height. */}}
+                var notesInput = document.createElement("textarea");
+                notesInput.rows = 1;
+                notesInput.className = "combat-notes-input autosize-textarea";
+                notesInput.dataset.combatField = "notes";
+                notesInput.placeholder = "Other notes…";
+                notesInput.value = stats.notes || "";
+                notesInput.addEventListener("input", function () { autosizeTextarea(notesInput); });
+                nameTd.appendChild(notesInput);
+                window.requestAnimationFrame(function () { autosizeTextarea(notesInput); });
+                tr.appendChild(nameTd);
+
+                {{/* AC lives under Initiative in the same cell (not its
+                  own column) — both are single small numbers a DM only
+                  glances at, so pairing them saves a whole column's width
+                  for the wider Combatant/HP cells. */}}
+                var initTd = document.createElement("td");
+                initTd.className = "combat-init-cell";
+                var initSelect = document.createElement("select");
+                initSelect.className = "combat-initiative-input";
+                initSelect.dataset.combatField = "initiative";
+                var initPlaceholder = document.createElement("option");
+                initPlaceholder.value = "";
+                initPlaceholder.textContent = "—";
+                initSelect.appendChild(initPlaceholder);
+                COMBAT_INITIATIVE_OPTIONS.forEach(function (n) {
+                  var option = document.createElement("option");
+                  option.value = n;
+                  option.textContent = n;
+                  initSelect.appendChild(option);
+                });
+                initSelect.value = stats.initiative || "";
+                initSelect.addEventListener("change", function () { resortRows(); });
+                initTd.appendChild(initSelect);
+
+                var acGroup = document.createElement("div");
+                acGroup.className = "combat-ac-group";
+                var acLabel = document.createElement("span");
+                acLabel.className = "combat-ac-label";
+                acLabel.textContent = "AC";
+                var acInput = document.createElement("input");
+                acInput.type = "text";
+                acInput.className = "combat-ac-input";
+                acInput.dataset.combatField = "ac";
+                acInput.value = stats.ac || "";
+                npcRestrictNumericInput(acInput, false);
+                acGroup.appendChild(acLabel);
+                acGroup.appendChild(acInput);
+                initTd.appendChild(acGroup);
+                tr.appendChild(initTd);
+
+                {{/* PCs get an editable HP cell too, same as NPCs — a
+                  player's HP normally lives on their own D&D Beyond sheet,
+                  but the DM may still want to track it here during a fight
+                  (e.g. no live sheet access at the table). Unlike NPCs, PC
+                  rows are never auto-filled from a stat block — they start
+                  blank (null) and stay that way until the DM types a value. */}}
+                var hpTd = document.createElement("td");
+                hpTd.className = "combat-hp-cell";
+
+                {{/* Heal/Damage/Temp HP module — mirrors D&D Beyond's own
+                  character-sheet HP box (Heal/Damage buttons around an
+                  amount field) rather than making the DM do the arithmetic
+                  by hand on hpCurrentInput directly. Always on the page,
+                  not tucked behind a toggle — a fight moves too fast for
+                  an extra click just to deal damage. Left column: just
+                  Heal, the shared amount field, Damage. Right column:
+                  Current/Max (sized big, flexed to fill whatever space is
+                  left above Temp) then Temp — label and value together,
+                  under Current/Max, boxed the same size as Heal/Damage.
+                  Both columns stretch to the same overall height
+                  (align-items: stretch on the wrap) so their tops and
+                  bottoms both line up. Temp HP absorbs Damage first, per
+                  5e rules. */}}
+                var hpAdjustWrap = document.createElement("div");
+                hpAdjustWrap.className = "combat-hp-adjust-wrap";
+
+                {{/* Current/Max/Temp, each a small muted label stacked
+                  over its (still editable) value, mirroring the
+                  reference's labeled-number look instead of a bare box. */}}
+                var makeHpValueGroup = function (labelText, inputEl) {
+                  var group = document.createElement("div");
+                  group.className = "combat-hp-value-group";
+                  var label = document.createElement("span");
+                  label.className = "combat-hp-value-label";
+                  label.textContent = labelText;
+                  group.appendChild(label);
+                  group.appendChild(inputEl);
+                  return group;
+                };
+
+                var hpAdjustStack = document.createElement("div");
+                hpAdjustStack.className = "combat-hp-adjust-stack";
+                var hpHealBtn = document.createElement("button");
+                hpHealBtn.type = "button";
+                hpHealBtn.className = "combat-hp-heal-btn";
+                hpHealBtn.textContent = "Heal";
+                var hpAmountInput = document.createElement("input");
+                hpAmountInput.type = "text";
+                hpAmountInput.className = "combat-hp-amount-input";
+                npcRestrictNumericInput(hpAmountInput, false);
+                var hpDamageBtn = document.createElement("button");
+                hpDamageBtn.type = "button";
+                hpDamageBtn.className = "combat-hp-damage-btn";
+                hpDamageBtn.textContent = "Damage";
+                hpAdjustStack.appendChild(hpHealBtn);
+                hpAdjustStack.appendChild(hpAmountInput);
+                hpAdjustStack.appendChild(hpDamageBtn);
+                hpAdjustWrap.appendChild(hpAdjustStack);
+
+                var hpValuesCol = document.createElement("div");
+                hpValuesCol.className = "combat-hp-values-col";
+
+                var hpMainRow = document.createElement("div");
+                hpMainRow.className = "combat-hp-main-row";
+                {{/* allowNegative: true — Current's floor is -Max
+                  (overkill damage past 0, not a hard floor at 0), not
+                  the usual non-negative combat stat. */}}
+                var hpCurrentInput = document.createElement("input");
+                hpCurrentInput.type = "text";
+                hpCurrentInput.className = "combat-hp-input";
+                hpCurrentInput.dataset.combatField = "hpCurrent";
+                hpCurrentInput.value = stats.hpCurrent || "";
+                npcRestrictNumericInput(hpCurrentInput, true);
+                var hpMaxInput = document.createElement("input");
+                hpMaxInput.type = "text";
+                hpMaxInput.className = "combat-hp-input";
+                hpMaxInput.dataset.combatField = "hpMax";
+                hpMaxInput.value = stats.hpMax || "";
+                npcRestrictNumericInput(hpMaxInput, false);
+                hpMainRow.appendChild(makeHpValueGroup("Current", hpCurrentInput));
+                var hpSlash = document.createElement("span");
+                hpSlash.className = "combat-hp-slash";
+                hpSlash.textContent = "/";
+                hpMainRow.appendChild(hpSlash);
+
+                {{/* position: relative — an anchor for the badge below,
+                  so it can sit next to Max without being a flex sibling
+                  in hpMainRow. A flex sibling — even hidden via
+                  visibility, even empty — still contributes its width to
+                  hpMainRow's centered content, which desyncs hpMainRow's
+                  centering from hpTempRow's below it (nothing in that row
+                  has a matching trailing element), knocking every
+                  alignment between the two rows off by half the badge's
+                  width. Absolute positioning removes it from the flex
+                  flow entirely — it cannot affect hpMainRow's size or
+                  centering no matter its content or visibility. */}}
+                var hpMaxGroup = makeHpValueGroup("Max", hpMaxInput);
+                hpMaxGroup.classList.add("combat-hp-max-group");
+                var hpTempBadge = document.createElement("span");
+                hpTempBadge.className = "combat-hp-temp-badge combat-hp-temp-badge-empty";
+                var hpTempBadgeAmount = document.createElement("span");
+                hpTempBadgeAmount.className = "combat-hp-temp-badge-amount";
+                var hpTempBadgeLabel = document.createElement("span");
+                hpTempBadgeLabel.className = "combat-hp-temp-badge-label";
+                hpTempBadgeLabel.textContent = "temp hp";
+                hpTempBadge.appendChild(hpTempBadgeAmount);
+                hpTempBadge.appendChild(hpTempBadgeLabel);
+                hpMaxGroup.appendChild(hpTempBadge);
+                hpMainRow.appendChild(hpMaxGroup);
+                hpValuesCol.appendChild(hpMainRow);
+
+                {{/* Same row structure as Current/Max above it (two
+                  .combat-hp-value-group slots plus the slash's gap) so
+                  "Temp" lands centered directly under "Current" rather
+                  than off to the side — the slash itself is hidden
+                  (visibility, not display, so it still takes up the same
+                  width) since there's nothing to divide here. */}}
+                var hpTempRow = document.createElement("div");
+                hpTempRow.className = "combat-hp-main-row combat-hp-temp-row";
+                var hpTempLabelGroup = document.createElement("div");
+                hpTempLabelGroup.className = "combat-hp-value-group";
+                var hpTempLabel = document.createElement("span");
+                hpTempLabel.className = "combat-hp-value-label";
+                hpTempLabel.textContent = "Temp";
+                hpTempLabelGroup.appendChild(hpTempLabel);
+                hpTempRow.appendChild(hpTempLabelGroup);
+
+                var hpTempSpacer = document.createElement("span");
+                hpTempSpacer.className = "combat-hp-slash";
+                hpTempSpacer.style.visibility = "hidden";
+                hpTempSpacer.textContent = "/";
+                hpTempRow.appendChild(hpTempSpacer);
+
+                var hpTempInput = document.createElement("input");
+                hpTempInput.type = "text";
+                hpTempInput.className = "combat-hp-temp-input";
+                hpTempInput.dataset.combatField = "hpTemp";
+                hpTempInput.value = stats.hpTemp || "";
+                npcRestrictNumericInput(hpTempInput, false);
+                {{/* flex-end, not the centered alignment Current/Max's
+                  groups use — the box is wider than this slot (it's
+                  boxed to match Heal/Damage's width, not this column's),
+                  so centering it would overhang evenly on both sides;
+                  right-aligning instead lines its right edge up with
+                  Max's right edge above it. */}}
+                var hpTempInputGroup = document.createElement("div");
+                hpTempInputGroup.className = "combat-hp-value-group combat-hp-temp-input-group";
+                hpTempInputGroup.appendChild(hpTempInput);
+                hpTempRow.appendChild(hpTempInputGroup);
+
+                hpValuesCol.appendChild(hpTempRow);
+
+                hpAdjustWrap.appendChild(hpValuesCol);
+
+                {{/* "+X temp hp" next to Max, not just the Temp row
+                  below — a badge right where the DM's eye already is
+                  when reading Current/Max, rather than making them look
+                  down a row to notice temp HP is even in play. */}}
+                var refreshHpTempBadge = function () {
+                  var temp = hpTempInput.value;
+                  hpTempBadgeAmount.textContent = temp ? "+" + temp : "";
+                  hpTempBadge.classList.toggle("combat-hp-temp-badge-empty", !temp);
+                };
+                hpTempInput.addEventListener("input", refreshHpTempBadge);
+                refreshHpTempBadge();
+
+                hpHealBtn.addEventListener("click", function () {
+                  var amount = parseInt(hpAmountInput.value, 10);
+                  if (isNaN(amount) || amount <= 0) return;
+                  var current = parseInt(hpCurrentInput.value, 10);
+                  if (isNaN(current)) current = 0;
+                  var max = parseInt(hpMaxInput.value, 10);
+                  var healed = current + amount;
+                  if (!isNaN(max)) healed = Math.min(healed, max);
+                  hpCurrentInput.value = String(healed);
+                  hpAmountInput.value = "";
+                  refreshDeathSavesVisibility();
+                });
+
+                {{/* Damage drains Temp HP before Current, per 5e rules —
+                  a Goblin swinging at a Shield of Faith-buffered PC chips
+                  the temp pool first, and only spills over into real HP
+                  once that's exhausted. */}}
+                hpDamageBtn.addEventListener("click", function () {
+                  var amount = parseInt(hpAmountInput.value, 10);
+                  if (isNaN(amount) || amount <= 0) return;
+                  var temp = parseInt(hpTempInput.value, 10);
+                  if (isNaN(temp)) temp = 0;
+                  var current = parseInt(hpCurrentInput.value, 10);
+                  if (isNaN(current)) current = 0;
+                  var max = parseInt(hpMaxInput.value, 10);
+                  var remaining = amount;
+                  if (temp > 0) {
+                    var absorbed = Math.min(temp, remaining);
+                    temp -= absorbed;
+                    remaining -= absorbed;
+                    hpTempInput.value = temp > 0 ? String(temp) : "";
+                    refreshHpTempBadge();
+                  }
+                  var floor = isNaN(max) ? 0 : -max;
+                  hpCurrentInput.value = String(Math.max(floor, current - remaining));
+                  hpAmountInput.value = "";
+                  refreshDeathSavesVisibility();
+                });
+
+                {{/* Direct typing needs the same -Max floor Heal/Damage
+                  already respect — clamps on every keystroke rather than
+                  only at blur, so the field never even briefly shows a
+                  value past the floor. Max shrinking below Current's
+                  existing negative value re-clamps too. */}}
+                var clampHpCurrentToFloor = function () {
+                  var max = parseInt(hpMaxInput.value, 10);
+                  if (isNaN(max)) return;
+                  var current = parseInt(hpCurrentInput.value, 10);
+                  if (!isNaN(current) && current < -max) hpCurrentInput.value = String(-max);
+                };
+                hpCurrentInput.addEventListener("input", clampHpCurrentToFloor);
+                hpMaxInput.addEventListener("input", clampHpCurrentToFloor);
+
+                {{/* Shared column wrap, align-items: center — the HP
+                  module and the Death Saves row below it have different
+                  natural widths, and this is what centers each of them
+                  on the OTHER's center line regardless of which is
+                  wider, rather than both just left-aligning inside
+                  hpTd and happening to look close. */}}
+                var hpModuleStack = document.createElement("div");
+                hpModuleStack.className = "combat-hp-module-stack";
+                hpModuleStack.appendChild(hpAdjustWrap);
+
+                {{/* Divider's width is set (below, once the row is
+                  attached) to match hpAdjustWrap's own rendered width
+                  exactly — from the left edge of Heal/Damage to the
+                  right edge of Max — via JS measurement, not a
+                  hand-guessed CSS width. A CSS percentage here can't do
+                  it: hpModuleStack has no explicit width of its own for
+                  a percentage to resolve against (same reason the name
+                  column's measureNames pass below uses offsetWidth
+                  rather than CSS for its own sizing decision). */}}
+                var hpDivider = document.createElement("div");
+                hpDivider.className = "combat-death-divider";
+                hpModuleStack.appendChild(hpDivider);
+
+                {{/* Death Saves — three fail circles (red) on the left,
+                  three success circles (green) on the right, "Death
+                  Saves" between them. Each side is one running count
+                  (0-3), not three independently-toggleable booleans, and
+                  fills inside-out — the circle nearest the "Death Saves"
+                  label fills first on both sides, matching how a DM
+                  actually marks these off (each new save is worse news
+                  than the last, so the mark closest to the center reads
+                  as "first" here) rather than starting from the
+                  outside edge in. Clicking the innermost already-filled
+                  circle again undoes back to before it — a plain click,
+                  not a checkbox, since "outer pip filled without the
+                  inner ones" isn't a state 5e's rule has any use for. */}}
+                var makeDeathSaveCircles = function (kindClass, hiddenInput, innerFromRight) {
+                  var group = document.createElement("div");
+                  group.className = "combat-death-circles " + kindClass;
+                  var circles = [];
+                  var refresh = function () {
+                    var count = parseInt(hiddenInput.value, 10) || 0;
+                    circles.forEach(function (circle, idx) {
+                      var filled = innerFromRight ? idx >= 3 - count : idx < count;
+                      circle.classList.toggle("combat-death-circle-filled", filled);
+                    });
+                  };
+                  for (var i = 0; i < 3; i++) {
+                    var circle = document.createElement("button");
+                    circle.type = "button";
+                    circle.className = "combat-death-circle";
+                    (function (idx) {
+                      circle.addEventListener("click", function () {
+                        var n = innerFromRight ? 3 - idx : idx + 1;
+                        var count = parseInt(hiddenInput.value, 10) || 0;
+                        hiddenInput.value = String(count === n ? n - 1 : n);
+                        refresh();
+                      });
+                    })(i);
+                    circles.push(circle);
+                    group.appendChild(circle);
+                  }
+                  refresh();
+                  return group;
+                };
+
+                var hpDeathSavesWrap = document.createElement("div");
+                hpDeathSavesWrap.className = "combat-death-saves";
+
+                var hpDeathFailsInput = document.createElement("input");
+                hpDeathFailsInput.type = "hidden";
+                hpDeathFailsInput.dataset.combatField = "deathSaveFails";
+                hpDeathFailsInput.value = stats.deathSaveFails || "0";
+                hpDeathSavesWrap.appendChild(makeDeathSaveCircles("combat-death-circles-fail", hpDeathFailsInput, true));
+                hpDeathSavesWrap.appendChild(hpDeathFailsInput);
+
+                var hpDeathSavesLabel = document.createElement("span");
+                hpDeathSavesLabel.className = "combat-death-saves-label";
+                hpDeathSavesLabel.textContent = "Death Saves";
+                hpDeathSavesWrap.appendChild(hpDeathSavesLabel);
+
+                var hpDeathSuccessInput = document.createElement("input");
+                hpDeathSuccessInput.type = "hidden";
+                hpDeathSuccessInput.dataset.combatField = "deathSaveSuccesses";
+                hpDeathSuccessInput.value = stats.deathSaveSuccesses || "0";
+                hpDeathSavesWrap.appendChild(makeDeathSaveCircles("combat-death-circles-success", hpDeathSuccessInput, false));
+                hpDeathSavesWrap.appendChild(hpDeathSuccessInput);
+
+                hpModuleStack.appendChild(hpDeathSavesWrap);
+                hpTd.appendChild(hpModuleStack);
+
+                {{/* Death Saves only matters once you're at 0 HP (or
+                  past it, into overkill) — hidden the rest of the fight
+                  rather than a permanent fixture most rows never need. */}}
+                var refreshDeathSavesVisibility = function () {
+                  var current = parseInt(hpCurrentInput.value, 10);
+                  var show = !isNaN(current) && current <= 0;
+                  hpDivider.hidden = !show;
+                  hpDeathSavesWrap.hidden = !show;
+                };
+                hpCurrentInput.addEventListener("input", refreshDeathSavesVisibility);
+                refreshDeathSavesVisibility();
+
+                {{/* rAF, not measured immediately — offsetWidth reads 0
+                  until hpAdjustWrap is actually attached to the visible
+                  document, which happens in the caller (renderRows),
+                  after this function returns. Same reasoning as the
+                  Notes textarea's autosize call above. */}}
+                window.requestAnimationFrame(function () {
+                  var w = hpAdjustWrap.offsetWidth;
+                  if (w) hpDivider.style.width = w + "px";
+                });
+
+                tr.appendChild(hpTd);
 
                 return tr;
               };
@@ -4668,8 +5019,12 @@
                     initiative: tr.querySelector('[data-combat-field="initiative"]').value,
                     hpCurrent: tr.querySelector('[data-combat-field="hpCurrent"]').value,
                     hpMax: tr.querySelector('[data-combat-field="hpMax"]').value,
+                    hpTemp: tr.querySelector('[data-combat-field="hpTemp"]').value,
                     ac: tr.querySelector('[data-combat-field="ac"]').value,
                     conditions: selectedConditions,
+                    notes: tr.querySelector('[data-combat-field="notes"]').value,
+                    deathSaveFails: tr.querySelector('[data-combat-field="deathSaveFails"]').value,
+                    deathSaveSuccesses: tr.querySelector('[data-combat-field="deathSaveSuccesses"]').value,
                   };
                 });
                 return stats;
