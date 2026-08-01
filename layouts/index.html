@@ -9,7 +9,7 @@
       <div class="campaign-picker">
         <select id="campaign-picker" aria-label="Choose a campaign" onchange="if (this.value) { window.location.href = this.value; }">
           <option value="">— Select —</option>
-          {{ range $campaigns.ByTitle }}
+          {{ range $campaigns.ByWeight }}
             <option value="{{ .RelPermalink }}">{{ .Title }}</option>
           {{ end }}
         </select>
