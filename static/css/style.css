@@ -1185,6 +1185,12 @@ textarea.autosize-textarea {
    (.combat-name-text) shrinks, and only when it's actually too long to
    fit; see renderCombatSection's post-render measurement pass. */
 .combat-table-empty { margin-top: -0.5rem; }
+/* Each combatant row here is a dense stack (name/conditions/notes plus
+   HP/AC controls), so the default tbody-td divider (var(--border), close
+   in value to the page background) reads as barely-there — bump it to the
+   theme's own gold accent so a DM scanning the table at the table can
+   actually see where one combatant ends and the next begins. */
+.combat-table tbody td { border-bottom: 1px solid rgba(201, 162, 39, 0.45); }
 .combat-name-cell { white-space: nowrap; }
 .combat-name-text-small { font-size: 0.8rem; }
 .combat-name-conditions {
@@ -1203,10 +1209,25 @@ textarea.autosize-textarea {
   color: var(--text-dim);
 }
 .combat-kind-tag.combat-kind-pc { color: var(--accent); border-color: var(--accent); }
+/* Full-width, unlike the fixed-width Initiative/HP/AC inputs — a note can
+   run long, and there's no adjacent column fighting it for space the way
+   Conditions' summary line has to share with the name/tag above it. */
+.combat-notes-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 0.35rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+}
 .combat-hp-cell { white-space: nowrap; }
 .combat-initiative-input { width: 3.5rem; }
-.combat-ac-input, .combat-hp-input { width: 2.5rem; }
-.combat-initiative-input, .combat-hp-input, .combat-ac-input {
+.combat-initiative-input {
   box-sizing: border-box;
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -1216,6 +1237,249 @@ textarea.autosize-textarea {
   font-size: 0.95rem;
   font-family: inherit;
 }
+/* AC sits under Initiative in the same cell, not its own column — a
+   small labeled value like Current/Max/Temp in the HP block, not a bare
+   input the way it was as a standalone column. */
+.combat-init-cell { white-space: nowrap; }
+.combat-ac-group { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
+.combat-ac-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+.combat-ac-input {
+  box-sizing: border-box;
+  width: 2.5rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+/* Heal/Damage/Temp HP module — always on the page, not tucked behind a
+   toggle (a fight moves too fast for an extra click just to deal damage),
+   so it's a plain static block rather than the positioned popover an
+   on-demand dropdown would need. Left column: just Heal, the shared
+   amount field, Damage. Right column: Current/Max (flexed to fill
+   whatever space is left above Temp) then Temp — label and value
+   together, boxed the same size as Heal/Damage. Both columns stretch to
+   the same overall height (align-items: stretch on the wrap, flex: 1 1
+   auto on both the main row and the values column) so their tops AND
+   bottoms line up — not a hand-guessed min-height, which drifts the
+   moment either side's content changes. max-width keeps the whole module
+   from stretching to whatever width the table's auto column-sizing hands
+   the HP cell (driven mostly by the much wider Combatant column). */
+.combat-hp-adjust-wrap { display: flex; align-items: stretch; gap: 1rem; margin-top: 0.35rem; max-width: 16rem; }
+/* A small fixed gap plus flex-grow on the amount field (not
+   justify-content: space-between, which spent the wrap's stretched
+   leftover height as loose space around all three items equally) —
+   align-items: stretch on the wrap still equalizes this stack's and the
+   values column's *container* height, but now the amount field itself
+   grows to soak up that leftover height, so its top/bottom edges close
+   in on Heal/Damage instead of floating away from them. Heal/Damage stay
+   flex: 0 0 auto (fixed to their own content) so only the field between
+   them grows. */
+.combat-hp-adjust-stack { display: flex; flex-direction: column; gap: 0.3rem; flex: 0 0 auto; }
+/* flex-grow: 0 — sized to its own content's width (the Current/Max boxes),
+   not stretched to fill whatever horizontal space is left in the wrap;
+   only its height stretches (via align-items: stretch on the wrap, the
+   cross axis there), which is what actually needs to match the left
+   column. */
+.combat-hp-values-col { display: flex; flex-direction: column; gap: 0.3rem; flex: 0 0 auto; }
+/* flex: 0 0 auto — fixed to its own (small) padding/font, not stretched
+   to fill the stack's leftover height; Heal/Damage take that growth
+   instead (see below), since they're the two actions actually worth
+   emphasizing, not the plain number field between them. Smaller
+   font-size than before to match the smaller box, not the oversized
+   text a bigger field used to need. */
+.combat-hp-amount-input {
+  box-sizing: border-box;
+  width: 4.5rem;
+  flex: 0 0 auto;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  text-align: center;
+}
+/* flex: 1 1 auto — grows to fill the leftover height the amount field no
+   longer claims, so Heal/Damage read as the two prominent actions in
+   this stack. font-size bumped up from the old fixed-height version to
+   match — a taller button with the same small text would look sparse. */
+.combat-hp-heal-btn, .combat-hp-damage-btn {
+  box-sizing: border-box;
+  width: 4.5rem;
+  flex: 1 1 auto;
+  background: var(--bg-raised);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.combat-hp-heal-btn { color: #7ec584; border: 1px solid rgba(126, 197, 132, 0.5); }
+.combat-hp-heal-btn:hover { border-color: #7ec584; background: rgba(126, 197, 132, 0.1); }
+.combat-hp-damage-btn { color: #d16a6a; border: 1px solid rgba(209, 106, 106, 0.5); }
+.combat-hp-damage-btn:hover { border-color: #d16a6a; background: rgba(209, 106, 106, 0.1); }
+.combat-hp-main-row {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+}
+/* width matches .combat-hp-input's own width, not this group's widest
+   child — the CURRENT/MAX label text is wider than its box, and without
+   an explicit width here the (wider) label would set the group's width
+   instead, quietly widening the whole row past the boxes it's actually
+   sized around. The label still renders in full — it just overflows past
+   the box's edges (centered, so evenly on both sides) rather than
+   stretching the layout to fit it. */
+/* width matches .combat-hp-input's own width (both changed together —
+   see the note on .combat-hp-input) — must stay equal, since Temp's
+   right-alignment and the divider's JS-measured width both assume this
+   group's box is exactly as wide as the input it wraps. */
+.combat-hp-value-group { box-sizing: border-box; width: 3.8rem; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.combat-hp-value-label {
+  overflow: visible;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+.combat-hp-slash { color: var(--text-dim); font-size: 2rem; align-self: center; }
+/* position: relative — the anchor .combat-hp-temp-badge below positions
+   against, so the badge can sit next to Max without being a flex
+   sibling in .combat-hp-main-row (a flex sibling, even hidden, even
+   empty, still contributes its width to that row's centered content,
+   which knocks its centering out of sync with .combat-hp-temp-row below
+   it — nothing there has a matching trailing element). */
+.combat-hp-max-group { position: relative; }
+/* Absolutely positioned, fully out of the flex flow — its content,
+   size, and hidden/shown state can NEVER affect .combat-hp-main-row's
+   width or centering, or shift anything else on the page, regardless of
+   whether temp HP is set. "+X" and "temp hp" stack as two short lines,
+   not one long one, so it stays narrow. left: 100% of .combat-hp-max-
+   group (which is exactly as wide as the Max box, not its wider label)
+   starts the badge right at Max's own right edge. */
+.combat-hp-temp-badge {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translate(0.4rem, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--accent);
+  line-height: 1.1;
+}
+.combat-hp-temp-badge-empty { visibility: hidden; }
+.combat-hp-temp-badge-amount { font-size: 0.85rem; font-weight: bold; white-space: nowrap; }
+.combat-hp-temp-badge-label { font-size: 0.65rem; white-space: nowrap; }
+/* clip-path chamfers the top-left and bottom-right corners — the same
+   angled-cut look the D&D Beyond reference's own HP box uses — rather
+   than the plain rounded rectangle every other input on this page gets.
+   It clips the border along with the box, so the cut reads as a real
+   bevel, not just a corner notch punched out of a flat-edged box. */
+.combat-hp-input {
+  box-sizing: border-box;
+  width: 3.8rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.1rem 0.2rem;
+  font-size: 2rem;
+  font-weight: bold;
+  font-family: inherit;
+  text-align: center;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.combat-hp-input:focus { outline: none; border-color: var(--accent); }
+/* Reuses .combat-hp-main-row's layout (two .combat-hp-value-group slots
+   plus the hidden slash's gap) so "Temp" centers directly under
+   "Current" and the value box centers directly under "Max" — same
+   columns, one row down. flex: 0 0 auto overrides that shared class's
+   flex: 1 1 auto: only the Current/Max row above should grow to soak up
+   the wrap's stretched height, not this one too. */
+.combat-hp-temp-row { flex: 0 0 auto; }
+/* The Temp box is boxed to match Heal/Damage's width (wider than this
+   3.2rem slot), so centering it like Current/Max's groups would overhang
+   evenly both sides — flex-end instead lines its right edge up with
+   Max's right edge directly above it. */
+.combat-hp-temp-input-group { align-items: flex-end; }
+/* Boxed the same size as the Heal/Damage buttons to its left. */
+.combat-hp-temp-input {
+  box-sizing: border-box;
+  width: 4.5rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  text-align: center;
+}
+/* Centers the HP module and the Death Saves row below it on a shared
+   center line — the two have different natural widths, so without this
+   they'd each just left-align inside the HP cell instead of lining up
+   with each other. */
+.combat-hp-module-stack { display: flex; flex-direction: column; align-items: center; }
+/* width is set in JS (see the rAF call in combatRow) to exactly match
+   hpAdjustWrap's own rendered width — Heal/Damage's left edge to Max's
+   right edge — not a hand-guessed value here. No explicit display: a
+   plain div's UA-default display:block doesn't fight [hidden]'s
+   display:none the way an author display: rule would (see the note on
+   .combat-death-saves below), so toggling the hidden attribute in JS
+   just works. */
+.combat-death-divider { height: 1px; background: var(--border); margin: 0.6rem 0 0; }
+/* Death Saves — three fail circles (red) on the left, three success
+   circles (green) on the right, flanking the label. Sits below the whole
+   Heal/Damage/Current/Max/Temp module, only shown once Current reaches
+   0 (see refreshDeathSavesVisibility). :not([hidden]) is required here,
+   not just .combat-death-saves — a bare class rule with display: flex
+   beats the browser's default [hidden] { display: none }, so it would
+   render even when hidden is set (this exact gotcha has bitten this
+   codebase before — see the Conditions dropdown and the Temp HP badge). */
+.combat-death-saves:not([hidden]) {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding-top: 0.5rem;
+}
+.combat-death-saves-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.combat-death-circles { display: flex; gap: 0.3rem; }
+.combat-death-circle {
+  box-sizing: border-box;
+  width: 0.9rem;
+  height: 0.9rem;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.combat-death-circles-fail .combat-death-circle { border: 2px solid rgba(209, 106, 106, 0.6); }
+.combat-death-circles-fail .combat-death-circle:hover { border-color: #d16a6a; }
+.combat-death-circles-fail .combat-death-circle-filled { background: #d16a6a; border-color: #d16a6a; }
+.combat-death-circles-success .combat-death-circle { border: 2px solid rgba(126, 197, 132, 0.6); }
+.combat-death-circles-success .combat-death-circle:hover { border-color: #7ec584; }
+.combat-death-circles-success .combat-death-circle-filled { background: #7ec584; border-color: #7ec584; }
 .combat-conditions-wrap { position: relative; }
 .combat-conditions-toggle {
   box-sizing: border-box;
@@ -1267,6 +1531,30 @@ textarea.autosize-textarea {
    the same context — without this, a later sibling row's plain (non-
    positioned) cell content can still paint over it. */
 .combat-row-dropdown-open { position: relative; z-index: 30; }
+/* The Combatants table stays fully editable in View mode (see
+   isCombatTableField in the script below) — these selectors match
+   .dm-view-scope.view-mode's own input/textarea/select rules above at
+   equal-or-higher specificity, and come later in the file, so they win
+   the cascade and undo the read-only skin (transparent/borderless,
+   cursor:default) those rules would otherwise still paint on here. */
+.dm-view-scope.view-mode .combat-tracker-wrap input,
+.dm-view-scope.view-mode .combat-tracker-wrap textarea,
+.dm-view-scope.view-mode .combat-tracker-wrap select {
+  background: var(--bg-raised);
+  cursor: auto;
+}
+.dm-view-scope.view-mode .combat-tracker-wrap input:not([type="checkbox"]),
+.dm-view-scope.view-mode .combat-tracker-wrap textarea {
+  border-color: var(--border);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.dm-view-scope.view-mode .combat-tracker-wrap select {
+  -webkit-appearance: none;
+  appearance: none;
+  border-color: var(--border);
+  padding-left: 0.5rem;
+}
 .journal-field-wide, .pc-field-wide, .conflict-field-wide, .bastion-field-wide {
   margin-bottom: 1.25rem;
 }
