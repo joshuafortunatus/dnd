@@ -4817,6 +4817,12 @@
                   var floor = isNaN(max) ? 0 : -max;
                   hpCurrentInput.value = String(Math.max(floor, current - remaining));
                   hpAmountInput.value = "";
+                  {{/* A stabilized creature that takes any damage becomes
+                    unstable again per 5e rules — including damage that
+                    doesn't move Current HP at all (already at 0, still
+                    ≤0 afterward), which is why this can't be left to
+                    refreshDeathSavesVisibility's own >0 check below. */}}
+                  hpStableInput.value = "false";
                   refreshDeathSavesVisibility();
                 });
 
@@ -4870,7 +4876,7 @@
                   circle again undoes back to before it — a plain click,
                   not a checkbox, since "outer pip filled without the
                   inner ones" isn't a state 5e's rule has any use for. */}}
-                var makeDeathSaveCircles = function (kindClass, hiddenInput, innerFromRight) {
+                var makeDeathSaveCircles = function (kindClass, hiddenInput, innerFromRight, onCountChange) {
                   var group = document.createElement("div");
                   group.className = "combat-death-circles " + kindClass;
                   var circles = [];
@@ -4889,25 +4895,41 @@
                       circle.addEventListener("click", function () {
                         var n = innerFromRight ? 3 - idx : idx + 1;
                         var count = parseInt(hiddenInput.value, 10) || 0;
-                        hiddenInput.value = String(count === n ? n - 1 : n);
+                        var next = count === n ? n - 1 : n;
+                        hiddenInput.value = String(next);
                         refresh();
+                        if (onCountChange) onCountChange(next);
                       });
                     })(i);
                     circles.push(circle);
                     group.appendChild(circle);
                   }
                   refresh();
+                  group.refresh = refresh;
                   return group;
                 };
 
                 var hpDeathSavesWrap = document.createElement("div");
                 hpDeathSavesWrap.className = "combat-death-saves";
 
+                {{/* Tracks "stabilized" separately from the raw
+                  fail/success counts so a stabilized character at 0 HP
+                  doesn't have the row snap back open on the very next
+                  render — refreshDeathSavesVisibility below clears this
+                  the moment Current HP is healed back above 0, so the
+                  next trip to 0 starts a fresh set of saves. */}}
+                var hpStableInput = document.createElement("input");
+                hpStableInput.type = "hidden";
+                hpStableInput.dataset.combatField = "stable";
+                hpStableInput.value = stats.stable || "false";
+                hpDeathSavesWrap.appendChild(hpStableInput);
+
                 var hpDeathFailsInput = document.createElement("input");
                 hpDeathFailsInput.type = "hidden";
                 hpDeathFailsInput.dataset.combatField = "deathSaveFails";
                 hpDeathFailsInput.value = stats.deathSaveFails || "0";
-                hpDeathSavesWrap.appendChild(makeDeathSaveCircles("combat-death-circles-fail", hpDeathFailsInput, true));
+                var failCircles = makeDeathSaveCircles("combat-death-circles-fail", hpDeathFailsInput, true);
+                hpDeathSavesWrap.appendChild(failCircles);
                 hpDeathSavesWrap.appendChild(hpDeathFailsInput);
 
                 var hpDeathSavesLabel = document.createElement("span");
@@ -4915,11 +4937,28 @@
                 hpDeathSavesLabel.textContent = "Death Saves";
                 hpDeathSavesWrap.appendChild(hpDeathSavesLabel);
 
+                {{/* Three successes stabilizes at exactly 0 HP per 5e
+                  rules — the character is no longer dying, so the row
+                  hides itself (via refreshDeathSavesVisibility) instead
+                  of sitting there fully filled every future render. */}}
+                var stabilizeAtZeroHp = function () {
+                  hpCurrentInput.value = "0";
+                  hpDeathFailsInput.value = "0";
+                  hpDeathSuccessInput.value = "0";
+                  failCircles.refresh();
+                  successCircles.refresh();
+                  hpStableInput.value = "true";
+                  refreshDeathSavesVisibility();
+                };
+
                 var hpDeathSuccessInput = document.createElement("input");
                 hpDeathSuccessInput.type = "hidden";
                 hpDeathSuccessInput.dataset.combatField = "deathSaveSuccesses";
                 hpDeathSuccessInput.value = stats.deathSaveSuccesses || "0";
-                hpDeathSavesWrap.appendChild(makeDeathSaveCircles("combat-death-circles-success", hpDeathSuccessInput, false));
+                var successCircles = makeDeathSaveCircles("combat-death-circles-success", hpDeathSuccessInput, false, function (count) {
+                  if (count === 3) stabilizeAtZeroHp();
+                });
+                hpDeathSavesWrap.appendChild(successCircles);
                 hpDeathSavesWrap.appendChild(hpDeathSuccessInput);
 
                 hpModuleStack.appendChild(hpDeathSavesWrap);
@@ -4938,10 +4977,15 @@
 
                 {{/* Death Saves only matters once you're at 0 HP (or
                   past it, into overkill) — hidden the rest of the fight
-                  rather than a permanent fixture most rows never need. */}}
+                  rather than a permanent fixture most rows never need.
+                  A stabilized character (3 successes) stays hidden even
+                  while still sitting at 0 HP; healing back above 0
+                  clears the stabilized flag so a later drop to 0 starts
+                  a fresh set of saves. */}}
                 var refreshDeathSavesVisibility = function () {
                   var current = parseInt(hpCurrentInput.value, 10);
-                  var show = !isNaN(current) && current <= 0;
+                  if (!isNaN(current) && current > 0) hpStableInput.value = "false";
+                  var show = !isNaN(current) && current <= 0 && hpStableInput.value !== "true";
                   hpDivider.hidden = !show;
                   hpDeathSavesWrap.hidden = !show;
                 };
@@ -5054,6 +5098,7 @@
                     notes: tr.querySelector('[data-combat-field="notes"]').value,
                     deathSaveFails: tr.querySelector('[data-combat-field="deathSaveFails"]').value,
                     deathSaveSuccesses: tr.querySelector('[data-combat-field="deathSaveSuccesses"]').value,
+                    stable: tr.querySelector('[data-combat-field="stable"]').value,
                   };
                 });
                 return stats;
