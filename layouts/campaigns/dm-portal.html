@@ -675,7 +675,6 @@
             View mode is active; in Edit mode the observer callback is a
             no-op, so nothing here can affect Edit mode's behavior. */}}
           var viewScopeEls = document.querySelectorAll(".dm-view-scope");
-          var portalModeStorageKey = "dm-portal-mode";
           var currentPortalMode = "view";
 
           var isRecordChooserSelect = function (el) {
@@ -742,13 +741,20 @@
             toggle.addEventListener("click", function (e) {
               var b = e.target.closest(".dm-mode-toggle-btn");
               if (!b || b.dataset.mode === currentPortalMode) return;
-              window.localStorage.setItem(portalModeStorageKey, b.dataset.mode);
               applyPortalMode(b.dataset.mode);
             });
             return toggle;
           };
 
-          applyPortalMode(window.localStorage.getItem(portalModeStorageKey) === "edit" ? "edit" : "view");
+          {{/* View is the default every time this page is entered — never
+            persisted (no localStorage read/write here, unlike every other
+            "remember this" key in the portal), so a DM who flips to Edit
+            and later leaves — a full page reload, or just switching to
+            another section and back, see the registerSectionResetHook call
+            below — always lands back on View, never a lingering Edit
+            session from earlier. */}}
+          applyPortalMode("view");
+          registerSectionResetHook(function () { applyPortalMode("view"); });
 
           {{/* Character Manager: the outer chooser that PC Manager and NPC
             Tracker (both below) now live inside. Neither manager's own
@@ -792,8 +798,18 @@
             Array.prototype.forEach.call(characterManagerRoot.querySelectorAll(".character-manager-back"), function (btn) {
               btn.addEventListener("click", function () {
                 if (!confirmLeaveIfDirty(isAnyFormDirty)) return;
+                {{/* discardAllUnsaved() alone only clears *dirty* trackers —
+                  selecting an already-saved record (e.g. an existing NPC)
+                  never sets its dirty flag, so it survived Back unreset and
+                  reappeared selected next time "NPC" was clicked. Running
+                  every sectionResetHook (same as goToSection does on every
+                  real section switch) unconditionally clears PC Manager's/
+                  NPC Tracker's/etc. detail view too — this also re-invokes
+                  showCharacterManagerChooser itself, since it's registered
+                  as one of these hooks, so the explicit call below it was
+                  dropped as redundant. */}}
                 discardAllUnsaved();
-                showCharacterManagerChooser();
+                sectionResetHooks.forEach(function (fn) { fn(); });
               });
             });
 
