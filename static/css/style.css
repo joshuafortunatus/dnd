@@ -792,12 +792,21 @@ body.is-home {
   margin-bottom: 2rem;
 }
 .npc-header-fields .npc-field { flex: 1 1 14rem; }
-.npc-header-fields .npc-field-wide { flex-basis: 100%; }
-.npc-header-subrow { display: flex; flex-wrap: wrap; gap: 1.5rem; }
+
+/* Monster / aidedd.org link / Name / Reference Link as four equal
+   boxes, 2 per row — a full-width row of its own within the flex-wrap
+   header, same as .npc-field-wide used to be. */
+.npc-header-fields .npc-monster-grid { flex-basis: 100%; }
+.npc-monster-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
 
 .npc-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .npc-field label { color: var(--text-dim); font-size: 0.9rem; }
 .npc-field input[type="text"],
+.npc-field input[type="url"],
 .npc-field select,
 .npc-field textarea {
   background: var(--bg-raised);
@@ -809,7 +818,6 @@ body.is-home {
   font-family: inherit;
 }
 .npc-field textarea { min-height: 5rem; resize: vertical; }
-.npc-field-wide { margin-bottom: 1.25rem; }
 
 .npc-monster-link { display: block; color: var(--accent); font-size: 0.85rem; margin-top: 0.35rem; }
 
@@ -1048,6 +1056,35 @@ body.is-home {
 }
 .pc-header-fields .pc-field { flex: 1 1 14rem; }
 
+.journal-header-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.journal-header-fields .journal-field { flex: 1 1 auto; }
+/* Same fixed width for both — sized in ch (character width) to fit
+   "Session Number", the longer of the two labels (14 chars vs "Session
+   Date"'s 12), since neither field's value ("999", "12/31/2026") needs
+   more than that. flex-shrink/grow: 0 so they hold that width instead of
+   stretching; both also carry .journal-field above, so this override must
+   come after it in source order to win at equal specificity. Title has no
+   override, so its flex: 1 1 auto from the rule above picks up whatever's
+   left. */
+.journal-header-fields .journal-field-session-number,
+.journal-header-fields .journal-field-session-date {
+  flex: 0 0 auto;
+  width: calc(12ch + 1.4rem + 2px);
+}
+
+.conflict-header-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.conflict-header-fields .conflict-field { flex: 1 1 0; }
+
 .journal-field, .pc-field, .conflict-field, .bastion-field {
   display: flex;
   flex-direction: column;
@@ -1060,7 +1097,7 @@ body.is-home {
 .journal-field input[type="text"], .journal-field textarea,
 .pc-field input[type="text"], .pc-field textarea, .pc-field select,
 .conflict-field input[type="text"], .conflict-field textarea, .conflict-field select,
-.bastion-field input[type="text"], .bastion-field textarea {
+.bastion-field input[type="text"], .bastion-field textarea, .bastion-field select {
   background: var(--bg-raised);
   border: 1px solid var(--border);
   color: var(--text);
@@ -1084,7 +1121,22 @@ textarea.autosize-textarea {
    overrides .combat-conditions-toggle's max-width regardless of source
    order (equal-specificity single-class rules would otherwise let
    whichever is declared later in the file win). */
-.combat-conditions-toggle.conflict-adversary-toggle { min-width: 14rem; max-width: none; white-space: normal; }
+/* width: 100% — a <button> is inline-block by default, so it won't
+   otherwise stretch to fill .conflict-adversary-wrap's full width (that
+   wrap itself does stretch, via the flex column's default align-items:
+   stretch, to match Tied to Session's box next to it). padding/font-size
+   here override .combat-conditions-toggle's smaller values (0.4rem 0.6rem
+   / 0.85rem) with the exact values Tied to Session's <select> uses (see
+   ".conflict-field select" above) so the two boxes are the same height,
+   not just the same width. */
+.combat-conditions-toggle.conflict-adversary-toggle {
+  min-width: 14rem;
+  max-width: none;
+  white-space: normal;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  font-size: 1rem;
+}
 .conflict-adversary-dropdown {
   min-width: 16rem;
   max-height: 16rem;
@@ -1219,6 +1271,13 @@ textarea.autosize-textarea {
   margin-bottom: 1.25rem;
 }
 
+.bastion-header-subrow { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1.25rem; }
+.bastion-header-subrow .bastion-field { flex: 1 1 auto; }
+/* Fixed width, just enough for the "Level" label (its value is at most 2
+   digits, "20"); must come after the rule above to win at equal
+   specificity — see the same pattern on .journal-field-session-number. */
+.bastion-header-subrow .bastion-field-level { flex: 0 0 auto; width: calc(6ch + 1.4rem + 2px); }
+
 .pc-field-static {
   padding: 0.5rem 0.7rem;
   color: var(--text-dim);
@@ -1343,6 +1402,11 @@ textarea.autosize-textarea {
   flex: 1 1 20rem;
   max-width: 24rem;
 }
+/* Overrides the shared 24rem cap above (same specificity, so this must
+   come after it) — the conflict select's own label text ("N - Adventurers
+   vs. ...") runs much longer than the other trackers', so it should fill
+   the row instead of getting truncated/cramped next to the Add button. */
+.campaign-conflicts-select { flex: 1 1 auto; max-width: none; }
 .travel-planner-add-btn, .npc-tracker-add-btn, .settlement-tracker-add-btn,
 .campaign-journal-add-btn, .campaign-conflicts-add-btn, .bastion-tracker-add-btn {
   background: var(--bg-raised);
