@@ -4,6 +4,10 @@ date: {{ .Date }}
 layout: "hub"
 system: "D&D 5e"
 status: "active"
+# Controls order in the homepage campaign picker (lower = shown first).
+# New campaigns default to 0, which sorts before all existing campaigns —
+# set this explicitly if you want it to land elsewhere in the list.
+weight: 0
 # Path (relative to static/) to a real image under
 # static/images/campaigns/<slug>/ — falls back to the site-wide
 # background_image (hugo.toml) if left blank.

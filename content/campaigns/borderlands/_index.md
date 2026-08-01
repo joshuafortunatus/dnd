@@ -1,6 +1,8 @@
 ---
 title: "Borderlands"
 date: 2026-07-24T20:50:49-07:00
+# Controls order in the homepage campaign picker (lower = shown first).
+weight: 2
 layout: "hub"
 system: "D&D 5e"
 status: "active"
