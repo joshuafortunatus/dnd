@@ -1199,6 +1199,13 @@ textarea.autosize-textarea {
    instead keeps Combat Block sized to its own content. */
 .combat-name-cell { white-space: nowrap; width: 100%; padding-right: 1.5rem; }
 .combat-name-text-small { font-size: 0.8rem; }
+/* Matches .combat-name-conditions/.combat-notes-input's own margin-top
+   below — .combat-conditions-toggle has none of its own (the adversary
+   picklist elsewhere reuses that class inside a wrap that already
+   spaces it via its own layout), so without this override the toggle
+   sat flush against the name/tag line above it while the two rows below
+   it were evenly spaced. */
+.combat-name-cell .combat-conditions-toggle { margin-top: 0.35rem; }
 .combat-name-conditions {
   margin-top: 0.35rem;
   color: var(--text-dim);
@@ -1218,6 +1225,9 @@ textarea.autosize-textarea {
 /* Full-width, unlike the fixed-width Initiative/HP/AC inputs — a note can
    run long, and there's no adjacent column fighting it for space the way
    Conditions' summary line has to share with the name/tag above it. */
+/* padding/font-size match .combat-conditions-toggle's own exactly (not
+   this input's previous smaller values) so the single-line collapsed
+   height of the two lines up, not just their widths. */
 .combat-notes-input {
   display: block;
   box-sizing: border-box;
@@ -1227,8 +1237,8 @@ textarea.autosize-textarea {
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 4px;
-  padding: 0.3rem 0.5rem;
-  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
   font-family: inherit;
 }
 /* Initiative/AC and the HP module now share one table cell (the
@@ -1311,6 +1321,15 @@ textarea.autosize-textarea {
    justify-items: stretch), which is what the centering above actually
    centers within. */
 .combat-init-stack .combat-hp-value-group { width: auto; }
+/* line-height: 1, not the body's global 1.6 — that leading is meant for
+   paragraph text, but here it pads a few px of empty space above
+   "Initiative"'s own glyphs, which .combat-block-wrap's align-items:
+   flex-start can't see (it aligns box edges, not ink) — so the *text*
+   still sat a few px below Heal's hard border-box top even once the
+   two boxes' top edges matched. Scoped to this stack only — Current/
+   Max/Temp's labels don't have anything to their right needing this
+   exact a match. */
+.combat-init-stack .combat-hp-value-label { line-height: 1; }
 /* Heal/Damage/Temp HP module — always on the page, not tucked behind a
    toggle (a fight moves too fast for an extra click just to deal damage),
    so it's a plain static block rather than the positioned popover an
@@ -1324,29 +1343,11 @@ textarea.autosize-textarea {
    moment either side's content changes. max-width keeps the whole module
    from stretching to whatever width the table's auto column-sizing hands
    the HP cell (driven mostly by the much wider Combatant column). */
-/* Same font-size/line-height as .combat-hp-value-label (the
-   "Initiative"/"Armor Class" labels beside this module) and the same
-   0.25rem gap .combat-hp-value-group uses internally between ITS OWN
-   label and box (not .combat-init-stack's 0.5rem, which is a different
-   gap — the vertical space *between* the Initiative row and the Armor
-   Class row, not label-to-box) — so "Hit Points" takes up exactly as
-   much height above Heal as "Initiative" takes above its own box,
-   keeping the two rows' tops aligned. margin, not a shared "gap"
-   property, since this title and .combat-hp-adjust-wrap are separate
-   elements rather than flex siblings here. */
-.combat-hp-title {
-  display: block;
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.25rem;
-}
-/* margin-top: 0 — .combat-hp-title's own margin-bottom above already
-   supplies the label-to-box spacing (see its comment); a separate
-   margin-top here would stack on top of that and push Heal lower than
-   Initiative's box. */
-.combat-hp-adjust-wrap { display: flex; align-items: stretch; gap: 1rem; margin-top: 0; max-width: 16rem; }
+/* No title above Heal/Damage — .combat-block-wrap's align-items:
+   flex-start then puts this wrap's top flush with "Initiative"'s own
+   label text above it in the sibling stack, rather than with the
+   Initiative *box* one row down. */
+.combat-hp-adjust-wrap { display: flex; align-items: stretch; gap: 1rem; max-width: 16rem; }
 /* A small fixed gap plus flex-grow on the amount field (not
    justify-content: space-between, which spent the wrap's stretched
    leftover height as loose space around all three items equally) —
