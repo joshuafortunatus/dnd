@@ -1787,31 +1787,54 @@
               return makeFieldInput("npc", labelText, value, dataAttrs);
             };
 
-            var npcEditTextarea = function (labelText, value, dataAttrs) {
-              return makeFieldTextarea("npc", labelText, value, dataAttrs);
-            };
-
-            var npcEditSelect = function (labelText, options, value, dataAttrs) {
+            {{/* Reference-link field: holds a URL (e.g. a link to the
+              Monster Manual page/PDF) rather than free text, and renders a
+              live "Open ↗" preview underneath that opens in a new tab —
+              same target="_blank"/rel="noopener" pattern as the
+              aidedd.org link in npcMonsterField above. The preview only
+              appears for values that actually look like an http(s) URL,
+              so a stray non-URL value never becomes a broken/relative
+              link target. */}}
+            var npcEditLinkInput = function (labelText, value, dataAttrs) {
               var wrap = document.createElement("div");
               wrap.className = "npc-field";
               var label = document.createElement("label");
               label.textContent = labelText;
               wrap.appendChild(label);
-              var select = document.createElement("select");
-              Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
-              var placeholder = document.createElement("option");
-              placeholder.value = "";
-              placeholder.textContent = "— Select —";
-              select.appendChild(placeholder);
-              options.forEach(function (opt) {
-                var option = document.createElement("option");
-                option.value = opt;
-                option.textContent = opt;
-                select.appendChild(option);
-              });
-              select.value = options.indexOf(value) !== -1 ? value : "";
-              wrap.appendChild(select);
+
+              var input = document.createElement("input");
+              input.type = "url";
+              input.placeholder = "https://…";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(input);
+
+              var link = document.createElement("a");
+              link.className = "npc-monster-link";
+              link.target = "_blank";
+              link.rel = "noopener";
+              wrap.appendChild(link);
+
+              var updateLink = function () {
+                var url = input.value.trim();
+                if (/^https?:\/\//i.test(url)) {
+                  link.href = url;
+                  link.textContent = "Open ↗";
+                  link.hidden = false;
+                } else {
+                  link.removeAttribute("href");
+                  link.textContent = "";
+                  link.hidden = true;
+                }
+              };
+              updateLink();
+              input.addEventListener("input", updateLink);
+
               return wrap;
+            };
+
+            var npcEditTextarea = function (labelText, value, dataAttrs) {
+              return makeFieldTextarea("npc", labelText, value, dataAttrs);
             };
 
             {{/* Stat Block can come from the Monster Manual reference
@@ -1854,11 +1877,11 @@
             };
 
             var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl, nameFieldWrap) {
-              var wrap = document.createElement("div");
-              wrap.className = "npc-field";
+              var monsterWrap = document.createElement("div");
+              monsterWrap.className = "npc-field";
               var label = document.createElement("label");
               label.textContent = "Monster";
-              wrap.appendChild(label);
+              monsterWrap.appendChild(label);
 
               var select = document.createElement("select");
               select.dataset.field = "statBlockName";
@@ -1874,29 +1897,39 @@
                 select.appendChild(option);
               });
               select.value = names.some(function (m) { return m.name === nameValue; }) ? nameValue : "";
-              wrap.appendChild(select);
+              monsterWrap.appendChild(select);
 
+              {{/* Its own box, to the right of Monster, rather than tucked
+                under the select — part of the 2x2 grid below (Monster /
+                aidedd.org link on top, Name / Reference Link underneath). */}}
+              var linkWrap = document.createElement("div");
+              linkWrap.className = "npc-field";
+              var linkLabel = document.createElement("label");
+              linkLabel.textContent = "Stat Block";
+              linkWrap.appendChild(linkLabel);
               var link = document.createElement("a");
               link.className = "npc-monster-link";
               link.target = "_blank";
               link.rel = "noopener";
               npcUpdateMonsterLink(link, edition, select.value);
-              wrap.appendChild(link);
+              linkWrap.appendChild(link);
 
               var persistOverride = npcMakeStatBlockOverridePersister(npc, isNewNpc);
 
-              {{/* Full-width sibling of the narrow "Monster" field above, so
-                it wraps onto its own row inside the flex-wrap header (see
-                .npc-statblock in style.css) rather than being squeezed into
-                a 14rem column. Empty/hidden unless the Worker proxy is
-                configured (see NPC_PROXY_URL) — otherwise the aidedd.org
-                link above is all there is, same as before this feature.
-                Note this panel's hidden/visible state (toggled by
-                npcFetchAndRenderMonsterStatBlock below) is exactly why NPC
-                Name has to be inserted between it and the Monster field
-                rather than appended after: appending after would put Name
-                on a different row than Monster whenever this panel's
-                flex-basis:100% happened to be active. */}}
+              {{/* Four equal boxes — Monster, the aidedd.org link, Name,
+                and Reference Link — laid out as a 2x2 grid (see
+                .npc-monster-grid in style.css) so Name sits under Monster
+                and Reference Link sits under the aidedd.org link,
+                regardless of header width. The stat block panel below is
+                a full-width sibling of the grid, hidden until a monster is
+                actually picked (see npcFetchAndRenderMonsterStatBlock). */}}
+              var grid = document.createElement("div");
+              grid.className = "npc-monster-grid";
+              grid.appendChild(monsterWrap);
+              grid.appendChild(linkWrap);
+              grid.appendChild(nameFieldWrap);
+              grid.appendChild(npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }));
+
               var statblockPanel = document.createElement("div");
               statblockPanel.className = "npc-statblock";
               npcFetchAndRenderMonsterStatBlock(statblockPanel, edition, select.value, npc, persistOverride);
@@ -1918,8 +1951,7 @@
               });
 
               var fragment = document.createDocumentFragment();
-              fragment.appendChild(wrap);
-              fragment.appendChild(nameFieldWrap);
+              fragment.appendChild(grid);
               fragment.appendChild(statblockPanel);
               return fragment;
             };
@@ -3626,30 +3658,22 @@
                 never shown as an editable toggle here — each NPC just gets
                 the field layout that matches how it was created. */}}
               if (npc.statBlockSource === "monster-manual") {
-                {{/* npcMonsterField inserts nameFieldWrap itself, between
-                  the narrow Monster select and the full-width stat block
-                  panel, so Name and Monster stay locked on the same row
-                  regardless of whether that panel is currently visible —
-                  appending nameFieldWrap separately here would put it on
-                  its own row whenever the panel's flex-basis:100% happened
-                  to be in play. */}}
+                {{/* npcMonsterField inserts nameFieldWrap itself into its
+                  own 2x2 grid (Monster / aidedd.org link / Name / Reference
+                  Link) — appending nameFieldWrap separately here would
+                  leave it outside that grid instead of under Monster. */}}
                 header.appendChild(markRequired(npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl, nameFieldWrap)));
               } else {
                 header.appendChild(nameFieldWrap);
                 header.appendChild(npcCustomStatBlockField(npc, isNew, npcNormalizedEdition(npc)));
+                {{/* Monster Manual NPCs get their Reference Link box inside
+                  npcMonsterField's 2x2 grid; Custom NPCs have no such grid,
+                  so it's just its own field here. Alignment is dropped
+                  entirely for NPCs — it's already part of the type/alignment
+                  line in the stat block above (fetched for Monster Manual
+                  NPCs, typed into Custom's own typeLine field). */}}
+                header.appendChild(npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }));
               }
-              {{/* Own full-width row (wrapper carries npc-field-wide so it
-                always breaks onto a new line, whether or not the Monster
-                Manual stat block panel above it is currently visible —
-                npcFetchAndRenderMonsterStatBlock hides that panel, and its
-                flex-basis:100% line break, until a monster is actually
-                picked), with Monster Manual Page and Alignment sharing
-                that row rather than each getting their own. */}}
-              var mmAlignmentRow = document.createElement("div");
-              mmAlignmentRow.className = "npc-field-wide npc-header-subrow";
-              mmAlignmentRow.appendChild(npcEditInput("Monster Manual Page", npc.mmPage, { field: "mmPage" }));
-              mmAlignmentRow.appendChild(npcEditSelect("Alignment", DND_ALIGNMENTS, npc.alignment, { field: "alignment" }));
-              header.appendChild(mmAlignmentRow);
               form.appendChild(header);
 
               form.appendChild(npcEditTextarea("Stat Block Alterations", npc.statBlockAlterations, { field: "statBlockAlterations" }));
@@ -3971,9 +3995,22 @@
             renderFields: function (form, entry) {
               var header = document.createElement("div");
               header.className = "journal-header-fields";
-              header.appendChild(makeFieldInput("journal", "Session Number", entry.sessionNumber, { field: "sessionNumber" }));
-              header.appendChild(makeFieldInput("journal", "Session Date", entry.sessionDate, { field: "sessionDate" }));
+
+              {{/* Title leads the row and takes whatever space Number/Date
+                don't need; Number/Date are narrow and fixed-width (just
+                enough for "999" and "12/31/2026" respectively, via
+                ch-based widths in style.css) rather than splitting the row
+                evenly. */}}
               header.appendChild(markRequired(makeFieldInput("journal", "Session/Adventure Title", entry.title, { field: "title" })));
+
+              var sessionNumberField = makeFieldInput("journal", "Session Number", entry.sessionNumber, { field: "sessionNumber" });
+              sessionNumberField.classList.add("journal-field-session-number");
+              header.appendChild(sessionNumberField);
+
+              var sessionDateField = makeFieldInput("journal", "Session Date", entry.sessionDate, { field: "sessionDate" });
+              sessionDateField.classList.add("journal-field-session-date");
+              header.appendChild(sessionDateField);
+
               form.appendChild(header);
 
               form.appendChild(makeFieldTextarea("journal", "Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
@@ -4110,7 +4147,7 @@
               combat-table row per copy. */}}
             var conflictAdversarySelect = function (labelText, selectedIds, selectedQuantities) {
               var wrap = document.createElement("div");
-              wrap.className = "conflict-field conflict-field-wide";
+              wrap.className = "conflict-field";
               var label = document.createElement("label");
               label.textContent = labelText;
               wrap.appendChild(label);
@@ -4836,8 +4873,11 @@
               var form = document.createElement("div");
               form.className = "conflict-edit-form";
 
-              form.appendChild(markRequired(conflictAdversarySelect("Adventurers vs.", conflict.adversaryNpcIds, conflict.adversaryNpcQuantities)));
-              form.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
+              var conflictHeaderFields = document.createElement("div");
+              conflictHeaderFields.className = "conflict-header-fields";
+              conflictHeaderFields.appendChild(markRequired(conflictAdversarySelect("Adventurers vs.", conflict.adversaryNpcIds, conflict.adversaryNpcQuantities)));
+              conflictHeaderFields.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
+              form.appendChild(conflictHeaderFields);
               form.appendChild(conflictEditTextarea("Notes", conflict.notes, { field: "notes" }));
 
               currentCombatSection = renderCombatSection(form, conflict);
@@ -5070,6 +5110,52 @@
             return [blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility(), blankFacility()];
           };
 
+          {{/* Character's Name is a picklist over the same union PC
+            Manager's own renderPcList uses — real static pages
+            (pcRealTitles) PLUS anyone added only via the live D&D Beyond
+            importer (loadRoster()) — rather than free text, so a bastion
+            is always tied to an actual imported PC. Levels for
+            live-imported characters are kept current with D&D Beyond by
+            refreshRosterFromDdb (see PC Manager above), so picking one
+            here auto-fills Level from that same data instead of the DM
+            retyping it; static-page-only characters (never live-imported)
+            have no numeric level to pull, so Level stays whatever the DM
+            already typed for those. */}}
+          var bastionCharacterField = function (value, levelInputEl) {
+            var wrap = document.createElement("div");
+            wrap.className = "bastion-field";
+            var label = document.createElement("label");
+            label.textContent = "Character's Name";
+            wrap.appendChild(label);
+
+            var roster = loadRoster();
+            var names = pcRealTitles.slice();
+            roster.forEach(function (e) { if (names.indexOf(e.name) === -1) names.push(e.name); });
+            names.sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: "base" }); });
+
+            var select = document.createElement("select");
+            select.dataset.field = "characterName";
+            var placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = names.length ? "— Select a character —" : "— No characters yet —";
+            select.appendChild(placeholder);
+            names.forEach(function (name) {
+              var option = document.createElement("option");
+              option.value = name;
+              option.textContent = name;
+              select.appendChild(option);
+            });
+            select.value = names.indexOf(value) !== -1 ? value : "";
+            wrap.appendChild(select);
+
+            select.addEventListener("change", function () {
+              var rosterEntry = roster.filter(function (e) { return slugifyName(e.name) === slugifyName(select.value); })[0];
+              if (levelInputEl && rosterEntry && rosterEntry.level) levelInputEl.value = rosterEntry.level;
+            });
+
+            return wrap;
+          };
+
           createRecordTracker({
             containerId: "bastion-tracker",
             selectId: "bastion-tracker-select",
@@ -5091,8 +5177,17 @@
               var header = document.createElement("div");
               header.className = "bastion-header-fields";
               header.appendChild(markRequired(makeFieldInput("bastion", "Bastion's Name", bastion.bastionName, { field: "bastionName" })));
-              header.appendChild(makeFieldInput("bastion", "Character's Name", bastion.characterName, { field: "characterName" }));
-              header.appendChild(makeFieldInput("bastion", "Level", bastion.level, { field: "level" }));
+
+              var levelField = makeFieldInput("bastion", "Level", bastion.level, { field: "level" });
+              levelField.classList.add("bastion-field-level");
+              var levelInputEl = levelField.querySelector('[data-field="level"]');
+
+              var charLevelRow = document.createElement("div");
+              charLevelRow.className = "bastion-header-subrow";
+              charLevelRow.appendChild(bastionCharacterField(bastion.characterName, levelInputEl));
+              charLevelRow.appendChild(levelField);
+              header.appendChild(charLevelRow);
+
               header.appendChild(makeFieldInput("bastion", "Bastion Defenders", bastion.bastionDefenders, { field: "bastionDefenders" }));
               form.appendChild(header);
 
