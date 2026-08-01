@@ -559,12 +559,15 @@ body.is-home {
    Conflicts (the three ".dm-view-scope" containers) — not every section.
    Fields are locked (readOnly/disabled, applied in JS) rather than
    rebuilt, so this only needs to strip the boxed input look and hide
-   every mutating control (Save/Cancel/Delete/Add/Remove, matched by the
-   *-save-btn/*-cancel-btn/*-delete-btn/*-add-btn/*-remove class-suffix
-   convention every section already follows). Record-chooser <select>
-   elements (id ends in "-select") are deliberately left alone in both
-   CSS and JS, since switching between records has to keep working while
-   browsing in View mode.
+   every mutating control on an *already-open* record (Save/Cancel/Delete,
+   matched by the *-save-btn/*-cancel-btn/*-delete-btn/*-remove
+   class-suffix convention every section already follows). Record-chooser
+   <select> elements (id ends in "-select") are deliberately left alone in
+   both CSS and JS, since switching between records has to keep working
+   while browsing in View mode. *-add-btn is deliberately NOT in this
+   list — every view screen should still offer its own "+ Add <entity>"
+   button (adding a new NPC/session/conflict is a normal thing to do while
+   otherwise just browsing read-only, not an edit-mode-only action).
 
    Deliberately NOT hiding the *-form-actions row itself (only the
    individual buttons inside it) — the Edit/View toggle lives inside
@@ -575,14 +578,12 @@ body.is-home {
 .dm-view-scope.view-mode [class*="-save-btn"],
 .dm-view-scope.view-mode [class*="-cancel-btn"],
 .dm-view-scope.view-mode [class*="-delete-btn"],
-.dm-view-scope.view-mode [class*="-add-btn"],
 .dm-view-scope.view-mode [class*="-edit-btn"],
 .dm-view-scope.view-mode [class*="-send-btn"],
 .dm-view-scope.view-mode [class*="-remove"],
 .dm-view-scope.view-mode [class*="-edit-actions"],
 .dm-view-scope.view-mode [class*="-top-controls"],
-.dm-view-scope.view-mode .confirm-delete-wrap,
-.dm-view-scope.view-mode .pc-manager-form {
+.dm-view-scope.view-mode .confirm-delete-wrap {
   display: none !important;
 }
 .dm-view-scope.view-mode input:not([id$="-select"]),
