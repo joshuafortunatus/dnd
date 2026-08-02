@@ -1732,6 +1732,18 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 .combat-death-circles-success .combat-death-circle { border: 2px solid rgba(126, 197, 132, 0.6); }
 .combat-death-circles-success .combat-death-circle:hover { border-color: #7ec584; }
 .combat-death-circles-success .combat-death-circle-filled { background: #7ec584; border-color: #7ec584; }
+.combat-death-circles-col { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; }
+.combat-death-circles-arrow { display: flex; align-items: center; opacity: 0.7; }
+.combat-death-circles-arrow-tail { width: 1.3rem; height: 1px; background: #fff; }
+.combat-death-circles-arrow-head {
+  width: 0;
+  height: 0;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  flex-shrink: 0;
+}
+.combat-death-circles-arrow-left .combat-death-circles-arrow-head { border-right: 5px solid #fff; }
+.combat-death-circles-arrow-right .combat-death-circles-arrow-head { border-left: 5px solid #fff; }
 .combat-conditions-wrap { position: relative; }
 .combat-conditions-toggle {
   box-sizing: border-box;
