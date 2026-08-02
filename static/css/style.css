@@ -1257,33 +1257,69 @@ textarea.autosize-textarea {
    wins regardless of which rule happens to come later in the
    stylesheet. */
 label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
-/* Wraps just the combatant's name/link — scopes the Revive button's
-   hover-reveal (below) to the title itself, not the whole row, per an
-   explicit requirement. */
-.combat-name-title-wrap { position: relative; display: inline-flex; align-items: center; gap: 0.5rem; }
+/* Wraps just the combatant's name/link. No longer a hover-reveal scope
+   for Revive (that's the whole dead row now, see .combat-row-dead below)
+   — just the name/link's own layout. */
+.combat-name-title-wrap { display: inline-flex; align-items: center; gap: 0.5rem; }
 /* A dead NPC (see refreshNpcDeadState, dm-portal.html) — dimmed rather
    than removed from the table entirely, so the DM can still see it sat
    there (and its Notes/Conditions), just visually de-emphasized against
-   the still-active combatants around it. */
-.combat-row-dead { opacity: 0.5; }
-/* Hidden until the row is actually dead AND the DM is hovering the name
-   itself — a DM skimming a live fight shouldn't see a Revive button on
-   every NPC, only when they're already looking right at the dead one
-   they mean to bring back. */
+   the still-active combatants around it. position: relative makes this
+   row (not just the name) the containing block for the centered Revive
+   overlay below.
+
+   Dimming is applied per-element (below), not as one opacity on the
+   row itself — opacity on the row would also wash out .combat-eliminated-
+   label and .combat-revive-btn (both are descendants), defeating the
+   point of a high-contrast "Eliminated" label and a bright Revive
+   button. */
+.combat-row-dead { position: relative; }
+.combat-row-dead .combat-kind-tag,
+.combat-row-dead .combat-name-text,
+.combat-row-dead .combat-name-conditions,
+.combat-row-dead .combat-conditions-wrap,
+.combat-row-dead .combat-notes-input,
+.combat-row-dead .combat-reaction-toggle,
+.combat-row-dead .combat-block-cell {
+  opacity: 0.5;
+}
+/* High-contrast callout next to the name once a combatant is dead — an
+   NPC at 0 HP, or a PC on a third failed death save (see dm-portal.html:
+   deadInput/markPcDead). Unlike Revive (hover-only), this stays visible
+   so a DM scanning the table sees at a glance which combatants are
+   actually out of the fight. */
+.combat-eliminated-label {
+  display: none;
+  color: #ff3b3b;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.combat-row-dead .combat-eliminated-label { display: inline; }
+/* Hidden until the row is actually dead AND the DM is hovering anywhere
+   over that row's tile — centered over the whole row (not just the
+   name) so it's an obvious, easy-to-hit target. */
 .combat-revive-btn {
   display: none;
-  background: var(--accent);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  background: #f0c94a;
   color: var(--bg);
   border: none;
-  border-radius: 4px;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  border-radius: 6px;
+  padding: 0.5rem 1.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: 0 0 0.9rem rgba(240, 201, 74, 0.75);
 }
-.combat-row-dead .combat-name-title-wrap:hover .combat-revive-btn { display: inline-block; }
+.combat-row-dead:hover .combat-revive-btn { display: inline-block; }
 .combat-name-conditions {
   margin-top: 0.35rem;
   color: var(--text-dim);
