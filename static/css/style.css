@@ -554,6 +554,46 @@ body.is-home {
   color: var(--bg);
 }
 
+/* Full View / Slim View toggle, sharing a row with the "Combatants"
+   heading (same look as .dm-mode-toggle above, but its own separate
+   class rather than a second instance of .dm-mode-toggle-btn, so the
+   portal-wide View/Edit toggle's active-state sweep (applyPortalMode,
+   dm-portal.html) can never also clear this toggle's state, and vice
+   versa). .combat-tracker-header-row puts heading and toggle at the same
+   top offset the heading alone used to sit at, rather than the toggle
+   taking its own row above and pushing everything else down. */
+.combat-tracker-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+/* .combat-view-toggle-slot's width gets set in JS (renderCombatSection's
+   measureNames) to exactly match the "Combat Block" column's own
+   rendered width — centering the toggle inside that exact width is what
+   lines it up directly over the words "Combat Block" in the row below,
+   regardless of how wide that column's actual content renders out to. */
+.combat-view-toggle-slot { display: flex; justify-content: center; flex-shrink: 0; }
+.combat-view-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  background: var(--bg);
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.2rem;
+}
+.combat-view-toggle-btn {
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+}
+.combat-view-toggle-btn:hover { color: var(--accent); }
+.combat-view-toggle-btn.is-active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
 /* View mode: a read-friendly skin over the same forms Edit mode uses,
    scoped to just Character Manager, Campaign Journal, and Campaign
    Conflicts (the three ".dm-view-scope" containers) — not every section.
@@ -1174,7 +1214,7 @@ textarea.autosize-textarea {
   font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin: 0 0 1rem;
+  margin: 0;
 }
 /* No overflow-x:auto wrapper here — the site already clips horizontal
    overflow at the body level (see `body { overflow-x: hidden; }`), and a
@@ -1199,13 +1239,51 @@ textarea.autosize-textarea {
    instead keeps Combat Block sized to its own content. */
 .combat-name-cell { white-space: nowrap; width: 100%; padding-right: 1.5rem; }
 .combat-name-text-small { font-size: 0.8rem; }
-/* Matches .combat-name-conditions/.combat-notes-input's own margin-top
-   below — .combat-conditions-toggle has none of its own (the adversary
-   picklist elsewhere reuses that class inside a wrap that already
-   spaces it via its own layout), so without this override the toggle
-   sat flush against the name/tag line above it while the two rows below
-   it were evenly spaced. */
+/* Matches .combat-name-conditions/.combat-notes-input/.combat-reaction-
+   toggle's own margin-top below — .combat-conditions-toggle has none of
+   its own (the adversary picklist elsewhere reuses that class inside a
+   wrap that already spaces it via its own layout), so without this
+   override the toggle sat flush against Reaction above it while the
+   rows below it were evenly spaced. */
 .combat-name-cell .combat-conditions-toggle { margin-top: 0.35rem; }
+/* Sits between the name/tag line and Select Conditions — same
+   margin-top rhythm as everything else stacked in this cell. Reuses
+   .pc-checkbox-option for the checkbox+label layout itself (align-items/
+   gap/font/cursor), but that class is inline-flex — meant for several
+   condition checkboxes sitting side by side in the dropdown — so on its
+   own it would run in on the same line as the name instead of dropping
+   to its own row. The extra "label." here isn't just for show: it raises
+   specificity above .pc-checkbox-option's so this display: flex reliably
+   wins regardless of which rule happens to come later in the
+   stylesheet. */
+label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
+/* Wraps just the combatant's name/link — scopes the Revive button's
+   hover-reveal (below) to the title itself, not the whole row, per an
+   explicit requirement. */
+.combat-name-title-wrap { position: relative; display: inline-flex; align-items: center; gap: 0.5rem; }
+/* A dead NPC (see refreshNpcDeadState, dm-portal.html) — dimmed rather
+   than removed from the table entirely, so the DM can still see it sat
+   there (and its Notes/Conditions), just visually de-emphasized against
+   the still-active combatants around it. */
+.combat-row-dead { opacity: 0.5; }
+/* Hidden until the row is actually dead AND the DM is hovering the name
+   itself — a DM skimming a live fight shouldn't see a Revive button on
+   every NPC, only when they're already looking right at the dead one
+   they mean to bring back. */
+.combat-revive-btn {
+  display: none;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 4px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.combat-row-dead .combat-name-title-wrap:hover .combat-revive-btn { display: inline-block; }
 .combat-name-conditions {
   margin-top: 0.35rem;
   color: var(--text-dim);
@@ -1525,6 +1603,44 @@ textarea.autosize-textarea {
    .combat-death-saves below), so toggling the hidden attribute in JS
    just works. */
 .combat-death-divider { height: 1px; background: var(--border); margin: 0.6rem 0 0; }
+
+/* Slim View: PCs only (NPC rows are deliberately untouched, per an
+   explicit product decision — a DM still needs an adversary's full
+   HP/conditions to run the fight) hide just the Heal/Damage/Current/Max/
+   Temp HP module (and its divider) — Conditions and Notes stay visible,
+   per an explicit correction; only the HP module was ever meant to
+   collapse. display: none rather than leaving these fields out of the
+   row entirely — see renderCombatSection's own comment on
+   applyCombatViewMode — so nothing already typed here is lost, it's just
+   not shown while Slim View is active. The divider can just display:none
+   (nothing needs its width preserved), but the HP module itself uses
+   visibility: hidden + height: 0 instead — collapsing its vertical
+   footprint to nothing while keeping its rendered *width*, which is what
+   .combat-hp-module-stack's own width is sized from (see the rAF call in
+   combatRow). Losing that width here would let the stack shrink down to
+   Death Saves' own (narrower) width, sliding Death Saves left of where
+   it sits in Full View — an explicit requirement is that Slim View keeps
+   Death Saves at that exact same horizontal spot. */
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-hp-adjust-wrap {
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+}
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-death-divider {
+  display: none;
+}
+/* With the HP module's own height collapsed to 0 (above), Death Saves is
+   now the only thing left with any real height inside
+   .combat-hp-module-stack — left at the block-wrap's default
+   align-items: flex-start, it would sit flush at the top of the Combat
+   Block cell instead of centered against Initiative/Armor Class beside
+   it. Centering the whole row here (not just Death Saves on its own)
+   is what actually centers it, since Death Saves' own container has no
+   extra height of its own to center within — the height difference to
+   center against belongs to .combat-init-stack, the sibling next to it. */
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-block-wrap {
+  align-items: center;
+}
 /* Death Saves — three fail circles (red) on the left, three success
    circles (green) on the right, flanking the label. Sits below the whole
    Heal/Damage/Current/Max/Temp module, only shown once Current reaches
@@ -1534,6 +1650,22 @@ textarea.autosize-textarea {
    render even when hidden is set (this exact gotcha has bitten this
    codebase before — see the Conditions dropdown and the Temp HP badge). */
 .combat-death-saves:not([hidden]) {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding-top: 0.5rem;
+}
+/* Slim View, PCs only, forces Death Saves to always show regardless of
+   Current HP — an explicit requirement (Slim View is meant to surface
+   Death Saves at a glance, not just once a PC is already dying) — so
+   this must win even over refreshDeathSavesVisibility's own [hidden]
+   attribute on the element. Repeats the base rule's box/flex properties
+   itself (rather than just flipping display) since a plain display: flex
+   override wouldn't otherwise carry align-items/gap/padding when
+   [hidden] is present. */
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-death-saves[hidden] {
   box-sizing: border-box;
   display: flex;
   align-items: center;

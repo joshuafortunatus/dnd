@@ -4050,9 +4050,16 @@
             var conflictDirty = false;
             var conflictCurrentValue = "";
             var currentCombatSection = null;
+            {{/* Full View is the default every time this section is entered
+              — never persisted (no localStorage key, same reasoning as
+              currentPortalMode above), so a DM who flips a record to Slim
+              View and later leaves — a full page reload, or just switching
+              to another section and back — always lands back on Full View,
+              never a lingering Slim session from earlier. */}}
+            var currentCombatViewMode = "full";
             var conflictIsDirty = function () { return conflictDirty || Boolean(unsavedNewConflictId); };
             registerDirtyTracker(conflictIsDirty, function () { cancelConflictForm(); });
-            registerSectionResetHook(function () { cancelConflictForm(); });
+            registerSectionResetHook(function () { cancelConflictForm(); currentCombatViewMode = "full"; });
 
             var loadConflicts = function () {
               try {
@@ -4395,10 +4402,79 @@
             var renderCombatSection = function (form, conflict) {
               var wrap = document.createElement("div");
               wrap.className = "conflict-field-wide combat-tracker-wrap";
+
+              {{/* Full View / Slim View toggle — Slim hides just the
+                Heal/Damage/Current/Max/Temp HP module for each PC row
+                (Conditions and Notes stay visible, per an explicit
+                correction — only the HP module was ever meant to
+                collapse), and always shows Death Saves regardless of
+                Current HP, for a DM who wants Initiative/AC/Death Saves
+                at a glance mid-fight without the HP module's width. NPC
+                rows are deliberately untouched by this toggle in either
+                mode — a DM still needs an adversary's full HP to run the
+                fight. Built fresh per record like createModeToggleEl
+                above, but kept as its own separate class/toggle (not a
+                second instance of .dm-mode-toggle-btn) so sweeping the
+                portal-wide View/Edit toggle's active state elsewhere can
+                never also clear this one's, and vice versa. Hiding is
+                done in CSS, not by skipping the HP module's DOM creation
+                below — so any HP already typed keeps flowing into
+                collectCombatStatsFromRows exactly as before; Slim View
+                only stops *showing* it. */}}
+              var applyCombatViewMode = function (mode) {
+                currentCombatViewMode = mode;
+                wrap.classList.toggle("combat-slim-view", mode === "slim");
+                Array.prototype.forEach.call(viewToggle.querySelectorAll(".combat-view-toggle-btn"), function (b) {
+                  b.classList.toggle("is-active", b.dataset.viewMode === mode);
+                });
+              };
+
+              var viewToggle = document.createElement("div");
+              viewToggle.className = "combat-view-toggle";
+              viewToggle.setAttribute("role", "group");
+              viewToggle.setAttribute("aria-label", "Combat block view");
+              ["full", "slim"].forEach(function (mode) {
+                var btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "combat-view-toggle-btn";
+                btn.dataset.viewMode = mode;
+                btn.textContent = mode === "slim" ? "Slim View" : "Full View";
+                viewToggle.appendChild(btn);
+              });
+              viewToggle.addEventListener("click", function (e) {
+                var b = e.target.closest(".combat-view-toggle-btn");
+                if (!b || b.dataset.viewMode === currentCombatViewMode) return;
+                applyCombatViewMode(b.dataset.viewMode);
+              });
+              applyCombatViewMode(currentCombatViewMode);
+
               var heading = document.createElement("h4");
               heading.className = "combat-tracker-heading";
               heading.textContent = "Combatants";
-              wrap.appendChild(heading);
+
+              {{/* alignViewToggleSlot's width gets set (below, once the
+                table has rendered at least one pass — see measureNames)
+                to match the actual rendered width of the "Combat Block" th
+                exactly, via JS measurement rather than a hand-guessed CSS
+                width — same reasoning as the Divider-width and Name-width
+                measurements elsewhere in this function. Centering the
+                toggle inside a slot that's forced to that exact width
+                puts it directly over the words "Combat Block" below,
+                regardless of how wide that column's content (Initiative/
+                AC/HP module) actually renders out to. */}}
+              var viewToggleSlot = document.createElement("div");
+              viewToggleSlot.className = "combat-view-toggle-slot";
+              viewToggleSlot.appendChild(viewToggle);
+
+              {{/* Heading and toggle share one row — same top offset as
+                Combatants always had, rather than the toggle sitting in
+                its own row above (which just pushed everything below it
+                down an extra row's worth of height). */}}
+              var headerRow = document.createElement("div");
+              headerRow.className = "combat-tracker-header-row";
+              headerRow.appendChild(heading);
+              headerRow.appendChild(viewToggleSlot);
+              wrap.appendChild(headerRow);
 
               var table = document.createElement("table");
               table.className = "combat-table";
@@ -4421,11 +4497,12 @@
               empty.textContent = "No combatants yet — add adversary NPCs above, or add PCs in Character Manager.";
               wrap.appendChild(empty);
 
-              var combatRow = function (key, kindLabel, name, stats) {
+              var combatRow = function (key, kindLabel, name, stats, ddbUrl, defaultHpMax) {
                 stats = stats || {};
                 var tr = document.createElement("tr");
                 tr.className = "combat-row";
                 tr.dataset.combatantKey = key;
+                tr.dataset.combatKind = kindLabel.toLowerCase();
 
                 var nameTd = document.createElement("td");
                 nameTd.className = "combat-name-cell";
@@ -4434,10 +4511,88 @@
                 tag.textContent = kindLabel;
                 nameTd.appendChild(tag);
                 nameTd.appendChild(document.createTextNode(" "));
-                var nameTextSpan = document.createElement("span");
-                nameTextSpan.className = "combat-name-text";
-                nameTextSpan.textContent = name;
-                nameTd.appendChild(nameTextSpan);
+                {{/* ddbUrl only ever arrives for PC rows (see renderRows —
+                  NPCs have no D&D Beyond sheet of their own) — an <a>
+                  rather than the plain <span> the no-link case still
+                  falls back to, same target/rel as PC Manager's own "View
+                  on D&D Beyond →" link above. Still gets
+                  .combat-name-text either way, so measureNames' own
+                  offsetWidth check keeps working unchanged. */}}
+                var nameTextEl = document.createElement(ddbUrl ? "a" : "span");
+                nameTextEl.className = "combat-name-text";
+                if (ddbUrl) {
+                  nameTextEl.href = ddbUrl;
+                  nameTextEl.target = "_blank";
+                  nameTextEl.rel = "noopener";
+                }
+                nameTextEl.textContent = name;
+
+                {{/* Wraps just the name (not the whole nameTd — Reaction/
+                  Conditions/Notes below shouldn't trigger this) so Revive
+                  only reveals on hovering the title itself, per an
+                  explicit requirement. NPCs only — see refreshNpcDeadState
+                  below for why PCs never get a dead/Revive state at all
+                  (they use Death Saves instead). */}}
+                var nameTitleWrap = document.createElement("span");
+                nameTitleWrap.className = "combat-name-title-wrap";
+                nameTitleWrap.appendChild(nameTextEl);
+
+                {{/* npcDeadInput persists across re-renders (adversary
+                  checkbox toggles rebuild every row — see renderRows)
+                  exactly like hpStableInput does for PCs, so a revived
+                  NPC sitting at 0 HP doesn't get silently re-flagged dead
+                  on the next render just because its HP still happens to
+                  read <= 0 — only an actual live HP crossing (typed, or
+                  via Heal/Damage) should ever re-trigger that, not a
+                  fresh render reading back its own last-saved state. */}}
+                var npcDeadInput = null;
+                var npcIsDead = false;
+                if (kindLabel === "NPC") {
+                  npcIsDead = Boolean(stats.npcDead);
+                  npcDeadInput = document.createElement("input");
+                  npcDeadInput.type = "hidden";
+                  npcDeadInput.dataset.combatField = "npcDead";
+                  npcDeadInput.value = npcIsDead ? "true" : "false";
+                  nameTd.appendChild(npcDeadInput);
+
+                  var reviveBtn = document.createElement("button");
+                  reviveBtn.type = "button";
+                  reviveBtn.className = "combat-revive-btn";
+                  reviveBtn.textContent = "Revive";
+                  reviveBtn.addEventListener("click", function () {
+                    npcIsDead = false;
+                    npcDeadInput.value = "false";
+                    tr.classList.remove("combat-row-dead");
+                    {{/* Per an explicit spec: Initiative null (needs
+                      re-rolling), Armor Class untouched (whatever's
+                      already there), Current HP 0, Max HP back to this
+                      NPC's own default — not whatever Max happened to be
+                      left at. */}}
+                    initSelect.value = "";
+                    hpCurrentInput.value = "0";
+                    if (defaultHpMax) hpMaxInput.value = defaultHpMax;
+                    resortRows();
+                  });
+                  nameTitleWrap.appendChild(reviveBtn);
+                }
+                nameTd.appendChild(nameTitleWrap);
+                tr.classList.toggle("combat-row-dead", npcIsDead);
+
+                {{/* Reaction — a single checkbox, not a picklist like
+                  Conditions below it; a creature either has its reaction
+                  available or it doesn't. Sits above Select Conditions for
+                  both PCs and NPCs, and in both Full and Slim View (Slim
+                  only ever hides the HP module, never this). */}}
+                var reactionToggle = document.createElement("label");
+                reactionToggle.className = "pc-checkbox-option combat-reaction-toggle";
+                var reactionCheckbox = document.createElement("input");
+                reactionCheckbox.type = "checkbox";
+                reactionCheckbox.dataset.combatField = "reaction";
+                reactionCheckbox.checked = Boolean(stats.reaction);
+                reactionToggle.appendChild(document.createTextNode("Reaction "));
+                reactionToggle.appendChild(reactionCheckbox);
+                nameTd.appendChild(reactionToggle);
+
                 {{/* Created (and wired into refreshConditionsToggle) before
                   the picker below, but not appended until after it — the
                   toggle reads "above" the selected-conditions summary in
@@ -4792,6 +4947,7 @@
                   hpCurrentInput.value = String(healed);
                   hpAmountInput.value = "";
                   refreshDeathSavesVisibility();
+                  refreshNpcDeadState();
                 });
 
                 {{/* Damage drains Temp HP before Current, per 5e rules —
@@ -4824,6 +4980,7 @@
                     refreshDeathSavesVisibility's own >0 check below. */}}
                   hpStableInput.value = "false";
                   refreshDeathSavesVisibility();
+                  refreshNpcDeadState();
                 });
 
                 {{/* Direct typing needs the same -Max floor Heal/Damage
@@ -4981,15 +5138,69 @@
                   A stabilized character (3 successes) stays hidden even
                   while still sitting at 0 HP; healing back above 0
                   clears the stabilized flag so a later drop to 0 starts
-                  a fresh set of saves. */}}
+                  a fresh set of saves. PCs only, per an explicit
+                  correction — 5e doesn't run Death Saves for monsters,
+                  NPCs just die outright at 0 (see refreshNpcDeadState
+                  below for what happens to an NPC row instead). */}}
                 var refreshDeathSavesVisibility = function () {
+                  if (kindLabel !== "PC") {
+                    hpDivider.hidden = true;
+                    hpDeathSavesWrap.hidden = true;
+                    return;
+                  }
                   var current = parseInt(hpCurrentInput.value, 10);
                   if (!isNaN(current) && current > 0) hpStableInput.value = "false";
                   var show = !isNaN(current) && current <= 0 && hpStableInput.value !== "true";
                   hpDivider.hidden = !show;
                   hpDeathSavesWrap.hidden = !show;
                 };
+
+                {{/* NPCs, not PCs (see above) — 0 HP means dead, not
+                  "rolling death saves". The row greys out (.combat-row-
+                  dead) and Initiative is cleared outright (a dead
+                  combatant has no place in turn order until the DM
+                  explicitly brings it back), leaving the Revive button
+                  (revealed on hover over the name — see reviveBtn above)
+                  as the one deliberate way back in. Healing Current HP
+                  back above 0 directly (Heal button, or typing a new
+                  value) still un-greys the row immediately on its own —
+                  Revive isn't the only way out of the dead state, just
+                  the one that also resets Initiative/Max HP for a
+                  creature coming back from actually being removed from
+                  the fight.
+
+                  Edge-triggered off npcIsDead (declared above, alongside
+                  npcDeadInput), not re-derived from Current HP alone —
+                  Current HP sitting at 0 is exactly what a just-revived
+                  NPC looks like too, so a plain "current <= 0 ⇒ dead"
+                  check here would immediately re-kill (and re-clear the
+                  Initiative of) an NPC the DM just revived. Only an
+                  actual live crossing from >0 down to <= 0 sets
+                  npcIsDead true; going back above 0 clears it. Note this
+                  intentionally has no matching initial call below (unlike
+                  refreshDeathSavesVisibility above it) — the very first
+                  render already synced .combat-row-dead from npcIsDead's
+                  initial (persisted) value right after nameTd was built,
+                  and running this here too would wrongly treat "loaded
+                  already dead" or "loaded already revived-at-0" as a
+                  fresh transition each time the row re-renders. */}}
+                var refreshNpcDeadState = function () {
+                  if (kindLabel !== "NPC") return;
+                  var current = parseInt(hpCurrentInput.value, 10);
+                  var atZero = !isNaN(current) && current <= 0;
+                  if (atZero && !npcIsDead) {
+                    npcIsDead = true;
+                    initSelect.value = "";
+                    resortRows();
+                  } else if (!atZero && npcIsDead) {
+                    npcIsDead = false;
+                  }
+                  npcDeadInput.value = npcIsDead ? "true" : "false";
+                  tr.classList.toggle("combat-row-dead", npcIsDead);
+                };
+
                 hpCurrentInput.addEventListener("input", refreshDeathSavesVisibility);
+                hpCurrentInput.addEventListener("input", refreshNpcDeadState);
                 refreshDeathSavesVisibility();
 
                 {{/* rAF, not measured immediately — offsetWidth reads 0
@@ -5088,6 +5299,10 @@
                   var key = tr.dataset.combatantKey;
                   var checkedConditions = tr.querySelectorAll('[data-combat-field="conditions"] input[type="checkbox"]:checked');
                   var selectedConditions = Array.prototype.map.call(checkedConditions, function (el) { return el.value; });
+                  {{/* npcDead only exists on NPC rows (see combatRow) —
+                    null-checked rather than assumed present, since a PC
+                    row has no such field at all. */}}
+                  var npcDeadEl = tr.querySelector('[data-combat-field="npcDead"]');
                   stats[key] = {
                     initiative: tr.querySelector('[data-combat-field="initiative"]').value,
                     hpCurrent: tr.querySelector('[data-combat-field="hpCurrent"]').value,
@@ -5095,10 +5310,12 @@
                     hpTemp: tr.querySelector('[data-combat-field="hpTemp"]').value,
                     ac: tr.querySelector('[data-combat-field="ac"]').value,
                     conditions: selectedConditions,
+                    reaction: tr.querySelector('[data-combat-field="reaction"]').checked,
                     notes: tr.querySelector('[data-combat-field="notes"]').value,
                     deathSaveFails: tr.querySelector('[data-combat-field="deathSaveFails"]').value,
                     deathSaveSuccesses: tr.querySelector('[data-combat-field="deathSaveSuccesses"]').value,
                     stable: tr.querySelector('[data-combat-field="stable"]').value,
+                    npcDead: npcDeadEl ? npcDeadEl.value === "true" : false,
                   };
                 });
                 return stats;
@@ -5126,7 +5343,13 @@
                 pcNames.forEach(function (name) {
                   var key = "pc:" + slugifyName(name);
                   var stats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]) || { initiative: "", ac: "", conditions: [] };
-                  tbody.appendChild(combatRow(key, "PC", name, stats));
+                  {{/* Same lookup PC Manager's own renderPcList uses for
+                    its "View on D&D Beyond →" link — live-imported
+                    characters carry their own link on the roster entry,
+                    real published pages get theirs from pcRealLinks. */}}
+                  var rosterEntry = roster.filter(function (e) { return slugifyName(e.name) === slugifyName(name); })[0];
+                  var ddbUrl = rosterEntry ? rosterEntry.link : pcRealLinks[name];
+                  tbody.appendChild(combatRow(key, "PC", name, stats, ddbUrl));
                 });
 
                 var checkedNpcIds = Array.prototype.map.call(
@@ -5149,12 +5372,18 @@
                   for (var i = 1; i <= qty; i++) {
                     var key = "npc:" + npc.id + ":" + i;
                     var stats = carriedOver[key] || (conflict.combatStats && conflict.combatStats[key]);
+                    {{/* Computed unconditionally now, not just for the
+                      brand-new-row case — Revive (combatRow) needs this
+                      NPC's own default Max HP regardless of whether the
+                      row already has stats, to reset Max back to it
+                      rather than whatever Max was left at when it
+                      died. */}}
+                    var defaults = npcCombatDefaults(npc);
                     if (!stats) {
-                      var defaults = npcCombatDefaults(npc);
                       stats = { initiative: "", hpCurrent: defaults.hpMax, hpMax: defaults.hpMax, ac: defaults.ac, conditions: [] };
                     }
                     var rowLabel = qty > 1 ? npcLabel(npc) + " " + i : npcLabel(npc);
-                    var tr = combatRow(key, "NPC", rowLabel, stats);
+                    var tr = combatRow(key, "NPC", rowLabel, stats, undefined, defaults.hpMax);
                     tbody.appendChild(tr);
                     {{/* Called unconditionally, not gated on "is this a
                       brand-new row" — renderRows tears down and rebuilds
@@ -5190,6 +5419,14 @@
                   span.classList.remove("combat-name-text-small");
                   if (span.offsetWidth > COMBAT_NAME_MAX_WIDTH_PX) span.classList.add("combat-name-text-small");
                 });
+                {{/* Same "attached to the visible document" caveat as the
+                  name measurement above — offsetWidth is 0 (a no-op) until
+                  then, so this also relies on wrap._remeasureNames being
+                  called once post-attach for the very first render. */}}
+                var combatBlockHeaderCell = thead.querySelector(".combat-block-header");
+                if (combatBlockHeaderCell && combatBlockHeaderCell.offsetWidth) {
+                  viewToggleSlot.style.width = combatBlockHeaderCell.offsetWidth + "px";
+                }
               };
               wrap._remeasureNames = measureNames;
 
