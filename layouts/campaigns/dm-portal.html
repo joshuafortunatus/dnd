@@ -5096,8 +5096,36 @@
                     group.appendChild(circle);
                   }
                   refresh();
-                  group.refresh = refresh;
-                  return group;
+
+                  {{/* Points away from the label, in the direction the
+                    next click lands — fail fills right-to-left (inner
+                    circle on the right, per innerFromRight above) so its
+                    arrow points left; success fills left-to-right so its
+                    arrow points right. Built as a shaft + head (rather
+                    than a bare triangle) so it actually reads as an
+                    arrow at this size instead of a stray dot. */}}
+                  var col = document.createElement("div");
+                  col.className = "combat-death-circles-col";
+                  col.appendChild(group);
+                  var arrow = document.createElement("span");
+                  arrow.className = "combat-death-circles-arrow " +
+                    (innerFromRight ? "combat-death-circles-arrow-left" : "combat-death-circles-arrow-right");
+                  arrow.setAttribute("aria-hidden", "true");
+                  var arrowTail = document.createElement("span");
+                  arrowTail.className = "combat-death-circles-arrow-tail";
+                  var arrowHead = document.createElement("span");
+                  arrowHead.className = "combat-death-circles-arrow-head";
+                  if (innerFromRight) {
+                    arrow.appendChild(arrowHead);
+                    arrow.appendChild(arrowTail);
+                  } else {
+                    arrow.appendChild(arrowTail);
+                    arrow.appendChild(arrowHead);
+                  }
+                  col.appendChild(arrow);
+
+                  col.refresh = refresh;
+                  return col;
                 };
 
                 var hpDeathSavesWrap = document.createElement("div");
