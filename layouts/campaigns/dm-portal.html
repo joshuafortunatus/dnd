@@ -4533,42 +4533,55 @@
                 }
                 nameTextEl.textContent = name;
 
-                {{/* Wraps just the name (not the whole nameTd — Reaction/
-                  Conditions/Notes below shouldn't trigger this) so Revive
-                  only reveals on hovering the title itself, per an
-                  explicit requirement. NPCs only — see refreshNpcDeadState
-                  below for why PCs never get a dead/Revive state at all
-                  (they use Death Saves instead). */}}
+                {{/* Wraps just the name — Revive itself now reveals on
+                  hovering anywhere over the dead row (see .combat-row-dead
+                  in style.css), and is centered over that row via CSS, not
+                  positioned relative to this wrap. Applies to both NPCs
+                  (dead outright at 0 HP — see refreshNpcDeadState below)
+                  and PCs (dead on a third failed death save — see
+                  failCircles' onCountChange further below). */}}
                 var nameTitleWrap = document.createElement("span");
                 nameTitleWrap.className = "combat-name-title-wrap";
                 nameTitleWrap.appendChild(nameTextEl);
 
-                {{/* npcDeadInput persists across re-renders (adversary
-                  checkbox toggles rebuild every row — see renderRows)
-                  exactly like hpStableInput does for PCs, so a revived
-                  NPC sitting at 0 HP doesn't get silently re-flagged dead
-                  on the next render just because its HP still happens to
-                  read <= 0 — only an actual live HP crossing (typed, or
-                  via Heal/Damage) should ever re-trigger that, not a
-                  fresh render reading back its own last-saved state. */}}
-                var npcDeadInput = null;
-                var npcIsDead = false;
-                if (kindLabel === "NPC") {
-                  npcIsDead = Boolean(stats.npcDead);
-                  npcDeadInput = document.createElement("input");
-                  npcDeadInput.type = "hidden";
-                  npcDeadInput.dataset.combatField = "npcDead";
-                  npcDeadInput.value = npcIsDead ? "true" : "false";
-                  nameTd.appendChild(npcDeadInput);
+                {{/* Visibility is pure CSS (.combat-row-dead .combat-
+                  eliminated-label) driven off the same tr class Revive/
+                  refreshNpcDeadState/markPcDead already toggle — no
+                  separate JS show/hide to keep in sync here. */}}
+                var eliminatedLabel = document.createElement("span");
+                eliminatedLabel.className = "combat-eliminated-label";
+                eliminatedLabel.textContent = "Eliminated";
+                nameTitleWrap.appendChild(eliminatedLabel);
 
-                  var reviveBtn = document.createElement("button");
-                  reviveBtn.type = "button";
-                  reviveBtn.className = "combat-revive-btn";
-                  reviveBtn.textContent = "Revive";
-                  reviveBtn.addEventListener("click", function () {
-                    npcIsDead = false;
-                    npcDeadInput.value = "false";
-                    tr.classList.remove("combat-row-dead");
+                {{/* deadInput persists across re-renders (adversary
+                  checkbox toggles rebuild every NPC row, PC rows rebuild
+                  on every renderRows call too — see renderRows) exactly
+                  like hpStableInput does, so a revived combatant sitting
+                  at 0 HP doesn't get silently re-flagged dead on the next
+                  render just because its HP still happens to read <= 0 —
+                  only an actual live HP crossing (NPCs) or a fresh third
+                  death-save failure (PCs) should ever re-trigger that, not
+                  a render reading back its own last-saved state. Stored
+                  under a kind-specific field name (npcDead/pcDead) so an
+                  existing campaign's already-saved dead NPCs don't reset
+                  alive when this field starts also applying to PCs. */}}
+                var deadField = kindLabel === "NPC" ? "npcDead" : "pcDead";
+                var isDead = Boolean(stats[deadField]);
+                var deadInput = document.createElement("input");
+                deadInput.type = "hidden";
+                deadInput.dataset.combatField = deadField;
+                deadInput.value = isDead ? "true" : "false";
+                nameTd.appendChild(deadInput);
+
+                var reviveBtn = document.createElement("button");
+                reviveBtn.type = "button";
+                reviveBtn.className = "combat-revive-btn";
+                reviveBtn.textContent = "Revive";
+                reviveBtn.addEventListener("click", function () {
+                  isDead = false;
+                  deadInput.value = "false";
+                  tr.classList.remove("combat-row-dead");
+                  if (kindLabel === "NPC") {
                     {{/* Per an explicit spec: Initiative null (needs
                       re-rolling), Armor Class untouched (whatever's
                       already there), Current HP 0, Max HP back to this
@@ -4577,12 +4590,26 @@
                     initSelect.value = "";
                     hpCurrentInput.value = "0";
                     if (defaultHpMax) hpMaxInput.value = defaultHpMax;
-                    resortRows();
-                  });
-                  nameTitleWrap.appendChild(reviveBtn);
-                }
+                  } else {
+                    {{/* Mirrors the NPC reset above (Initiative cleared,
+                      Current HP to 0) plus clearing the death-save state
+                      that got this PC here in the first place, so a fresh
+                      drop to 0 HP later starts a clean set of saves rather
+                      than reappearing already at 3 fails. */}}
+                    initSelect.value = "";
+                    hpCurrentInput.value = "0";
+                    hpDeathFailsInput.value = "0";
+                    hpDeathSuccessInput.value = "0";
+                    hpStableInput.value = "false";
+                    failCircles.refresh();
+                    successCircles.refresh();
+                    refreshDeathSavesVisibility();
+                  }
+                  resortRows();
+                });
+                nameTitleWrap.appendChild(reviveBtn);
                 nameTd.appendChild(nameTitleWrap);
-                tr.classList.toggle("combat-row-dead", npcIsDead);
+                tr.classList.toggle("combat-row-dead", isDead);
 
                 {{/* Reaction — a single checkbox, not a picklist like
                   Conditions below it; a creature either has its reaction
@@ -5087,11 +5114,32 @@
                 hpStableInput.value = stats.stable || "false";
                 hpDeathSavesWrap.appendChild(hpStableInput);
 
+                {{/* A third failed death save is death outright per 5e
+                  rules — same dead/Eliminated/Revive treatment NPCs get
+                  at 0 HP (see deadInput/reviveBtn above), just triggered
+                  by save fails instead of an HP crossing. Guarded to PC
+                  since fail circles are hidden and unused on NPC rows. */}}
+                var markPcDead = function () {
+                  if (isDead) return;
+                  isDead = true;
+                  deadInput.value = "true";
+                  tr.classList.add("combat-row-dead");
+                  {{/* Same as refreshNpcDeadState's dead transition —
+                    Initiative cleared outright, not left sitting at
+                    whatever it was rolled at, since a dead combatant has
+                    no place in turn order until explicitly revived. */}}
+                  initSelect.value = "";
+                  refreshDeathSavesVisibility();
+                  resortRows();
+                };
+
                 var hpDeathFailsInput = document.createElement("input");
                 hpDeathFailsInput.type = "hidden";
                 hpDeathFailsInput.dataset.combatField = "deathSaveFails";
                 hpDeathFailsInput.value = stats.deathSaveFails || "0";
-                var failCircles = makeDeathSaveCircles("combat-death-circles-fail", hpDeathFailsInput, true);
+                var failCircles = makeDeathSaveCircles("combat-death-circles-fail", hpDeathFailsInput, true, function (count) {
+                  if (count === 3 && kindLabel === "PC") markPcDead();
+                });
                 hpDeathSavesWrap.appendChild(failCircles);
                 hpDeathSavesWrap.appendChild(hpDeathFailsInput);
 
@@ -5144,7 +5192,10 @@
                   A stabilized character (3 successes) stays hidden even
                   while still sitting at 0 HP; healing back above 0
                   clears the stabilized flag so a later drop to 0 starts
-                  a fresh set of saves. PCs only, per an explicit
+                  a fresh set of saves. Also hidden once isDead is true
+                  (third fail — see markPcDead above) — there's nothing
+                  left to roll for once the PC has actually died, same as
+                  the stabilized case. PCs only, per an explicit
                   correction — 5e doesn't run Death Saves for monsters,
                   NPCs just die outright at 0 (see refreshNpcDeadState
                   below for what happens to an NPC row instead). */}}
@@ -5156,18 +5207,21 @@
                   }
                   var current = parseInt(hpCurrentInput.value, 10);
                   if (!isNaN(current) && current > 0) hpStableInput.value = "false";
-                  var show = !isNaN(current) && current <= 0 && hpStableInput.value !== "true";
+                  var show = !isNaN(current) && current <= 0 && hpStableInput.value !== "true" && !isDead;
                   hpDivider.hidden = !show;
                   hpDeathSavesWrap.hidden = !show;
                 };
 
-                {{/* NPCs, not PCs (see above) — 0 HP means dead, not
-                  "rolling death saves". The row greys out (.combat-row-
-                  dead) and Initiative is cleared outright (a dead
-                  combatant has no place in turn order until the DM
+                {{/* NPCs, not PCs — 0 HP means dead, not "rolling death
+                  saves" (PCs get their own trigger, a third failed death
+                  save — see markPcDead above). The row greys out
+                  (.combat-row-dead) and Initiative is cleared outright (a
+                  dead combatant has no place in turn order until the DM
                   explicitly brings it back), leaving the Revive button
-                  (revealed on hover over the name — see reviveBtn above)
-                  as the one deliberate way back in. Healing Current HP
+                  (revealed on hover anywhere over the dead row, centered
+                  over it — see reviveBtn above and .combat-row-dead in
+                  style.css) as the one deliberate way back in. Healing
+                  Current HP
                   back above 0 directly (Heal button, or typing a new
                   value) still un-greys the row immediately on its own —
                   Revive isn't the only way out of the dead state, just
@@ -5175,17 +5229,17 @@
                   creature coming back from actually being removed from
                   the fight.
 
-                  Edge-triggered off npcIsDead (declared above, alongside
-                  npcDeadInput), not re-derived from Current HP alone —
+                  Edge-triggered off isDead (declared above, alongside
+                  deadInput), not re-derived from Current HP alone —
                   Current HP sitting at 0 is exactly what a just-revived
                   NPC looks like too, so a plain "current <= 0 ⇒ dead"
                   check here would immediately re-kill (and re-clear the
                   Initiative of) an NPC the DM just revived. Only an
-                  actual live crossing from >0 down to <= 0 sets
-                  npcIsDead true; going back above 0 clears it. Note this
+                  actual live crossing from >0 down to <= 0 sets isDead
+                  true; going back above 0 clears it. Note this
                   intentionally has no matching initial call below (unlike
                   refreshDeathSavesVisibility above it) — the very first
-                  render already synced .combat-row-dead from npcIsDead's
+                  render already synced .combat-row-dead from isDead's
                   initial (persisted) value right after nameTd was built,
                   and running this here too would wrongly treat "loaded
                   already dead" or "loaded already revived-at-0" as a
@@ -5194,15 +5248,15 @@
                   if (kindLabel !== "NPC") return;
                   var current = parseInt(hpCurrentInput.value, 10);
                   var atZero = !isNaN(current) && current <= 0;
-                  if (atZero && !npcIsDead) {
-                    npcIsDead = true;
+                  if (atZero && !isDead) {
+                    isDead = true;
                     initSelect.value = "";
                     resortRows();
-                  } else if (!atZero && npcIsDead) {
-                    npcIsDead = false;
+                  } else if (!atZero && isDead) {
+                    isDead = false;
                   }
-                  npcDeadInput.value = npcIsDead ? "true" : "false";
-                  tr.classList.toggle("combat-row-dead", npcIsDead);
+                  deadInput.value = isDead ? "true" : "false";
+                  tr.classList.toggle("combat-row-dead", isDead);
                 };
 
                 hpCurrentInput.addEventListener("input", refreshDeathSavesVisibility);
@@ -5305,10 +5359,12 @@
                   var key = tr.dataset.combatantKey;
                   var checkedConditions = tr.querySelectorAll('[data-combat-field="conditions"] input[type="checkbox"]:checked');
                   var selectedConditions = Array.prototype.map.call(checkedConditions, function (el) { return el.value; });
-                  {{/* npcDead only exists on NPC rows (see combatRow) —
-                    null-checked rather than assumed present, since a PC
-                    row has no such field at all. */}}
+                  {{/* Only one of npcDead/pcDead actually exists on a
+                    given row (see deadField in combatRow — it's picked
+                    once, by that row's own kind), so both are null-
+                    checked rather than assumed present. */}}
                   var npcDeadEl = tr.querySelector('[data-combat-field="npcDead"]');
+                  var pcDeadEl = tr.querySelector('[data-combat-field="pcDead"]');
                   stats[key] = {
                     initiative: tr.querySelector('[data-combat-field="initiative"]').value,
                     hpCurrent: tr.querySelector('[data-combat-field="hpCurrent"]').value,
@@ -5322,6 +5378,7 @@
                     deathSaveSuccesses: tr.querySelector('[data-combat-field="deathSaveSuccesses"]').value,
                     stable: tr.querySelector('[data-combat-field="stable"]').value,
                     npcDead: npcDeadEl ? npcDeadEl.value === "true" : false,
+                    pcDead: pcDeadEl ? pcDeadEl.value === "true" : false,
                   };
                 });
                 return stats;
