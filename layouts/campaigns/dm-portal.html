@@ -1469,6 +1469,10 @@
               detail.innerHTML = "";
               if (!record) return;
               dirty = false;
+              {{/* Same reset as Campaign Conflicts (see its renderConflictForm)
+                — opening any record, however you got here, always starts
+                in View so Edit never leaks from the previously open record. */}}
+              if (config.viewModeScope) applyPortalMode("view");
 
               var actions = document.createElement("div");
               actions.className = config.cssPrefix + "-form-actions";
@@ -5509,6 +5513,13 @@
               conflictDetail.innerHTML = "";
               if (!conflict) return;
               conflictDirty = false;
+              {{/* Every time a conflict is opened — first selection, a
+                reselect after Save/Cancel/Remove, or switching straight
+                to a different conflict — it must start in View. Edit is
+                never carried over from whatever the portal mode happened
+                to be a moment ago, otherwise saving while in Edit mode
+                leaves the *next* conflict you open unlocked too. */}}
+              applyPortalMode("view");
 
               var actions = document.createElement("div");
               actions.className = "conflict-form-actions";
