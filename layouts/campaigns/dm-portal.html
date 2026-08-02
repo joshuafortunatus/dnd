@@ -5014,6 +5014,7 @@
                   hpStableInput.value = "false";
                   refreshDeathSavesVisibility();
                   refreshNpcDeadState();
+                  checkPcInstantDeath();
                 });
 
                 {{/* Direct typing needs the same -Max floor Heal/Damage
@@ -5131,6 +5132,24 @@
                   initSelect.value = "";
                   refreshDeathSavesVisibility();
                   resortRows();
+                };
+
+                {{/* 5e's instant/massive-damage-death rule: a PC whose
+                  Current HP is driven down to (or, per the -Max floor
+                  clampHpCurrentToFloor already enforces above, exactly to)
+                  the negative of their own Max HP dies outright — the
+                  overkill damage alone was lethal, no Death Saves to roll.
+                  Same Eliminated/Revive treatment as a third failed save
+                  (see markPcDead above) or an NPC at 0 HP (see
+                  refreshNpcDeadState below), just triggered by this
+                  threshold instead. NPCs never reach this check; they're
+                  already dead outright at a plain 0. */}}
+                var checkPcInstantDeath = function () {
+                  if (kindLabel !== "PC" || isDead) return;
+                  var current = parseInt(hpCurrentInput.value, 10);
+                  var max = parseInt(hpMaxInput.value, 10);
+                  if (isNaN(current) || isNaN(max) || max <= 0) return;
+                  if (current <= -max) markPcDead();
                 };
 
                 var hpDeathFailsInput = document.createElement("input");
@@ -5261,7 +5280,15 @@
 
                 hpCurrentInput.addEventListener("input", refreshDeathSavesVisibility);
                 hpCurrentInput.addEventListener("input", refreshNpcDeadState);
+                hpCurrentInput.addEventListener("input", checkPcInstantDeath);
+                hpMaxInput.addEventListener("input", checkPcInstantDeath);
                 refreshDeathSavesVisibility();
+                {{/* Unlike refreshNpcDeadState (deliberately not called on
+                  initial render — see its comment above), the -Max floor
+                  is never also what a revived PC looks like (Revive resets
+                  Current HP to 0, not -Max), so it's safe to check once
+                  here too and catch data saved before this rule existed. */}}
+                checkPcInstantDeath();
 
                 {{/* rAF, not measured immediately — offsetWidth reads 0
                   until hpAdjustWrap is actually attached to the visible
