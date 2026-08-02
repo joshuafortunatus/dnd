@@ -275,6 +275,7 @@
                       <option value="map">Map</option>
                       <option value="module">Module</option>
                       <option value="misc">Misc.</option>
+                      <option value="npc-visual">NPC Visual</option>
                       <option value="reference">Reference</option>
                     </select>
                     <button type="submit">Upload</button>
@@ -288,6 +289,7 @@
                       <option value="map">Map</option>
                       <option value="module">Module</option>
                       <option value="misc">Misc.</option>
+                      <option value="npc-visual">NPC Visual</option>
                       <option value="reference">Reference</option>
                     </select>
                     <label for="file-library-sort">Sort by</label>
@@ -6027,7 +6029,7 @@
               return stem || fileName;
             };
 
-            var FILE_CATEGORY_LABELS = { map: "Map", module: "Module", misc: "Misc.", reference: "Reference" };
+            var FILE_CATEGORY_LABELS = { map: "Map", module: "Module", misc: "Misc.", "npc-visual": "NPC Visual", reference: "Reference" };
 
             var formatFileDate = function (ms) {
               return new Date(ms).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -6271,6 +6273,7 @@
                 { value: "map", label: "Map" },
                 { value: "module", label: "Module" },
                 { value: "misc", label: "Misc." },
+                { value: "npc-visual", label: "NPC Visual" },
                 { value: "reference", label: "Reference" },
               ], { field: "category" }));
               form.appendChild(header);
