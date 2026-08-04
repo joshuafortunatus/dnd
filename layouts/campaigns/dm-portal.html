@@ -4084,7 +4084,7 @@
               syncPush("conflicts", conflicts);
             };
 
-            var conflictIsValid = function (conflict) { return Boolean(conflict.adversaryNpcIds && conflict.adversaryNpcIds.length); };
+            var conflictIsValid = function (conflict) { return Boolean(conflict.name && conflict.name.trim() && conflict.adversaryNpcIds && conflict.adversaryNpcIds.length); };
 
             var pullConflicts = function () {
               syncPull("conflicts").then(function (remote) {
@@ -4127,18 +4127,25 @@
               conflictSessionSelect's own read of it). Untied conflicts are
               unprefixed, same as before. */}}
             var conflictLabel = function (conflict) {
-              var ids = conflict.adversaryNpcIds || [];
-              var base;
-              if (ids.length) {
-                var npcs = loadNpcs();
-                var quantities = conflict.adversaryNpcQuantities || {};
-                var names = ids
-                  .map(function (id) {
-                    var npc = npcs.filter(function (n) { return n.id === id; })[0];
-                    return npc ? conflictAdversaryDisplayLabel(npc, quantities[id] || 1) : null;
-                  })
-                  .filter(Boolean);
-                base = names.length ? "Adventurers vs. " + names.join(", ") : null;
+              var base = conflict.name && conflict.name.trim() ? conflict.name : null;
+              {{/* Conflict Name predates this field being required — a
+                conflict saved before then may still lack one, so fall back
+                to the old "Adventurers vs. ..." derivation (same pattern as
+                the free-text adversary fallback below) rather than showing
+                a blank picklist entry. */}}
+              if (base === null) {
+                var ids = conflict.adversaryNpcIds || [];
+                if (ids.length) {
+                  var npcs = loadNpcs();
+                  var quantities = conflict.adversaryNpcQuantities || {};
+                  var names = ids
+                    .map(function (id) {
+                      var npc = npcs.filter(function (n) { return n.id === id; })[0];
+                      return npc ? conflictAdversaryDisplayLabel(npc, quantities[id] || 1) : null;
+                    })
+                    .filter(Boolean);
+                  base = names.length ? "Adventurers vs. " + names.join(", ") : null;
+                }
               }
               if (base === undefined || base === null) {
                 base = conflict.adversary ? "Adventurers vs. " + conflict.adversary : "Unnamed Conflict";
@@ -5658,7 +5665,7 @@
               var error = document.createElement("p");
               error.className = "conflict-form-error";
               error.hidden = true;
-              error.textContent = "At least one adversary NPC is required.";
+              error.textContent = "Conflict Name and at least one adversary NPC are required.";
               conflictDetail.appendChild(error);
 
               var form = document.createElement("div");
@@ -5666,7 +5673,8 @@
 
               var conflictHeaderFields = document.createElement("div");
               conflictHeaderFields.className = "conflict-header-fields";
-              conflictHeaderFields.appendChild(markRequired(conflictAdversarySelect("Adventurers vs.", conflict.adversaryNpcIds, conflict.adversaryNpcQuantities)));
+              conflictHeaderFields.appendChild(markRequired(conflictEditInput("Conflict Name", conflict.name, { field: "name" })));
+              conflictHeaderFields.appendChild(markRequired(conflictAdversarySelect("Combatants", conflict.adversaryNpcIds, conflict.adversaryNpcQuantities)));
               conflictHeaderFields.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
               form.appendChild(conflictHeaderFields);
               form.appendChild(conflictEditTextarea("Notes", conflict.notes, { field: "notes" }));
@@ -5685,7 +5693,7 @@
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectConflictFromForm(form, conflict);
-                if (!updated.adversaryNpcIds || !updated.adversaryNpcIds.length) {
+                if (!updated.name || !updated.name.trim() || !updated.adversaryNpcIds || !updated.adversaryNpcIds.length) {
                   error.hidden = false;
                   return;
                 }
