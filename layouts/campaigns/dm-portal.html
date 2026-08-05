@@ -332,6 +332,18 @@
             return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "character";
           };
 
+          {{/* Shared by every reference-link field (NPC "Reference Link",
+            Conflict "Reference Link") to turn a raw URL into a friendly
+            "View on example.com ↗" label for View mode, where showing the
+            full URL text is just visual noise a DM doesn't need. */}}
+          var refLinkHostname = function (url) {
+            try {
+              return new URL(url).hostname.replace(/^www\./, "");
+            } catch (e) {
+              return url;
+            }
+          };
+
           {{/* Shared by every remove button in the portal: clicking hides
             the button and shows an inline "Are you sure? Yes / No"
             prompt in its place. Yes confirms; No, letting it time out,
@@ -1927,7 +1939,12 @@
               aidedd.org link in npcMonsterField above. The preview only
               appears for values that actually look like an http(s) URL,
               so a stray non-URL value never becomes a broken/relative
-              link target. */}}
+              link target. The raw input and "Open ↗" preview are for Edit
+              mode only (a DM editing the link needs to see/adjust the
+              actual URL); View mode swaps in a friendlier "View on
+              example.com ↗" link instead, via the .ref-link-* CSS rules —
+              the full raw URL as plain text is just clutter once a DM is
+              only browsing, not editing. */}}
             var npcEditLinkInput = function (labelText, value, dataAttrs) {
               var wrap = document.createElement("div");
               wrap.className = "npc-field";
@@ -1939,14 +1956,21 @@
               input.type = "url";
               input.placeholder = "https://…";
               input.value = value || "";
+              input.className = "ref-link-input";
               Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
               wrap.appendChild(input);
 
               var link = document.createElement("a");
-              link.className = "npc-monster-link";
+              link.className = "npc-monster-link ref-link-edit";
               link.target = "_blank";
               link.rel = "noopener";
               wrap.appendChild(link);
+
+              var viewLink = document.createElement("a");
+              viewLink.className = "npc-monster-link ref-link-view";
+              viewLink.target = "_blank";
+              viewLink.rel = "noopener";
+              wrap.appendChild(viewLink);
 
               var updateLink = function () {
                 var url = input.value.trim();
@@ -1954,10 +1978,16 @@
                   link.href = url;
                   link.textContent = "Open ↗";
                   link.hidden = false;
+                  viewLink.href = url;
+                  viewLink.textContent = "View on " + refLinkHostname(url) + " ↗";
+                  viewLink.hidden = false;
                 } else {
                   link.removeAttribute("href");
                   link.textContent = "";
                   link.hidden = true;
+                  viewLink.removeAttribute("href");
+                  viewLink.textContent = "";
+                  viewLink.hidden = true;
                 }
               };
               updateLink();
@@ -4341,9 +4371,9 @@
               return makeFieldTextarea("conflict", labelText, value, dataAttrs);
             };
 
-            {{/* Mirrors npcEditLinkInput above: holds a URL rather than free
-              text and renders a live "Open ↗" preview underneath, only for
-              values that actually look like an http(s) URL. */}}
+            {{/* Mirrors npcEditLinkInput above, including its Edit-mode-only
+              raw input/"Open ↗" preview vs. View-mode "View on
+              example.com ↗" link (see the .ref-link-* CSS rules). */}}
             var conflictEditLinkInput = function (labelText, value, dataAttrs) {
               var wrap = document.createElement("div");
               wrap.className = "conflict-field";
@@ -4355,14 +4385,21 @@
               input.type = "url";
               input.placeholder = "https://…";
               input.value = value || "";
+              input.className = "ref-link-input";
               Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
               wrap.appendChild(input);
 
               var link = document.createElement("a");
-              link.className = "npc-monster-link";
+              link.className = "npc-monster-link ref-link-edit";
               link.target = "_blank";
               link.rel = "noopener";
               wrap.appendChild(link);
+
+              var viewLink = document.createElement("a");
+              viewLink.className = "npc-monster-link ref-link-view";
+              viewLink.target = "_blank";
+              viewLink.rel = "noopener";
+              wrap.appendChild(viewLink);
 
               var updateLink = function () {
                 var url = input.value.trim();
@@ -4370,10 +4407,16 @@
                   link.href = url;
                   link.textContent = "Open ↗";
                   link.hidden = false;
+                  viewLink.href = url;
+                  viewLink.textContent = "View on " + refLinkHostname(url) + " ↗";
+                  viewLink.hidden = false;
                 } else {
                   link.removeAttribute("href");
                   link.textContent = "";
                   link.hidden = true;
+                  viewLink.removeAttribute("href");
+                  viewLink.textContent = "";
+                  viewLink.hidden = true;
                 }
               };
               updateLink();
