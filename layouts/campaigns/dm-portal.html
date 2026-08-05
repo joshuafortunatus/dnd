@@ -1892,7 +1892,27 @@
               };
             };
 
-            var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl, nameFieldWrap) {
+            {{/* Shared 3-row, 2-column header grid (Name/Monster,
+              Species/Attitude, Reference Link/Stat Block) — used for both
+              Monster Manual NPCs (all six cells populated) and Custom NPCs
+              (the Monster and Stat Block cells are swapped for hidden
+              placeholders via npcHiddenGridCell, since Custom has neither),
+              so both source types keep the same field positions. */}}
+            var npcHiddenGridCell = function () {
+              var cell = document.createElement("div");
+              cell.className = "npc-field";
+              cell.hidden = true;
+              return cell;
+            };
+
+            var npcHeaderGrid = function (cells) {
+              var grid = document.createElement("div");
+              grid.className = "npc-monster-grid";
+              cells.forEach(function (cell) { grid.appendChild(cell); });
+              return grid;
+            };
+
+            var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap) {
               var monsterWrap = document.createElement("div");
               monsterWrap.className = "npc-field";
               var label = document.createElement("label");
@@ -1914,6 +1934,7 @@
               });
               select.value = names.some(function (m) { return m.name === nameValue; }) ? nameValue : "";
               monsterWrap.appendChild(select);
+              markRequired(monsterWrap);
 
               {{/* Its own box, to the right of Monster, rather than tucked
                 under the select — part of the 2x2 grid below (Monster /
@@ -1932,19 +1953,17 @@
 
               var persistOverride = npcMakeStatBlockOverridePersister(npc, isNewNpc);
 
-              {{/* Four equal boxes — Monster, the aidedd.org link, Name,
-                and Reference Link — laid out as a 2x2 grid (see
-                .npc-monster-grid in style.css) so Name sits under Monster
-                and Reference Link sits under the aidedd.org link,
-                regardless of header width. The stat block panel below is
-                a full-width sibling of the grid, hidden until a monster is
-                actually picked (see npcFetchAndRenderMonsterStatBlock). */}}
-              var grid = document.createElement("div");
-              grid.className = "npc-monster-grid";
-              grid.appendChild(monsterWrap);
-              grid.appendChild(linkWrap);
-              grid.appendChild(nameFieldWrap);
-              grid.appendChild(npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }));
+              {{/* The stat block panel below is a full-width sibling of the
+                grid, hidden until a monster is actually picked (see
+                npcFetchAndRenderMonsterStatBlock). */}}
+              var grid = npcHeaderGrid([
+                nameFieldWrap,
+                monsterWrap,
+                speciesFieldWrap,
+                attitudeFieldWrap,
+                npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }),
+                linkWrap,
+              ]);
 
               var statblockPanel = document.createElement("div");
               statblockPanel.className = "npc-statblock";
@@ -3669,33 +3688,67 @@
               header.className = "npc-header-fields";
               var nameFieldWrap = markRequired(npcEditInput("NPC Name", npc.name, { field: "name" }));
               var nameInputEl = nameFieldWrap.querySelector('[data-field="name"]');
+              var speciesFieldWrap = npcEditInput("Species", npc.species, { field: "species" });
+              var attitudeFieldWrap = npcEditInput("Attitude", npc.attitude, { field: "attitude" });
 
               {{/* Source is fixed at "+ Add NPC" time (npcAddBtn below) and
                 never shown as an editable toggle here — each NPC just gets
                 the field layout that matches how it was created. */}}
               if (npc.statBlockSource === "monster-manual") {
-                {{/* npcMonsterField inserts nameFieldWrap itself into its
-                  own 2x2 grid (Monster / aidedd.org link / Name / Reference
-                  Link) — appending nameFieldWrap separately here would
-                  leave it outside that grid instead of under Monster. */}}
-                header.appendChild(markRequired(npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl, nameFieldWrap)));
+                {{/* npcMonsterField inserts nameFieldWrap, speciesFieldWrap,
+                  and attitudeFieldWrap itself into its own 3-row, 2-column
+                  grid (Name/Monster, Species/Attitude, Reference Link/Stat
+                  Block) — appending them separately here would leave them
+                  outside that grid instead of arranged alongside Monster
+                  and Stat Block. Monster itself is marked required inside
+                  npcMonsterField, right on its own label, rather than here —
+                  markRequired finds the *first* label in a subtree, and
+                  Name (already required) is also inside this grid, so
+                  wrapping the whole grid here would just star Name twice. */}}
+                header.appendChild(npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap));
               } else {
-                header.appendChild(nameFieldWrap);
+                {{/* Custom NPCs share the same Name/Monster, Species/Attitude,
+                  Reference Link/Stat Block grid as Monster Manual NPCs — the
+                  Monster and Stat Block cells just have nothing to show, so
+                  they're hidden placeholders instead of being reused for
+                  something else. The Custom Stat Block editor (Alignment,
+                  Traits/Actions/etc.) is its own full-width panel below the
+                  grid, same position as Monster Manual's fetched stat block
+                  panel. */}}
+                header.appendChild(npcHeaderGrid([
+                  nameFieldWrap,
+                  npcHiddenGridCell(),
+                  speciesFieldWrap,
+                  attitudeFieldWrap,
+                  npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }),
+                  npcHiddenGridCell(),
+                ]));
                 header.appendChild(npcCustomStatBlockField(npc, isNew, npcNormalizedEdition(npc)));
-                {{/* Monster Manual NPCs get their Reference Link box inside
-                  npcMonsterField's 2x2 grid; Custom NPCs have no such grid,
-                  so it's just its own field here. Alignment is dropped
-                  entirely for NPCs — it's already part of the type/alignment
-                  line in the stat block above (fetched for Monster Manual
-                  NPCs, typed into Custom's own typeLine field). */}}
-                header.appendChild(npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }));
               }
               form.appendChild(header);
 
-              form.appendChild(npcEditTextarea("Stat Block Alterations", npc.statBlockAlterations, { field: "statBlockAlterations" }));
+              if (npc.statBlockSource === "monster-manual") {
+                {{/* Still a real textarea so it can autosize taller as a DM
+                  types past one line (see autosizeTextarea/makeFieldTextarea)
+                  — but .npc-field's blanket "textarea { min-height: 5rem }"
+                  rule would otherwise keep it that tall even when empty, so
+                  its floor is lowered here, inline + !important so it can't
+                  lose to that stylesheet rule regardless of selector order.
+                  Custom NPCs edit their stat block directly via
+                  npcCustomStatBlockField above, so this "alterations to the
+                  fetched block" field doesn't apply there. */}}
+                var statBlockAlterationsWrap = npcEditTextarea("Stat Block Alterations", npc.statBlockAlterations, { field: "statBlockAlterations" });
+                var statBlockAlterationsEl = statBlockAlterationsWrap.querySelector("textarea");
+                statBlockAlterationsEl.rows = 1;
+                statBlockAlterationsEl.style.setProperty("min-height", "2.6rem", "important");
+                form.appendChild(statBlockAlterationsWrap);
+              }
               form.appendChild(npcEditTextarea("Personality", npc.personality, { field: "personality" }));
               form.appendChild(npcEditTextarea("Appearance", npc.appearance, { field: "appearance" }));
               form.appendChild(npcEditTextarea("Secret", npc.secret, { field: "secret" }));
+              form.appendChild(npcEditInput("Loyalty", npc.loyalty, { field: "loyalty" }));
+              form.appendChild(npcEditTextarea("Roleplaying Notes", npc.roleplayingNotes, { field: "roleplayingNotes" }));
+              form.appendChild(npcEditTextarea("Other Notes", npc.otherNotes, { field: "otherNotes" }));
 
               npcDetail.appendChild(form);
 
@@ -3705,6 +3758,12 @@
               saveBtn.addEventListener("click", function () {
                 var updated = collectNpcFromForm(form, npc);
                 if (!updated.name || !updated.name.trim()) {
+                  error.textContent = "NPC Name is required.";
+                  error.hidden = false;
+                  return;
+                }
+                if (updated.statBlockSource === "monster-manual" && (!updated.statBlockName || !updated.statBlockName.trim())) {
+                  error.textContent = "Monster is required.";
                   error.hidden = false;
                   return;
                 }
@@ -3782,8 +3841,8 @@
               var choices = document.createElement("div");
               choices.className = "npc-source-chooser-choices";
               [
-                { source: "custom", label: "Custom" },
                 { source: "monster-manual", label: "Monster Manual" },
+                { source: "custom", label: "Custom" },
               ].forEach(function (opt) {
                 var btn = document.createElement("button");
                 btn.type = "button";
