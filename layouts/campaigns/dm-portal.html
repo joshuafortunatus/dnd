@@ -600,6 +600,7 @@
             });
             sectionSelect.value = section;
             currentSection = section;
+            if (section === "character-manager" && window.dmPortalRefreshCharacters) window.dmPortalRefreshCharacters();
           }
 
           {{/* Switching sections mid-edit would otherwise silently discard
@@ -693,8 +694,18 @@
             return Boolean(el.closest(".combat-tracker-wrap"));
           };
 
+          {{/* Importing a character is a create action, not an edit of
+            an existing record — the Edit/View toggle it would otherwise
+            sit behind only ever renders alongside an already-open
+            record (see the comment above), so with no record open yet
+            there'd be no way to reach it at all. Same reasoning as
+            isCombatTableField: this has to stay usable in View mode. */}}
+          var isPcImportField = function (el) {
+            return Boolean(el.closest(".pc-manager-form"));
+          };
+
           var lockForViewMode = function (el) {
-            if (isRecordChooserSelect(el) || isCombatTableField(el)) return;
+            if (isRecordChooserSelect(el) || isCombatTableField(el) || isPcImportField(el)) return;
             if (el.tagName === "SELECT" || el.type === "checkbox" || el.type === "radio") {
               el.disabled = true;
             } else {
@@ -900,15 +911,21 @@
               });
             };
             syncPullers.push(pullRoster);
+            {{/* Exposed so entering the Character Manager section (see
+              selectSection below) can trigger a fresh D&D Beyond pull
+              every time a DM opens it, not just once on initial page
+              load — a level-up or class change on D&D Beyond should
+              show up the moment someone actually looks at this section. */}}
+            window.dmPortalRefreshCharacters = pullRoster;
 
-            {{/* Keeps Class/Level/Species current with D&D Beyond on
-              every page load, so a level-up shows up here without the
-              DM re-importing. Runs after the sync pull settles so it
-              refreshes the most up-to-date known roster, and pushes
-              the result back to sync so other devices pick it up too.
-              Fetch failures (character made private, deleted, etc.) are
-              swallowed per-character rather than clobbering what's
-              already cached. */}}
+            {{/* Keeps Name/Class/Level/Species current with D&D Beyond on
+              every page load, so a rename or level-up shows up here
+              without the DM re-importing. Runs after the sync pull
+              settles so it refreshes the most up-to-date known roster,
+              and pushes the result back to sync so other devices pick
+              it up too. Fetch failures (character made private,
+              deleted, etc.) are swallowed per-character rather than
+              clobbering what's already cached. */}}
             var refreshRosterFromDdb = function () {
               if (!pcProxyUrl) return;
               var withIds = loadRoster().filter(function (e) { return e.id; });
@@ -922,16 +939,39 @@
                     var charClass = classes.length ? ((classes[0].definition && classes[0].definition.name) || "") : "";
                     var level = classes.length ? classes.reduce(function (sum, c) { return sum + (c.level || 0); }, 0) : "";
                     var species = (payload.data.race && payload.data.race.fullName) || "";
-                    return { id: entry.id, charClass: charClass, level: level, species: species };
+                    var name = payload.data.name || "";
+                    return { id: entry.id, name: name, charClass: charClass, level: level, species: species };
                   })
                   .catch(function () { return null; });
               })).then(function (results) {
                 var current = loadRoster();
                 var changed = false;
+                {{/* A rename changes slugifyName's output, which is the
+                  key every PC's Details data (Edition, Subclass, Game
+                  Expectations, Tracker Notes, etc.) is stored under —
+                  migrate that data to the new key so a D&D Beyond
+                  rename never silently orphans it. Skipped if something
+                  already occupies the new key (a genuine name
+                  collision) rather than risking overwriting unrelated
+                  data. */}}
+                var allData = loadPcData();
+                var dataChanged = false;
                 results.forEach(function (r) {
                   if (!r) return;
                   var entry = current.filter(function (e) { return e.id === r.id; })[0];
                   if (!entry) return;
+                  if (entry.name && r.name && entry.name !== r.name) {
+                    var oldKey = slugifyName(entry.name);
+                    var newKey = slugifyName(r.name);
+                    if (oldKey !== newKey && allData[oldKey] && !allData[newKey]) {
+                      allData[newKey] = allData[oldKey];
+                      delete allData[oldKey];
+                      dataChanged = true;
+                      if (expandedKey === oldKey) expandedKey = newKey;
+                    }
+                    entry.name = r.name;
+                    changed = true;
+                  }
                   if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species) {
                     entry.charClass = r.charClass;
                     entry.level = r.level;
@@ -939,6 +979,7 @@
                     changed = true;
                   }
                 });
+                if (dataChanged) savePcData(allData);
                 if (changed) {
                   saveRoster(current);
                   renderPcList();
@@ -993,14 +1034,12 @@
               return wrap;
             };
 
-            var pcFieldSelect = function (labelText, options, value, dataAttrs) {
-              var wrap = document.createElement("div");
-              wrap.className = "pc-field";
-              var label = document.createElement("label");
-              label.textContent = labelText;
-              wrap.appendChild(label);
-              var select = document.createElement("select");
-              Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+            {{/* Shared by pcFieldSelect's initial render and by the
+              Edition/Class change listeners below, which repopulate an
+              already-rendered Subclass <select> in place rather than
+              re-rendering the whole form. */}}
+            var pcPopulateSelectOptions = function (select, options, value) {
+              select.innerHTML = "";
               var placeholder = document.createElement("option");
               placeholder.value = "";
               placeholder.textContent = options.length ? "— Select —" : "— Unknown class —";
@@ -1012,28 +1051,70 @@
                 select.appendChild(option);
               });
               select.value = options.indexOf(value) !== -1 ? value : "";
+            };
+
+            var pcFieldSelect = function (labelText, options, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "pc-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              wrap.appendChild(label);
+              var select = document.createElement("select");
+              Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+              pcPopulateSelectOptions(select, options, value);
               wrap.appendChild(select);
               return wrap;
             };
 
-            {{/* Hard-coded since scripts/fetch_ddb_character.py can't read
-              subclass off the D&D Beyond payload reliably — sourced from
-              https://dungeonsanddragonsfan.com/all-dnd-5e-classes-subclasses-complete-guide/ */}}
-            var DND_SUBCLASSES_BY_CLASS = {
-              "Artificer": ["Alchemist", "Armorer", "Artillerist", "Battle Smith"],
-              "Barbarian": ["Path of the Ancestral Guardian", "Path of the Battlerager", "Path of the Beast", "Path of the Berserker", "Path of the Giant", "Path of the Storm Herald", "Path of the Wild Heart", "Path of Wild Magic", "Path of the Zealot", "Path of the World Tree"],
-              "Bard": ["College of Creation", "College of Eloquence", "College of Glamour", "College of Lore", "College of Spirits", "College of Swords", "College of Valor", "College of Whispers", "College of Dance"],
-              "Cleric": ["Arcana Domain", "Death Domain", "Forge Domain", "Grave Domain", "Knowledge Domain", "Life Domain", "Light Domain", "Nature Domain", "Order Domain", "Peace Domain", "Tempest Domain", "Trickery Domain", "Twilight Domain", "War Domain"],
-              "Druid": ["Circle of Dreams", "Circle of the Land", "Circle of the Moon", "Circle of the Shepherd", "Circle of Spores", "Circle of Stars", "Circle of Wildfire", "Circle of the Sea"],
-              "Fighter": ["Arcane Archer", "Battle Master", "Cavalier", "Champion", "Echo Knight", "Eldritch Knight", "Psi Warrior", "Purple Dragon Knight", "Rune Knight", "Samurai"],
-              "Monk": ["Way of the Ascendant Dragon", "Way of the Astral Self", "Way of the Drunken Master", "Way of the Four Elements", "Way of the Kensei", "Way of the Long Death", "Way of Mercy", "Way of the Open Hand", "Way of the Shadow", "Way of the Sun Soul"],
-              "Paladin": ["Oath of Conquest", "Oath of Devotion", "Oath of Glory", "Oath of Redemption", "Oath of the Ancients", "Oath of the Crown", "Oath of the Watchers", "Oath of Vengeance", "Oathbreaker"],
-              "Ranger": ["Beast Master", "Drakewarden", "Fey Wanderer", "Gloom Stalker", "Horizon Walker", "Hunter", "Monster Slayer", "Swarmkeeper"],
-              "Rogue": ["Arcane Trickster", "Assassin", "Inquisitive", "Mastermind", "Phantom", "Scout", "Soulknife", "Swashbuckler", "Thief"],
-              "Sorcerer": ["Aberrant Mind", "Clockwork Soul", "Divine Soul", "Draconic Bloodline", "Lunar Sorcery", "Shadow Magic", "Storm Sorcery", "Wild Magic"],
-              "Warlock": ["Archfey Patron", "Celestial", "Fathomless", "Fiend", "Genie", "Great Old One", "Hexblade", "Undead", "Undying"],
-              "Wizard": ["Bladesinger", "Chronurgy", "Graviturgy", "Order of Scribes", "School of Abjuration", "School of Conjuration", "School of Divination", "School of Enchantment", "School of Evocation", "School of Illusion", "School of Necromancy", "School of Transmutation", "War Magic"],
+            {{/* Cross-referenced from the "List of Dungeons & Dragons 5th
+              edition character classes" wiki (dungeonsdragons.fandom.com)
+              for 2014-line content — every subclass published under 5e
+              rules across all sourcebooks through the Bigby Presents:
+              Glory of the Giants era — and from the 2024 Player's
+              Handbook's own class pages (dndbeyond.com), which trims
+              every class to four core subclasses and drops Artificer
+              entirely. Four subclasses are 2024-exclusive inventions
+              with no 2014-line printing (Path of the Wild Heart, Path
+              of the World Tree, College of Dance, Circle of the Sea)
+              and only appear under "2024" below. */}}
+            var DND_CLASSES_BY_EDITION = {
+              "2014": ["Artificer", "Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard"],
+              "2024": ["Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard"],
             };
+
+            var DND_SUBCLASSES_BY_CLASS_EDITION = {
+              "2014": {
+                "Artificer": ["Alchemist", "Armorer", "Artillerist", "Battle Smith"],
+                "Barbarian": ["Path of the Ancestral Guardian", "Path of the Battlerager", "Path of the Beast", "Path of the Berserker", "Path of the Giant", "Path of the Storm Herald", "Path of the Totem Warrior", "Path of the Zealot", "Path of Wild Magic"],
+                "Bard": ["College of Creation", "College of Eloquence", "College of Glamour", "College of Lore", "College of Spirits", "College of Swords", "College of Valor", "College of Whispers"],
+                "Cleric": ["Arcana Domain", "Death Domain", "Forge Domain", "Grave Domain", "Knowledge Domain", "Life Domain", "Light Domain", "Nature Domain", "Order Domain", "Peace Domain", "Tempest Domain", "Trickery Domain", "Twilight Domain", "War Domain"],
+                "Druid": ["Circle of Dreams", "Circle of Spores", "Circle of Stars", "Circle of the Land", "Circle of the Moon", "Circle of the Shepherd", "Circle of Wildfire"],
+                "Fighter": ["Arcane Archer", "Battle Master", "Cavalier", "Champion", "Echo Knight", "Eldritch Knight", "Psi Warrior", "Purple Dragon Knight", "Rune Knight", "Samurai"],
+                "Monk": ["Way of Mercy", "Way of Shadow", "Way of the Ascendant Dragon", "Way of the Astral Self", "Way of the Drunken Master", "Way of the Four Elements", "Way of the Kensei", "Way of the Long Death", "Way of the Open Hand", "Way of the Sun Soul"],
+                "Paladin": ["Oath of Conquest", "Oath of Devotion", "Oath of Glory", "Oath of Redemption", "Oath of the Ancients", "Oath of the Crown", "Oath of the Watchers", "Oath of Vengeance", "Oathbreaker"],
+                "Ranger": ["Beast Master", "Drakewarden", "Fey Wanderer", "Gloom Stalker", "Horizon Walker", "Hunter", "Monster Slayer", "Swarmkeeper"],
+                "Rogue": ["Arcane Trickster", "Assassin", "Inquisitive", "Mastermind", "Phantom", "Scout", "Soulknife", "Swashbuckler", "Thief"],
+                "Sorcerer": ["Aberrant Mind", "Clockwork Soul", "Divine Soul", "Draconic Bloodline", "Lunar Sorcery", "Shadow Magic", "Storm Sorcery", "Wild Magic"],
+                "Warlock": ["The Archfey", "The Celestial", "The Fathomless", "The Fiend", "The Genie", "The Great Old One", "The Hexblade", "The Undead", "The Undying"],
+                "Wizard": ["Bladesinging", "Chronurgy Magic", "Graviturgy Magic", "Order of Scribes", "School of Abjuration", "School of Conjuration", "School of Divination", "School of Enchantment", "School of Evocation", "School of Illusion", "School of Necromancy", "School of Transmutation", "War Magic"],
+              },
+              "2024": {
+                "Barbarian": ["Path of the Berserker", "Path of the Wild Heart", "Path of the World Tree", "Path of the Zealot"],
+                "Bard": ["College of Dance", "College of Glamour", "College of Lore", "College of Valor"],
+                "Cleric": ["Life Domain", "Light Domain", "Trickery Domain", "War Domain"],
+                "Druid": ["Circle of the Land", "Circle of the Moon", "Circle of the Sea", "Circle of the Stars"],
+                "Fighter": ["Battle Master", "Champion", "Eldritch Knight", "Psi Warrior"],
+                "Monk": ["Warrior of Mercy", "Warrior of Shadow", "Warrior of the Elements", "Warrior of the Open Hand"],
+                "Paladin": ["Oath of Devotion", "Oath of Glory", "Oath of the Ancients", "Oath of Vengeance"],
+                "Ranger": ["Beast Master", "Fey Wanderer", "Gloom Stalker", "Hunter"],
+                "Rogue": ["Arcane Trickster", "Assassin", "Soulknife", "Thief"],
+                "Sorcerer": ["Aberrant Sorcery", "Clockwork Sorcery", "Draconic Sorcery", "Wild Magic Sorcery"],
+                "Warlock": ["Archfey Patron", "Celestial Patron", "Fiend Patron", "Great Old One Patron"],
+                "Wizard": ["Abjurer", "Diviner", "Evoker", "Illusionist"],
+              },
+            };
+
+            var PC_EDITIONS = ["2014", "2024"];
 
             var DND_ALIGNMENTS = [
               "Lawful Good", "Neutral Good", "Chaotic Good",
@@ -1156,29 +1237,65 @@
               var header = document.createElement("div");
               header.className = "pc-header-fields";
               header.appendChild(pcFieldInput("Player's Name", d.playerName, { field: "playerName" }));
+              {{/* Edition drives which Class/Subclass options are offered
+                below. Left unset until the DM actually picks one — D&D
+                Beyond doesn't reliably expose which ruleset a character
+                was built under, so guessing 2014 or 2024 here would just
+                be a silent assumption about someone else's character. */}}
+              var effectiveEdition = PC_EDITIONS.indexOf(d.edition) !== -1 ? d.edition : "";
+              var editionWrap = pcFieldSelect("Edition", PC_EDITIONS, effectiveEdition, { field: "edition" });
+              header.appendChild(editionWrap);
               {{/* Class/Level/Species are kept in sync from D&D Beyond on
                 every page load (refreshRosterFromDdb below) for anyone
                 with a live import — editing them here would just get
                 silently overwritten on the next load, which is more
                 confusing than useful, so they're read-only in that case.
                 Characters that only exist as a published page (no D&D
-                Beyond id to refresh from) keep them as free-text fields. */}}
+                Beyond id to refresh from) get a Class dropdown scoped to
+                the chosen edition instead. */}}
               var effectiveClass = rosterEntry ? rosterEntry.charClass : d.charClass;
+              var classWrap, subclassWrap;
               if (rosterEntry) {
-                header.appendChild(pcFieldStatic("Class", rosterEntry.charClass));
-                header.appendChild(pcFieldSelect("Subclass", DND_SUBCLASSES_BY_CLASS[effectiveClass] || [], d.subclass, { field: "subclass" }));
+                classWrap = pcFieldStatic("Class", rosterEntry.charClass);
+                header.appendChild(classWrap);
+                subclassWrap = pcFieldSelect("Subclass", (DND_SUBCLASSES_BY_CLASS_EDITION[effectiveEdition] || {})[effectiveClass] || [], d.subclass, { field: "subclass" });
+                header.appendChild(subclassWrap);
                 header.appendChild(pcFieldStatic("Level", rosterEntry.level ? String(rosterEntry.level) : ""));
                 header.appendChild(pcFieldSelect("Background", DND_BACKGROUNDS, d.background, { field: "background" }));
                 header.appendChild(pcFieldStatic("Species", rosterEntry.species));
               } else {
-                header.appendChild(pcFieldInput("Class", d.charClass, { field: "charClass" }));
-                header.appendChild(pcFieldSelect("Subclass", DND_SUBCLASSES_BY_CLASS[effectiveClass] || [], d.subclass, { field: "subclass" }));
+                classWrap = pcFieldSelect("Class", DND_CLASSES_BY_EDITION[effectiveEdition] || [], d.charClass, { field: "charClass" });
+                header.appendChild(classWrap);
+                subclassWrap = pcFieldSelect("Subclass", (DND_SUBCLASSES_BY_CLASS_EDITION[effectiveEdition] || {})[effectiveClass] || [], d.subclass, { field: "subclass" });
+                header.appendChild(subclassWrap);
                 header.appendChild(pcFieldInput("Level", d.level, { field: "level" }));
                 header.appendChild(pcFieldSelect("Background", DND_BACKGROUNDS, d.background, { field: "background" }));
                 header.appendChild(pcFieldInput("Species", d.species, { field: "species" }));
               }
               header.appendChild(pcFieldSelect("Alignment", DND_ALIGNMENTS, d.alignment, { field: "alignment" }));
               form.appendChild(header);
+
+              {{/* Picking a different Edition (or, for non-imported PCs,
+                a different Class) invalidates whatever Subclass list was
+                rendered above — refresh it in place rather than forcing
+                a full form re-render, matching the targeted-update
+                pattern the NPC Monster select already uses. */}}
+              var editionSelectEl = editionWrap.querySelector("select");
+              var subclassSelectEl = subclassWrap.querySelector("select");
+              var refreshSubclassOptions = function () {
+                var currentClass = rosterEntry ? rosterEntry.charClass : classWrap.querySelector("select").value;
+                var opts = (DND_SUBCLASSES_BY_CLASS_EDITION[editionSelectEl.value] || {})[currentClass] || [];
+                pcPopulateSelectOptions(subclassSelectEl, opts, subclassSelectEl.value);
+              };
+              editionSelectEl.addEventListener("change", function () {
+                if (!rosterEntry) {
+                  pcPopulateSelectOptions(classWrap.querySelector("select"), DND_CLASSES_BY_EDITION[editionSelectEl.value] || [], classWrap.querySelector("select").value);
+                }
+                refreshSubclassOptions();
+              });
+              if (!rosterEntry) {
+                classWrap.querySelector("select").addEventListener("change", refreshSubclassOptions);
+              }
 
               form.appendChild(pcMotivationGroup(d.motivations));
 

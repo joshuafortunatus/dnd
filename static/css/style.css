@@ -695,7 +695,7 @@ body.is-home {
 .pc-manager-details { padding: 1rem 0 1.5rem; }
 .pc-manager-details-toggle {
   background: none;
-  border: 1px solid var(--border);
+  border: 1px solid var(--accent);
   color: var(--text-dim);
   border-radius: 4px;
   padding: 0.25rem 0.7rem;
@@ -703,7 +703,7 @@ body.is-home {
   cursor: pointer;
   flex-shrink: 0;
 }
-.pc-manager-details-toggle:hover { color: var(--accent); border-color: var(--accent); }
+.pc-manager-details-toggle:hover { color: var(--accent); background: rgba(201, 162, 39, 0.15); }
 
 .character-importer-remove {
   background: none;
@@ -1818,6 +1818,16 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   appearance: none;
   border-color: var(--border);
   padding-left: 0.5rem;
+}
+/* The Import Character field stays fully usable in View mode too (see
+   isPcImportField in the script below) — same cascade-order reasoning
+   as the Combat Tracker override above. */
+.dm-view-scope.view-mode .pc-manager-form input {
+  background: var(--bg-raised);
+  border-color: var(--border);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  cursor: auto;
 }
 .journal-field-wide, .pc-field-wide, .conflict-field-wide, .bastion-field-wide {
   margin-bottom: 1.25rem;
