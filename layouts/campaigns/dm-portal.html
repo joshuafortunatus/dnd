@@ -4224,6 +4224,47 @@
               return makeFieldTextarea("conflict", labelText, value, dataAttrs);
             };
 
+            {{/* Mirrors npcEditLinkInput above: holds a URL rather than free
+              text and renders a live "Open ↗" preview underneath, only for
+              values that actually look like an http(s) URL. */}}
+            var conflictEditLinkInput = function (labelText, value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "conflict-field";
+              var label = document.createElement("label");
+              label.textContent = labelText;
+              wrap.appendChild(label);
+
+              var input = document.createElement("input");
+              input.type = "url";
+              input.placeholder = "https://…";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(input);
+
+              var link = document.createElement("a");
+              link.className = "npc-monster-link";
+              link.target = "_blank";
+              link.rel = "noopener";
+              wrap.appendChild(link);
+
+              var updateLink = function () {
+                var url = input.value.trim();
+                if (/^https?:\/\//i.test(url)) {
+                  link.href = url;
+                  link.textContent = "Open ↗";
+                  link.hidden = false;
+                } else {
+                  link.removeAttribute("href");
+                  link.textContent = "";
+                  link.hidden = true;
+                }
+              };
+              updateLink();
+              input.addEventListener("input", updateLink);
+
+              return wrap;
+            };
+
             {{/* Collapsed toggle + checklist dropdown, same interaction
               pattern as the combat table's Conditions widget (immediate/
               live toggles, no Save/Cancel step, auto-collapse on outside
@@ -5735,6 +5776,7 @@
               conflictHeaderFields.appendChild(markRequired(conflictEditInput("Conflict Name", conflict.name, { field: "name" })));
               conflictHeaderFields.appendChild(markRequired(conflictAdversarySelect("Combatants", conflict.adversaryNpcIds, conflict.adversaryNpcQuantities)));
               conflictHeaderFields.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
+              conflictHeaderFields.appendChild(conflictEditLinkInput("Reference Link", conflict.referenceLink, { field: "referenceLink" }));
               form.appendChild(conflictHeaderFields);
               form.appendChild(conflictEditTextarea("Notes", conflict.notes, { field: "notes" }));
 
@@ -5815,7 +5857,7 @@
               pendingNewConflict = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
-                adversaryNpcIds: [], sessionId: "", notes: "",
+                adversaryNpcIds: [], sessionId: "", notes: "", referenceLink: "",
               };
               conflictSelect.value = "";
               conflictCurrentValue = "";
