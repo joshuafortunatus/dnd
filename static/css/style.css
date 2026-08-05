@@ -649,6 +649,19 @@ body.is-home {
   opacity: 0.85;
 }
 
+/* Reference-link fields (NPC/Conflict "Reference Link"): Edit mode's raw
+   URL input and "Open ↗" preview give way to a single friendly
+   "View on example.com ↗" link — showing the full raw URL as read-only
+   text once a DM is just browsing, not editing, is clutter with no
+   payoff. */
+.dm-view-scope.view-mode .ref-link-input,
+.dm-view-scope.view-mode .ref-link-edit {
+  display: none !important;
+}
+.dm-view-scope.view-mode .ref-link-view {
+  display: block;
+}
+
 /* Shared inline "Are you sure? Yes / No" prompt — appears in place of
    any remove button in the portal when clicked. */
 .confirm-delete-wrap {
@@ -860,6 +873,13 @@ body.is-home {
 .npc-field textarea { min-height: 5rem; resize: vertical; }
 
 .npc-monster-link { display: block; color: var(--accent); font-size: 0.85rem; margin-top: 0.35rem; }
+
+/* .ref-link-view (the "View on example.com ↗" label) only makes sense
+   once Edit mode's raw input is hidden, so it stays hidden by default here
+   and is switched on by the .dm-view-scope.view-mode override below —
+   same specificity as .npc-monster-link above, so source order is what
+   makes this win over its `display: block`. */
+.ref-link-view { display: none; }
 
 .npc-statblock {
   flex-basis: 100%;
