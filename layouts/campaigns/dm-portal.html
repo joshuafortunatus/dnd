@@ -1134,61 +1134,65 @@
               "Lawful Evil", "Neutral Evil", "Chaotic Evil",
             ];
 
-            {{/* Hard-coded from https://www.dndbeyond.com/backgrounds —
-              every background D&D Beyond lists across all sourcebooks
-              and settings (Ravnica, Eberron, Baldur's Gate, etc.), not
-              just the core Player's Handbook set, deduped and sorted. */}}
-            var DND_BACKGROUNDS = [
-              "Aberrant Heir", "Acolyte", "Acolyte - Baldur's Gate",
-              "Agent of the Ninth Quill (DMLS)", "Anthropologist", "Archaeologist",
-              "Artisan", "Astral Drifter", "Athlete",
-              "Azorius Functionary", "Boros Legionnaire", "Carouser",
-              "Celebrity Adventurer's Scion", "Charlatan", "Charlatan - Baldur's Gate",
-              "Chondathan Freebooter", "City Watch / Investigator", "Clan Crafter",
-              "Cloistered Scholar", "Courtier", "Criminal",
-              "Criminal - Baldur's Gate", "Criminal / Spy", "Dead Magic Dweller",
-              "Dimir Operative", "Dragon Cultist", "Emerald Enclave Caretaker",
-              "Entertainer", "Entertainer - Baldur's Gate", "Faceless",
-              "Faction Agent", "Failed Merchant", "Far Traveler",
-              "Farmer", "Feylost", "Fisher",
-              "Flaming Fist Mercenary", "Folk Hero", "Folk Hero - Baldur's Gate",
-              "Gambler", "Gate Warden", "Genie Touched",
-              "Giant Foundling", "Gladiator", "Golgari Agent",
-              "Gruul Anarch", "Guard", "Guide",
-              "Guild Artisan - Baldur's Gate", "Guild Artisan / Guild Merchant", "Harper",
-              "Haunted One", "Hermit", "Hermit - Baldur's Gate",
-              "House Agent", "House Agent (Cannith)", "House Agent (Deneith)",
-              "House Agent (Ghallanda)", "House Agent (Jorasco)", "House Agent (Kundarak)",
-              "House Agent (Lyrandar)", "House Agent (Medani)", "House Agent (Orien)",
-              "House Agent (Phiarlan)", "House Agent (Sivis)", "House Agent (Tharashk)",
-              "House Agent (Thuranni)", "House Agent (Vadalis)", "House Cannith Heir",
-              "House Deneith Heir", "House Ghallanda Heir", "House Jorasco Heir",
-              "House Kundarak Heir", "House Lyrandar Heir", "House Medani Heir",
-              "House Orien Heir", "House Phiarlan Heir", "House Sivis Heir",
-              "House Tharashk Heir", "House Thuranni Heir", "House Vadalis Heir",
-              "Ice Fisher", "Inheritor", "Inquisitive",
-              "Investigator", "Izzet Engineer", "Knight",
-              "Knight of Solamnia", "Knight of the Gauntlet", "Knight of the Order",
-              "Lords' Alliance Vassal", "Lorehold Student", "Lorwyn Expert",
-              "Mage of High Sorcery", "Marine", "Mercenary Veteran",
-              "Merchant", "Mist Wanderer", "Moonwell Pilgrim",
-              "Mulhorandi Tomb Raider", "Mythalkeeper", "Noble",
-              "Noble - Baldur's Gate", "Orzhov Representative", "Outlander",
-              "Outlander - Baldur's Gate", "Pact Seeker", "Pirate",
-              "Plaintiff", "Planar Philosopher", "Prismari Student",
-              "Purple Dragon Squire", "Quandrix Student", "Rakdos Cultist",
-              "Rashemi Wanderer", "Rewarded", "Rival Intern",
-              "Ruined", "Rune Carver", "Sage",
-              "Sage - Baldur's Gate", "Sailor", "Sailor - Baldur's Gate",
-              "Scribe", "Selesnya Initiate", "Shadowmasters Exile",
-              "Shadowmoor Expert", "Shipwright", "Silverquill Student",
-              "Simic Scientist", "Smuggler", "Soldier",
-              "Soldier - Baldur's Gate", "Spellfire Initiate", "Spirit Medium",
-              "Urban Bounty Hunter", "Urchin", "Urchin - Baldur's Gate",
-              "Uthgardt Tribe Member", "Vampire Devotee", "Vampire Survivor",
-              "Waterdhavian Noble", "Wayfarer", "Wildspacer",
-              "Witchlight Hand", "Witherbloom Student", "Zhentarim Mercenary",
-            ];
+            {{/* 2014-line list scraped from dnd2014.wikidot.com/backgrounds'
+              own "Common Backgrounds" + "Setting Specific" sections (every
+              AL/campaign-setting supplement it indexes — Curse of Strahd,
+              Mulmaster, Hillsfar, Acquisitions Inc., Amonkhet, Dragonlance,
+              Innistrad, Planescape, Ravnica, Strixhaven, Wildemount,
+              Spelljammer), not just the core Player's Handbook set, deduped
+              and sorted. 2024-line list from D&D Beyond's backgrounds page,
+              which reorganized its content into "Common" (the 16-background
+              2024 Player's Handbook set) plus four setting tabs (Eberron,
+              Faerun, Ravenloft, Exotic); D&D Beyond's Eberron tab replaced
+              the old per-house "House Agent (Cannith)" etc. reskins with
+              dedicated "House Cannith Heir" etc. backgrounds. */}}
+            var DND_BACKGROUNDS_BY_EDITION = {
+              "2014": [
+                "Acolyte", "Anthropologist", "Archaeologist", "Astral Drifter", "Athlete",
+                "Azorius Functionary", "Black Fist Double Agent", "Boros Legionnaire",
+                "Caravan Specialist", "Celebrity Adventurer's Scion", "Charlatan",
+                "City Watch", "Clan Crafter", "Cloistered Scholar", "Cormanthor Refugee",
+                "Courtier", "Criminal", "Dimir Operative", "Dissenter", "Dragon Casualty",
+                "Earthspur Miner", "Entertainer", "Faceless", "Faction Agent",
+                "Failed Merchant", "Far Traveler", "Feylost", "Fisher", "Folk Hero",
+                "Gambler", "Gate Urchin", "Gate Warden", "Giant Foundling", "Gladiator",
+                "Golgari Agent", "Grinner", "Gruul Anarch", "Guild Artisan",
+                "Guild Merchant", "Harborfolk", "Haunted One", "Hermit",
+                "Hillsfar Merchant", "Hillsfar Smuggler", "House Agent", "Inheritor",
+                "Initiate", "Inquisitor", "Investigator (SCAG)", "Investigator (VRGR)",
+                "Iron Route Bandit", "Izzet Engineer", "Knight", "Knight of Solamnia",
+                "Knight of the Order", "Lorehold Student", "Mage of High Sorcery",
+                "Marine", "Mercenary Veteran", "Mulmaster Aristocrat", "Noble",
+                "Orzhov Representative", "Outlander", "Phlan Insurgent", "Phlan Refugee",
+                "Pirate", "Plaintiff", "Planar Philosopher", "Prismari Student",
+                "Quandrix Student", "Rakdos Cultist", "Rewarded", "Rival Intern",
+                "Ruined", "Rune Carver", "Sage", "Sailor", "Secret Identity",
+                "Selesnya Initiate", "Shade Fanatic", "Shipwright", "Silverquill Student",
+                "Simic Scientist", "Smuggler", "Soldier", "Spy", "Stojanow Prisoner",
+                "Ticklebelly Nomad", "Trade Sheriff", "Urban Bounty Hunter", "Urchin",
+                "Uthgardt Tribe Member", "Vizier", "Volstrucker Agent",
+                "Waterdhavian Noble", "Wildspacer", "Witchlight Hand",
+                "Witherbloom Student",
+              ],
+              "2024": [
+                "Aberrant Heir", "Acolyte", "Archaeologist", "Artisan", "Carouser",
+                "Charlatan", "Chondathan Freebooter", "Criminal", "Dead Magic Dweller",
+                "Dragon Cultist", "Emerald Enclave Caretaker", "Entertainer", "Farmer",
+                "Flaming Fist Mercenary", "Genie Touched", "Guard", "Guide", "Harper",
+                "Haunted One", "Hermit", "House Agent", "House Cannith Heir",
+                "House Deneith Heir", "House Ghallanda Heir", "House Jorasco Heir",
+                "House Kundarak Heir", "House Lyrandar Heir", "House Medani Heir",
+                "House Orien Heir", "House Phiarlan Heir", "House Sivis Heir",
+                "House Tharashk Heir", "House Thuranni Heir", "House Vadalis Heir",
+                "Ice Fisher", "Inquisitive", "Investigator", "Knight of the Gauntlet",
+                "Lords' Alliance Vassal", "Lorwyn Expert", "Merchant", "Mist Wanderer",
+                "Moonwell Pilgrim", "Mulhorandi Tomb Raider", "Mythalkeeper", "Noble",
+                "Pact Seeker", "Purple Dragon Squire", "Rashemi Wanderer", "Sage",
+                "Sailor", "Scribe", "Shadowmasters Exile", "Shadowmoor Expert",
+                "Soldier", "Spellfire Initiate", "Spirit Medium", "Vampire Devotee",
+                "Vampire Survivor", "Wayfarer", "Zhentarim Mercenary",
+              ],
+            };
 
             var PC_MOTIVATIONS = [
               "Acting", "Exploring", "Fighting", "Instigating",
@@ -1266,14 +1270,15 @@
                 Beyond id to refresh from) get a Class dropdown scoped to
                 the chosen edition instead. */}}
               var effectiveClass = rosterEntry ? rosterEntry.charClass : d.charClass;
-              var classWrap, subclassWrap;
+              var classWrap, subclassWrap, backgroundWrap;
               if (rosterEntry) {
                 classWrap = pcFieldStatic("Class", rosterEntry.charClass);
                 header.appendChild(classWrap);
                 subclassWrap = pcFieldSelect("Subclass", (DND_SUBCLASSES_BY_CLASS_EDITION[effectiveEdition] || {})[effectiveClass] || [], d.subclass, { field: "subclass" });
                 header.appendChild(subclassWrap);
                 header.appendChild(pcFieldStatic("Level", rosterEntry.level ? String(rosterEntry.level) : ""));
-                header.appendChild(pcFieldSelect("Background", DND_BACKGROUNDS, d.background, { field: "background" }));
+                backgroundWrap = pcFieldSelect("Background", DND_BACKGROUNDS_BY_EDITION[effectiveEdition] || [], d.background, { field: "background" });
+                header.appendChild(backgroundWrap);
                 header.appendChild(pcFieldStatic("Species", rosterEntry.species));
               } else {
                 classWrap = pcFieldSelect("Class", DND_CLASSES_BY_EDITION[effectiveEdition] || [], d.charClass, { field: "charClass" });
@@ -1281,7 +1286,8 @@
                 subclassWrap = pcFieldSelect("Subclass", (DND_SUBCLASSES_BY_CLASS_EDITION[effectiveEdition] || {})[effectiveClass] || [], d.subclass, { field: "subclass" });
                 header.appendChild(subclassWrap);
                 header.appendChild(pcFieldInput("Level", d.level, { field: "level" }));
-                header.appendChild(pcFieldSelect("Background", DND_BACKGROUNDS, d.background, { field: "background" }));
+                backgroundWrap = pcFieldSelect("Background", DND_BACKGROUNDS_BY_EDITION[effectiveEdition] || [], d.background, { field: "background" });
+                header.appendChild(backgroundWrap);
                 header.appendChild(pcFieldInput("Species", d.species, { field: "species" }));
               }
               header.appendChild(pcFieldSelect("Alignment", DND_ALIGNMENTS, d.alignment, { field: "alignment" }));
@@ -1294,6 +1300,7 @@
                 pattern the NPC Monster select already uses. */}}
               var editionSelectEl = editionWrap.querySelector("select");
               var subclassSelectEl = subclassWrap.querySelector("select");
+              var backgroundSelectEl = backgroundWrap.querySelector("select");
               var refreshSubclassOptions = function () {
                 var currentClass = rosterEntry ? rosterEntry.charClass : classWrap.querySelector("select").value;
                 var opts = (DND_SUBCLASSES_BY_CLASS_EDITION[editionSelectEl.value] || {})[currentClass] || [];
@@ -1304,6 +1311,7 @@
                   pcPopulateSelectOptions(classWrap.querySelector("select"), DND_CLASSES_BY_EDITION[editionSelectEl.value] || [], classWrap.querySelector("select").value);
                 }
                 refreshSubclassOptions();
+                pcPopulateSelectOptions(backgroundSelectEl, DND_BACKGROUNDS_BY_EDITION[editionSelectEl.value] || [], backgroundSelectEl.value);
               });
               if (!rosterEntry) {
                 classWrap.querySelector("select").addEventListener("change", refreshSubclassOptions);
