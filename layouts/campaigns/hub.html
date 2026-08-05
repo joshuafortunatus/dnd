@@ -10,12 +10,50 @@
     Fair is the one grandfathered exception, kept fully static. */}}
   {{ $editableTrial := ne $slug "thats-fair" }}
   <div class="hub-topline">
-    <h1>{{ .Title }}</h1>
+    <h1 id="hub-title">{{ .Title }}</h1>
     <a class="hub-symbol-link" href="{{ .Site.Home.RelPermalink }}">
       <img class="hub-symbol" src="{{ "images/DnD-Symbol.png" | relURL }}" alt="{{ .Site.Title }} home">
     </a>
     <a class="hub-hero-back" href="{{ .Site.Home.RelPermalink }}">&larr; All campaigns</a>
   </div>
+
+  {{/* The D&D symbol is absolutely centered over .hub-topline (see CSS),
+    so a long campaign title can run underneath it — CSS alone can't
+    shrink-to-fit an arbitrary string, so this measures the rendered gap
+    and steps the font-size down until the title clears the symbol's left
+    edge. Re-runs on resize since the available width (and thus the
+    symbol's position) changes with viewport size; skipped entirely once
+    the symbol is hidden (narrow-viewport media query), since there's
+    nothing left to clear. */}}
+  <script>
+    (function () {
+      var title = document.getElementById("hub-title");
+      var symbolLink = document.querySelector(".hub-symbol-link");
+      if (!title || !symbolLink) return;
+      var baseFontSizePx = parseFloat(getComputedStyle(title).fontSize);
+      var minFontSizePx = 16;
+      var fit = function () {
+        {{/* Below the narrow-viewport breakpoint the symbol is hidden
+          entirely (see CSS) and the title goes back to wrapping normally
+          — nothing to clear, so undo any shrinking/nowrap left over from
+          a wider layout. */}}
+        if (!symbolLink.offsetWidth) {
+          title.style.fontSize = "";
+          title.style.whiteSpace = "";
+          return;
+        }
+        title.style.whiteSpace = "nowrap";
+        title.style.fontSize = baseFontSizePx + "px";
+        var size = baseFontSizePx;
+        while (size > minFontSizePx && title.getBoundingClientRect().right > symbolLink.getBoundingClientRect().left - 12) {
+          size -= 1;
+          title.style.fontSize = size + "px";
+        }
+      };
+      fit();
+      window.addEventListener("resize", fit);
+    })();
+  </script>
 
   {{/* Same client-side obscurity gate as the DM Portal (see
     layouts/campaigns/dm-portal.html and archetypes/dm-portal.md) — a
@@ -232,6 +270,24 @@
         than one merged grid — faking an image-shaped card for a PDF
         would erase the real image-vs-download distinction this feature
         is for. */}}
+      <div class="file-library-controls" id="hub-shared-files-controls" hidden>
+        <label for="hub-shared-files-filter">Category</label>
+        <select id="hub-shared-files-filter">
+          <option value="">All categories</option>
+          <option value="map">Map</option>
+          <option value="module">Module</option>
+          <option value="misc">Misc.</option>
+          <option value="npc-visual">NPC Visual</option>
+          <option value="reference">Reference</option>
+        </select>
+        <label for="hub-shared-files-sort">Sort by</label>
+        <select id="hub-shared-files-sort">
+          <option value="uploadedAt">Upload date (newest first)</option>
+          <option value="name">Name</option>
+          <option value="category">Category</option>
+        </select>
+      </div>
+
       <div class="hub-gallery" id="hub-shared-images-list" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}"></div>
       <ul class="entry-list" id="hub-shared-docs-list"></ul>
       <p class="entry-date" id="hub-shared-files-empty" hidden>Nothing shared yet.</p>
@@ -372,10 +428,14 @@
       if (!imagesList) return;
       var docsList = document.getElementById("hub-shared-docs-list");
       var empty = document.getElementById("hub-shared-files-empty");
+      var controls = document.getElementById("hub-shared-files-controls");
+      var filterSelect = document.getElementById("hub-shared-files-filter");
+      var sortSelect = document.getElementById("hub-shared-files-sort");
       var slug = imagesList.dataset.slug;
       var proxyUrl = (imagesList.dataset.proxyUrl || "").replace(/\/$/, "");
 
       var showEmpty = function () {
+        controls.hidden = true;
         imagesList.innerHTML = "";
         docsList.innerHTML = "";
         empty.hidden = false;
@@ -386,6 +446,68 @@
         return;
       }
 
+      {{/* Mirrors the DM portal's File Library filter/sort (name,
+        category, upload date) — sentToPlayers is dropped as a sort option
+        here since every file this endpoint returns already has it set. */}}
+      var allFiles = [];
+      var currentFilter = "";
+      var currentSort = "uploadedAt";
+      var sorters = {
+        name: function (a, b) { return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }); },
+        category: function (a, b) { return (a.category || "").localeCompare(b.category || "") || sorters.name(a, b); },
+        uploadedAt: function (a, b) { return (b.uploadedAt || 0) - (a.uploadedAt || 0); },
+      };
+
+      var renderFiles = function () {
+        var filtered = currentFilter ? allFiles.filter(function (f) { return f.category === currentFilter; }) : allFiles.slice();
+        filtered.sort(sorters[currentSort] || sorters.uploadedAt);
+        imagesList.innerHTML = "";
+        docsList.innerHTML = "";
+        empty.hidden = filtered.length > 0;
+        filtered.forEach(function (file) {
+          var byteUrl = proxyUrl + "/files/" + slug + "/" + file.id;
+          if ((file.contentType || "").indexOf("image/") === 0) {
+            var figure = document.createElement("figure");
+            figure.className = "hub-gallery-item";
+            var a = document.createElement("a");
+            a.href = byteUrl;
+            a.target = "_blank";
+            a.rel = "noopener";
+            var img = document.createElement("img");
+            img.src = byteUrl;
+            img.alt = file.name || "";
+            a.appendChild(img);
+            figure.appendChild(a);
+            var caption = document.createElement("figcaption");
+            caption.textContent = file.name || "";
+            figure.appendChild(caption);
+            imagesList.appendChild(figure);
+          } else {
+            var li = document.createElement("li");
+            var nameSpan = document.createElement("span");
+            nameSpan.textContent = file.name || "Unnamed file";
+            li.appendChild(nameSpan);
+            var link = document.createElement("a");
+            link.className = "ddb-link";
+            link.href = byteUrl;
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.textContent = "Download →";
+            li.appendChild(link);
+            docsList.appendChild(li);
+          }
+        });
+      };
+
+      filterSelect.addEventListener("change", function () {
+        currentFilter = filterSelect.value;
+        renderFiles();
+      });
+      sortSelect.addEventListener("change", function () {
+        currentSort = sortSelect.value;
+        renderFiles();
+      });
+
       fetch(proxyUrl + "/public-files/" + slug)
         .then(function (res) { return res.ok ? res.json() : null; })
         .then(function (files) {
@@ -393,42 +515,9 @@
             showEmpty();
             return;
           }
-          empty.hidden = true;
-          imagesList.innerHTML = "";
-          docsList.innerHTML = "";
-          files.forEach(function (file) {
-            var byteUrl = proxyUrl + "/files/" + slug + "/" + file.id;
-            if ((file.contentType || "").indexOf("image/") === 0) {
-              var figure = document.createElement("figure");
-              figure.className = "hub-gallery-item";
-              var a = document.createElement("a");
-              a.href = byteUrl;
-              a.target = "_blank";
-              a.rel = "noopener";
-              var img = document.createElement("img");
-              img.src = byteUrl;
-              img.alt = file.name || "";
-              a.appendChild(img);
-              figure.appendChild(a);
-              var caption = document.createElement("figcaption");
-              caption.textContent = file.name || "";
-              figure.appendChild(caption);
-              imagesList.appendChild(figure);
-            } else {
-              var li = document.createElement("li");
-              var nameSpan = document.createElement("span");
-              nameSpan.textContent = file.name || "Unnamed file";
-              li.appendChild(nameSpan);
-              var link = document.createElement("a");
-              link.className = "ddb-link";
-              link.href = byteUrl;
-              link.target = "_blank";
-              link.rel = "noopener";
-              link.textContent = "Download →";
-              li.appendChild(link);
-              docsList.appendChild(li);
-            }
-          });
+          allFiles = files;
+          controls.hidden = false;
+          renderFiles();
         })
         .catch(function () {
           showEmpty();

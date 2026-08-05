@@ -1136,7 +1136,7 @@ body.is-home {
 }
 .journal-field input[type="text"], .journal-field textarea,
 .pc-field input[type="text"], .pc-field textarea, .pc-field select,
-.conflict-field input[type="text"], .conflict-field textarea, .conflict-field select,
+.conflict-field input[type="text"], .conflict-field input[type="url"], .conflict-field textarea, .conflict-field select,
 .bastion-field input[type="text"], .bastion-field textarea, .bastion-field select {
   background: var(--bg-raised);
   border: 1px solid var(--border);
