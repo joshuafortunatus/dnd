@@ -229,3 +229,6 @@ hugo_stats.json
 
 # macOS
 .DS_Store
+
+# wrangler CLI local cache/auth, not shared config
+.wrangler/

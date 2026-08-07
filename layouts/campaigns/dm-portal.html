@@ -561,13 +561,24 @@
             return Boolean(syncBase) && Boolean(getSyncToken());
           };
 
+          {{/* Returns { ok, data } rather than a bare value — a fetch that
+            fails (network error, bad/expired token, server error) must
+            never be mistaken for "this key has genuinely never been
+            synced," since every pull*() below treats a confirmed-empty
+            key as license to push the local copy up as the seed. Collapsing
+            both cases to the same falsy value would mean a transient
+            failure could silently overwrite real server data with a stale
+            local copy — this happened for real with Campaign Conflicts. */}}
           var syncPull = function (key) {
-            if (!syncEnabled()) return Promise.resolve(null);
+            if (!syncEnabled()) return Promise.resolve({ ok: false });
             return fetch(syncBase + "/sync/" + syncSlug + "/" + key, {
               headers: { Authorization: "Bearer " + getSyncToken() },
             })
-              .then(function (res) { return res.ok ? res.json() : null; })
-              .catch(function () { return null; });
+              .then(function (res) {
+                if (!res.ok) return { ok: false };
+                return res.json().then(function (data) { return { ok: true, data: data }; });
+              })
+              .catch(function () { return { ok: false }; });
           };
 
           var syncPushTimers = {};
@@ -912,11 +923,12 @@
               syncPush("characters", roster);
             };
             var pullRoster = function () {
-              syncPull("characters").then(function (remote) {
+              syncPull("characters").then(function (result) {
+                var remote = result.ok ? result.data : undefined;
                 if (remote) {
                   writeRosterLocal(remote);
                   renderPcList();
-                } else if (syncEnabled()) {
+                } else if (result.ok && syncEnabled()) {
                   syncPush("characters", loadRoster());
                 }
                 refreshRosterFromDdb();
@@ -1014,7 +1026,9 @@
               syncPush("pc-manager", data);
             };
             var pullPcData = function () {
-              syncPull("pc-manager").then(function (remote) {
+              syncPull("pc-manager").then(function (result) {
+                if (!result.ok) return;
+                var remote = result.data;
                 if (remote) {
                   writePcDataLocal(remote);
                   renderPcList();
@@ -1588,7 +1602,9 @@
             registerSectionResetHook(cancelForm);
 
             var pull = function () {
-              syncPull(config.syncKey).then(function (remote) {
+              syncPull(config.syncKey).then(function (result) {
+                if (!result.ok) return;
+                var remote = result.data;
                 if (remote) {
                   var prunedRemote = pruneOrphanedDrafts(remote, config.isValid, unsavedNewId);
                   writeLocal(prunedRemote);
@@ -1907,7 +1923,9 @@
             var npcIsValid = function (npc) { return Boolean(npc.name && npc.name.trim()); };
 
             var pullNpcs = function () {
-              syncPull("npcs").then(function (remote) {
+              syncPull("npcs").then(function (result) {
+                if (!result.ok) return;
+                var remote = result.data;
                 if (remote) {
                   var prunedRemote = pruneOrphanedDrafts(remote, npcIsValid, unsavedNewNpcId);
                   writeNpcsLocal(prunedRemote);
@@ -4301,7 +4319,9 @@
             var conflictIsValid = function (conflict) { return Boolean(conflict.name && conflict.name.trim() && conflict.adversaryNpcIds && conflict.adversaryNpcIds.length); };
 
             var pullConflicts = function () {
-              syncPull("conflicts").then(function (remote) {
+              syncPull("conflicts").then(function (result) {
+                if (!result.ok) return;
+                var remote = result.data;
                 if (remote) {
                   var prunedRemote = pruneOrphanedDrafts(remote, conflictIsValid, unsavedNewConflictId);
                   writeConflictsLocal(prunedRemote);
@@ -6146,7 +6166,9 @@
             };
 
             var pullMagicItemState = function () {
-              syncPull("magic-items").then(function (remote) {
+              syncPull("magic-items").then(function (result) {
+                if (!result.ok) return;
+                var remote = result.data;
                 if (remote) {
                   writeMagicItemStateLocal(remote);
                   renderMagicItemTracker(remote);
@@ -6363,7 +6385,9 @@
               handler below), so there's never an incomplete placeholder
               record to prune. */}}
             var pullFiles = function () {
-              syncPull("files").then(function (remote) {
+              syncPull("files").then(function (result) {
+                if (!result.ok) return;
+                var remote = result.data;
                 if (remote) {
                   writeFilesLocal(remote);
                   renderFileList();
@@ -6831,6 +6855,13 @@
 
             if (window.localStorage.getItem(storageKey) === hash) {
               reveal();
+              // Returning visit on an already-unlocked device: the sync
+              // token (== the DM password) was already captured on a
+              // previous unlock, so pull now too, not just on first
+              // entry — otherwise this browser would only ever see
+              // whatever was synced the very first time it was unlocked,
+              // no matter how stale that gets.
+              if (window.dmPortalSyncPullAll) window.dmPortalSyncPullAll();
             }
 
             form.addEventListener("submit", function (e) {
