@@ -901,8 +901,8 @@ body.is-home {
   margin: 0 0 0.15rem;
 }
 .npc-statblock-header h4 { margin: 0; }
-.npc-statblock-top-controls { display: flex; gap: 0.5rem; }
-.npc-statblock-top-controls button {
+.npc-statblock-top-controls, .npc-statblock-reset-controls { display: flex; gap: 0.5rem; }
+.npc-statblock-top-controls button, .npc-statblock-reset-controls button {
   background: var(--bg-raised);
   border: 1px solid var(--border);
   color: var(--text-dim);
@@ -912,8 +912,18 @@ body.is-home {
   font-family: inherit;
   cursor: pointer;
 }
-.npc-statblock-top-controls button:hover { color: var(--text); }
+.npc-statblock-top-controls button:hover, .npc-statblock-reset-controls button:hover { color: var(--text); }
+/* Reset's own confirm prompt must survive View mode too (see
+   npc-statblock-reset-controls' own comment in dm-portal.html) — more
+   specific than the blanket .dm-view-scope.view-mode .confirm-delete-wrap
+   hide rule above, which assumes every confirm-wrap sits next to a
+   -delete-btn-style button that's already hidden in View mode; Reset's
+   isn't one of those. */
+.dm-view-scope.view-mode .npc-statblock-reset-controls .confirm-delete-wrap {
+  display: inline-flex !important;
+}
 .npc-statblock-top { margin: 0 0 0.6rem; }
+.npc-statblock-bottom { margin: 0; }
 .npc-statblock-edit-row { display: flex; align-items: center; gap: 0.4rem; margin: 0.25rem 0; }
 .npc-statblock-edit-row strong { white-space: nowrap; }
 .npc-statblock-edit-input {

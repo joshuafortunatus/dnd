@@ -822,6 +822,22 @@
             viewModeObserver.observe(scope, { childList: true, subtree: true });
           });
 
+          {{/* NPC Tracker's Monster Manual stat block override (see
+            npcRenderStatBlockPanel) has no Edit/Save of its own anymore
+            — it just follows this same View/Edit toggle and the NPC
+            form's own Save button, like every other field on that form.
+            currentStatBlockModeHandler(mode) re-renders whichever stat
+            block panel is currently open (top+bottom together) in the
+            new mode; currentStatBlockCollectOverride(), read from
+            renderNpcForm's own saveBtn handler, returns the currently-
+            edited override values so Save can fold them into the same
+            write as everything else. Both null when no Monster Manual
+            NPC's stat block is currently open (Custom NPCs, or nothing
+            selected) — single slots, not a list, since only one NPC
+            record's detail pane can ever be open at once. */}}
+          var currentStatBlockModeHandler = null;
+          var currentStatBlockCollectOverride = null;
+
           var applyPortalMode = function (mode) {
             currentPortalMode = mode;
             Array.prototype.forEach.call(viewScopeEls, function (scope) {
@@ -831,6 +847,7 @@
             Array.prototype.forEach.call(document.querySelectorAll(".dm-mode-toggle-btn"), function (b) {
               b.classList.toggle("is-active", b.dataset.mode === mode);
             });
+            if (currentStatBlockModeHandler) currentStatBlockModeHandler(mode);
           };
 
           {{/* Built fresh by whichever record just opened — see the
@@ -2630,6 +2647,10 @@
               if (override.initiative !== undefined) merged.initiative = override.initiative;
               if (override.linesBefore) merged.linesBefore = override.linesBefore;
               if (override.abilities) merged.abilities = override.abilities;
+              if (override.linesAfter) merged.linesAfter = override.linesAfter;
+              if (override.sections) merged.sections = override.sections;
+              if (override.flavorText !== undefined) merged.flavorText = override.flavorText;
+              if (override.footerLines) merged.footerLines = override.footerLines;
               return merged;
             };
 
@@ -2650,17 +2671,35 @@
               title.textContent = sb.name;
               header.appendChild(title);
 
+              {{/* No dedicated Edit/Save/Cancel here anymore — this
+                panel just follows the NPC form's own View/Edit toggle
+                and Save button up in npc-form-actions (see
+                currentStatBlockModeHandler/currentStatBlockCollectOverride
+                below, and renderNpcForm's own saveBtn handler further
+                down), the same "main buttons" every other field on this
+                form already answers to. Reset is the one action that
+                stays here, since it's not a normal save/cancel — it
+                discards any override entirely and re-fetches from
+                aidedd.org — and it gets its own confirmation step
+                (wireConfirmDelete, same Yes/No inline prompt Remove
+                already uses everywhere) since that's a real "lose your
+                edits" action, unlike Edit/Save. */}}
               if (onOverrideSaved && onReset) {
+                {{/* Deliberately NOT npc-statblock-top-controls (used
+                  elsewhere for the Custom Stat Block Maker's own Edit
+                  button) — that class name matches the view-mode
+                  stylesheet's [class*="-top-controls"] hide rule, which
+                  would bury Reset right when a DM most needs it (they've
+                  just switched to View to check their edit and want an
+                  easy way to undo it). Reset has to survive both modes,
+                  unlike Save/Cancel above which only ever make sense
+                  mid-edit. */}}
                 var topControls = document.createElement("div");
-                topControls.className = "npc-statblock-top-controls";
-                var editBtn = document.createElement("button");
-                editBtn.type = "button";
-                editBtn.textContent = "Edit";
+                topControls.className = "npc-statblock-reset-controls";
                 var resetBtn = document.createElement("button");
                 resetBtn.type = "button";
                 resetBtn.textContent = "Reset";
                 resetBtn.title = "Discard any edits and re-fetch this stat block from aidedd.org";
-                topControls.appendChild(editBtn);
                 topControls.appendChild(resetBtn);
                 header.appendChild(topControls);
               }
@@ -2704,6 +2743,14 @@
                   topPart.appendChild(table);
                 }
               };
+
+              {{/* Reassigned near the bottom of renderTopEditable, once
+                its own field widgets actually exist — the header's
+                shared Save button (see topControls below) calls
+                whatever's currently assigned here at click time, well
+                after this whole function has finished defining
+                everything, so build order doesn't matter. */}}
+              var collectTopOverride = function () { return {}; };
 
               var renderTopEditable = function () {
                 topPart.innerHTML = "";
@@ -3064,21 +3111,13 @@
 
                 if (abilityTable) topPart.appendChild(abilityTable);
 
-                var editActions = document.createElement("div");
-                editActions.className = "npc-statblock-edit-actions";
-                var saveBtn = document.createElement("button");
-                saveBtn.type = "button";
-                saveBtn.className = "npc-save-btn";
-                saveBtn.textContent = "Save";
-                var cancelBtn = document.createElement("button");
-                cancelBtn.type = "button";
-                cancelBtn.className = "npc-cancel-btn";
-                cancelBtn.textContent = "Cancel";
-                editActions.appendChild(saveBtn);
-                editActions.appendChild(cancelBtn);
-                topPart.appendChild(editActions);
-
-                saveBtn.addEventListener("click", function () {
+                {{/* Reassigns the outer collectTopOverride placeholder
+                  (declared below, before this function exists yet — same
+                  deferred-hook pattern as recomputeInitiativeDisplay
+                  above) so the header's single shared Save button can
+                  read these fields without topPart owning its own
+                  Save/Cancel — see the header controls' comment. */}}
+                collectTopOverride = function () {
                   var newLinesBefore = linesBeforeWidgets.map(function (w) {
                     if (w.type === "ac") {
                       var acValue = parseInt(w.valueInput.value, 10) || 0;
@@ -3103,7 +3142,7 @@
                     ? npcFormatInitiative((dexAbility ? parseInt(dexAbility.mod.value, 10) || 0 : 0) + (parseInt(initBonusInput.value, 10) || 0))
                     : (initFallbackInput ? initFallbackInput.value : sb.initiative);
 
-                  var override = {
+                  return {
                     name: nameInput.value,
                     typeLine: typeLineInput.value,
                     initiative: initiativeValue,
@@ -3117,60 +3156,233 @@
                       };
                     }),
                   };
-                  sb = npcApplyStatBlockOverride(rawSb, override);
-                  title.textContent = sb.name;
-                  renderTopReadOnly();
-                  onOverrideSaved(override);
-                });
-
-                cancelBtn.addEventListener("click", renderTopReadOnly);
+                };
               };
 
               renderTopReadOnly();
 
-              if (onOverrideSaved && onReset) {
-                editBtn.addEventListener("click", renderTopEditable);
-                resetBtn.addEventListener("click", onReset);
-              }
+              {{/* Bottom part: Skills/Gear/Senses/Languages/CR
+                (linesAfter), Traits/Actions/Reactions/etc. (sections),
+                flavor text, and the Habitat/Treasure footer — everything
+                below the ability table. Shares the top part's single
+                Edit/Save/Cancel/Reset cluster in the header above (see
+                its comment) rather than getting its own — switches into
+                its editable render whenever the top part does, via the
+                same enterEditMode/exitEditMode below. Section headings
+                themselves stay fixed (matching what aidedd.org actually
+                parsed) — only each section's intro/entries are editable,
+                with add/remove for entries (same repeatable-row pattern
+                as the Custom Stat Block Maker's own section editor
+                below), since adding a whole new category of section is
+                that maker's job, not this override's. */}}
+              var bottomPart = document.createElement("div");
+              bottomPart.className = "npc-statblock-bottom";
+              container.appendChild(bottomPart);
 
-              sb.linesAfter.forEach(function (line) { container.appendChild(npcStatBlockLine(line.label, line.value)); });
+              {{/* Same deferred-hook pattern as collectTopOverride
+                above — reassigned near the end of renderBottomEditable,
+                once its own field widgets exist. */}}
+              var collectBottomOverride = function () { return {}; };
 
-              sb.sections.forEach(function (section) {
-                if (!section.entries.length && !section.intro) return;
-                var heading = document.createElement("h5");
-                heading.textContent = section.heading;
-                container.appendChild(heading);
-                if (section.intro) {
-                  var introP = document.createElement("p");
-                  introP.className = "npc-statblock-intro";
-                  introP.textContent = section.intro;
-                  container.appendChild(introP);
-                }
-                section.entries.forEach(function (entry) {
-                  var p = document.createElement("p");
-                  if (entry.name) {
-                    var nameSpan = document.createElement("span");
-                    nameSpan.className = "npc-statblock-action-name";
-                    nameSpan.textContent = entry.name + ". ";
-                    p.appendChild(nameSpan);
+              var renderBottomReadOnly = function () {
+                bottomPart.innerHTML = "";
+                sb.linesAfter.forEach(function (line) { bottomPart.appendChild(npcStatBlockLine(line.label, line.value)); });
+
+                sb.sections.forEach(function (section) {
+                  if (!section.entries.length && !section.intro) return;
+                  var heading = document.createElement("h5");
+                  heading.textContent = section.heading;
+                  bottomPart.appendChild(heading);
+                  if (section.intro) {
+                    var introP = document.createElement("p");
+                    introP.className = "npc-statblock-intro";
+                    introP.textContent = section.intro;
+                    bottomPart.appendChild(introP);
                   }
-                  p.appendChild(document.createTextNode(entry.description));
-                  container.appendChild(p);
+                  section.entries.forEach(function (entry) {
+                    var p = document.createElement("p");
+                    if (entry.name) {
+                      var nameSpan = document.createElement("span");
+                      nameSpan.className = "npc-statblock-action-name";
+                      nameSpan.textContent = entry.name + ". ";
+                      p.appendChild(nameSpan);
+                    }
+                    p.appendChild(document.createTextNode(entry.description));
+                    bottomPart.appendChild(p);
+                  });
                 });
-              });
 
-              if (sb.flavorText) {
-                var flavor = document.createElement("p");
-                flavor.className = "npc-statblock-flavor";
-                flavor.textContent = sb.flavorText;
-                container.appendChild(flavor);
-              }
+                if (sb.flavorText) {
+                  var flavor = document.createElement("p");
+                  flavor.className = "npc-statblock-flavor";
+                  flavor.textContent = sb.flavorText;
+                  bottomPart.appendChild(flavor);
+                }
 
-              if (sb.footerLines.length) {
-                var footer = document.createElement("p");
-                footer.className = "npc-statblock-footer";
-                footer.textContent = sb.footerLines.join("    ");
-                container.appendChild(footer);
+                if (sb.footerLines.length) {
+                  var footer = document.createElement("p");
+                  footer.className = "npc-statblock-footer";
+                  footer.textContent = sb.footerLines.join("    ");
+                  bottomPart.appendChild(footer);
+                }
+              };
+
+              var renderBottomEditable = function () {
+                bottomPart.innerHTML = "";
+
+                var linesAfterWidgets = sb.linesAfter.map(function (line) {
+                  var row = document.createElement("div");
+                  row.className = "npc-statblock-edit-row";
+                  var label = document.createElement("strong");
+                  label.textContent = line.label;
+                  var input = document.createElement("input");
+                  input.type = "text";
+                  input.className = "npc-statblock-edit-input";
+                  input.value = line.value || "";
+                  row.appendChild(label);
+                  row.appendChild(input);
+                  bottomPart.appendChild(row);
+                  return { label: line.label, input: input };
+                });
+
+                var sectionsWrap = document.createElement("div");
+                sectionsWrap.className = "npc-statblock-sections-edit";
+                var sectionBlocks = sb.sections.map(function (section) {
+                  var block = document.createElement("div");
+                  block.className = "npc-statblock-section-block";
+                  var heading = document.createElement("h5");
+                  heading.textContent = section.heading;
+                  block.appendChild(heading);
+
+                  var introInput = document.createElement("textarea");
+                  introInput.placeholder = "Intro text (optional)";
+                  introInput.value = section.intro || "";
+                  block.appendChild(introInput);
+
+                  var entriesWrap = document.createElement("div");
+                  block.appendChild(entriesWrap);
+                  var entryInputs = [];
+                  var addEntryRow = function (name, description) {
+                    var row = document.createElement("div");
+                    row.className = "npc-statblock-section-entry";
+                    var entryNameInput = document.createElement("input");
+                    entryNameInput.type = "text";
+                    entryNameInput.className = "npc-statblock-edit-input";
+                    entryNameInput.placeholder = "Entry name (optional)";
+                    entryNameInput.value = name || "";
+                    var descInput = document.createElement("textarea");
+                    descInput.placeholder = "Description";
+                    descInput.value = description || "";
+                    var removeEntryBtn = document.createElement("button");
+                    removeEntryBtn.type = "button";
+                    removeEntryBtn.className = "npc-statblock-list-remove";
+                    removeEntryBtn.textContent = "×";
+                    removeEntryBtn.addEventListener("click", function () {
+                      entriesWrap.removeChild(row);
+                      entryInputs = entryInputs.filter(function (e) { return e.row !== row; });
+                    });
+                    row.appendChild(entryNameInput);
+                    row.appendChild(descInput);
+                    row.appendChild(removeEntryBtn);
+                    entriesWrap.appendChild(row);
+                    entryInputs.push({ row: row, nameInput: entryNameInput, descInput: descInput });
+                  };
+                  section.entries.forEach(function (e) { addEntryRow(e.name, e.description); });
+
+                  var addEntryBtn = document.createElement("button");
+                  addEntryBtn.type = "button";
+                  addEntryBtn.className = "npc-statblock-list-add";
+                  addEntryBtn.textContent = "+ Add Entry";
+                  addEntryBtn.addEventListener("click", function () { addEntryRow("", ""); });
+                  block.appendChild(addEntryBtn);
+
+                  sectionsWrap.appendChild(block);
+                  return { heading: section.heading, introInput: introInput, getEntries: function () { return entryInputs; } };
+                });
+                bottomPart.appendChild(sectionsWrap);
+
+                var flavorRow = document.createElement("div");
+                flavorRow.className = "npc-statblock-edit-row";
+                var flavorLabel = document.createElement("strong");
+                flavorLabel.textContent = "Flavor Text";
+                var flavorInput = document.createElement("textarea");
+                flavorInput.value = sb.flavorText || "";
+                flavorRow.appendChild(flavorLabel);
+                flavorRow.appendChild(flavorInput);
+                bottomPart.appendChild(flavorRow);
+
+                var footerRow = document.createElement("div");
+                footerRow.className = "npc-statblock-edit-row";
+                var footerLabel = document.createElement("strong");
+                footerLabel.textContent = "Habitat / Treasure";
+                var footerInput = document.createElement("input");
+                footerInput.type = "text";
+                footerInput.className = "npc-statblock-edit-input";
+                footerInput.placeholder = "e.g. Habitat: Any    Treasure: Individual";
+                footerInput.value = sb.footerLines.join("    ");
+                footerRow.appendChild(footerLabel);
+                footerRow.appendChild(footerInput);
+                bottomPart.appendChild(footerRow);
+
+                collectBottomOverride = function () {
+                  return {
+                    linesAfter: linesAfterWidgets.map(function (w) { return { label: w.label, value: w.input.value }; }),
+                    sections: sectionBlocks.map(function (b) {
+                      return {
+                        heading: b.heading,
+                        intro: b.introInput.value,
+                        entries: b.getEntries()
+                          .map(function (e) { return { name: e.nameInput.value, description: e.descInput.value }; })
+                          .filter(function (e) { return e.name || e.description; }),
+                      };
+                    }),
+                    flavorText: flavorInput.value,
+                    footerLines: footerInput.value.trim() ? [footerInput.value.trim()] : [],
+                  };
+                };
+              };
+
+              var renderBoth = function (mode) {
+                if (mode === "edit") {
+                  renderTopEditable();
+                  renderBottomEditable();
+                } else {
+                  renderTopReadOnly();
+                  renderBottomReadOnly();
+                }
+              };
+              renderBoth(currentPortalMode);
+
+              if (onOverrideSaved && onReset) {
+                {{/* Single-slot, not an array — only one NPC record's
+                  stat block panel can ever be open at once (this is
+                  Character Manager's own detail pane), so there's never
+                  more than one live handler to track, and the next
+                  panel render simply overwrites both slots. See
+                  applyPortalMode's own call site for
+                  currentStatBlockModeHandler, and renderNpcForm's own
+                  saveBtn handler for currentStatBlockCollectOverride. */}}
+                currentStatBlockModeHandler = renderBoth;
+                currentStatBlockCollectOverride = function () {
+                  var topOverride = collectTopOverride();
+                  var bottomOverride = collectBottomOverride();
+                  return {
+                    name: topOverride.name,
+                    typeLine: topOverride.typeLine,
+                    initiative: topOverride.initiative,
+                    linesBefore: topOverride.linesBefore,
+                    abilities: topOverride.abilities,
+                    linesAfter: bottomOverride.linesAfter,
+                    sections: bottomOverride.sections,
+                    flavorText: bottomOverride.flavorText,
+                    footerLines: bottomOverride.footerLines,
+                  };
+                };
+                wireConfirmDelete(resetBtn, function () {
+                  currentStatBlockModeHandler = null;
+                  currentStatBlockCollectOverride = null;
+                  onReset();
+                });
               }
             };
 
@@ -3993,6 +4205,15 @@
               npcDetail.innerHTML = "";
               if (!npc) return;
               npcDirty = false;
+              {{/* Reset here, not just left over from whichever NPC was
+                open before — a Monster Manual NPC re-populates these
+                (see npcRenderStatBlockPanel) later in this same render
+                if that's what this npc turns out to be; a Custom NPC (or
+                nothing) leaves them null, which is what we want: nothing
+                stale from a previously-open different NPC's stat block
+                for the outer Save handler below to wrongly collect. */}}
+              currentStatBlockModeHandler = null;
+              currentStatBlockCollectOverride = null;
 
               var actions = document.createElement("div");
               actions.className = "npc-form-actions";
@@ -4096,6 +4317,16 @@
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectNpcFromForm(form, npc);
+                {{/* Only while actually in Edit mode — currentStatBlockCollectOverride
+                  reads the stat block panel's live <input> values, which
+                  only reflect real edits when that panel is rendered
+                  editable; in View mode those same fields are locked and
+                  unchanged, so leave updated.statBlockOverride at
+                  whatever collectNpcFromForm already carried forward
+                  above rather than risk collecting a stale/empty read. */}}
+                if (currentPortalMode === "edit" && currentStatBlockCollectOverride) {
+                  updated.statBlockOverride = currentStatBlockCollectOverride();
+                }
                 if (!updated.name || !updated.name.trim()) {
                   error.textContent = "NPC Name is required.";
                   error.hidden = false;
