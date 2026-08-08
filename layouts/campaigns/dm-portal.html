@@ -4399,8 +4399,12 @@
               ));
               form.appendChild(relatedRow);
 
-              form.appendChild(makeFieldTextarea("journal", "Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
-              form.appendChild(makeFieldTextarea("journal", "What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
+              var recapRow = document.createElement("div");
+              recapRow.className = "journal-textarea-row";
+              recapRow.appendChild(makeFieldTextarea("journal", "Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
+              recapRow.appendChild(makeFieldTextarea("journal", "What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
+              form.appendChild(recapRow);
+
               form.appendChild(makeFieldTextarea("journal", "Additional Notes", entry.notes, { field: "notes" }));
             },
             collectFromForm: function (form, originalEntry) {

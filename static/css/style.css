@@ -1972,6 +1972,13 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 }
 .journal-related-fields .journal-related-field { flex: 1 1 14rem; }
 
+.journal-textarea-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+.journal-textarea-row .journal-field-wide { flex: 1 1 14rem; }
+
 .journal-related-box {
   background: var(--bg-raised);
   border: 1px solid var(--border);
