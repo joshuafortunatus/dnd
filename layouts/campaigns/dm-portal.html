@@ -1750,6 +1750,62 @@
             return [blankStage(), blankStage(), blankStage()];
           };
 
+          {{/* Exposed as a standalone loader (mirroring loadJournalEntries/
+            loadConflicts above) purely so Campaign Journal can read tied
+            travel plans directly — createRecordTracker's own load() stays
+            private to its closure otherwise. */}}
+          var loadTravelPlans = function () {
+            try {
+              return JSON.parse(window.localStorage.getItem(document.getElementById("travel-planner").dataset.storageKey) || "[]");
+            } catch (e) {
+              return [];
+            }
+          };
+
+          {{/* Ties a travel plan to a Campaign Journal session, same
+            pattern as conflictSessionSelect below (by the session's id,
+            not its number/title, so the tie survives a session being
+            renumbered/retitled later). Reads loadJournalEntries — defined
+            below in the Campaign Journal block, which always exists on
+            the page since every DM portal renders the full fixed section
+            list. */}}
+          var travelSessionSelect = function (labelText, value, dataAttrs) {
+            var wrap = document.createElement("div");
+            wrap.className = "travel-field";
+            var label = document.createElement("label");
+            label.textContent = labelText;
+            wrap.appendChild(label);
+            var select = document.createElement("select");
+            Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+            var placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "— Not tied to a session —";
+            select.appendChild(placeholder);
+            var sessions = loadJournalEntries().slice().sort(function (a, b) {
+              return (parseInt(a.sessionNumber, 10) || 0) - (parseInt(b.sessionNumber, 10) || 0);
+            });
+            sessions.forEach(function (session) {
+              var option = document.createElement("option");
+              option.value = session.id;
+              option.textContent = (session.sessionNumber || "?") + " - " + (session.title || "Untitled Session");
+              select.appendChild(option);
+            });
+            select.value = sessions.some(function (s) { return s.id === value; }) ? value : "";
+            wrap.appendChild(select);
+            return wrap;
+          };
+
+          {{/* Prefixed with the tied session's number, same as
+            conflictLabel below — untied plans are unprefixed. */}}
+          var travelLabel = function (plan) {
+            var base = (plan.origin || "?") + " - " + (plan.destination || "?");
+            if (plan.sessionId) {
+              var session = loadJournalEntries().filter(function (e) { return e.id === plan.sessionId; })[0];
+              if (session) return (session.sessionNumber || "?") + " - " + base;
+            }
+            return base;
+          };
+
           createRecordTracker({
             containerId: "travel-planner",
             selectId: "travel-planner-select",
@@ -1760,15 +1816,16 @@
             requiredError: "Origin and Destination are required.",
             cssPrefix: "travel",
             isValid: function (plan) { return Boolean(plan.origin && plan.origin.trim() && plan.destination && plan.destination.trim()); },
-            label: function (plan) { return (plan.origin || "?") + " - " + (plan.destination || "?"); },
+            label: travelLabel,
             makeBlank: function () {
-              return { origin: "", destination: "", stages: blankStages() };
+              return { origin: "", destination: "", stages: blankStages(), sessionId: "" };
             },
             renderFields: function (form, plan) {
               var header = document.createElement("div");
               header.className = "travel-header-fields";
               header.appendChild(markRequired(makeFieldInput("travel", "Origin", plan.origin, { field: "origin" })));
               header.appendChild(markRequired(makeFieldInput("travel", "Destination", plan.destination, { field: "destination" })));
+              header.appendChild(travelSessionSelect("Tied to Session", plan.sessionId, { field: "sessionId" }));
               form.appendChild(header);
 
               plan.stages.forEach(function (stage, i) {
@@ -1829,6 +1886,7 @@
                 createdAt: originalPlan.createdAt,
                 origin: "",
                 destination: "",
+                sessionId: "",
                 stages: blankStages(),
               };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
@@ -4219,6 +4277,56 @@
             return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
           };
 
+          {{/* Read-only rollup of records tied to this session (via each
+            record's own "Tied to Session" field) — pulled live from
+            Campaign Conflicts/Travel Planner's own storage rather than
+            duplicated into the journal entry itself, so editing a
+            conflict or travel plan elsewhere is instantly reflected here
+            with nothing to keep in sync. loadConflicts/conflictLabel are
+            defined below in the Campaign Conflicts block, which always
+            exists on the page since every DM portal renders the full
+            fixed section list (same reasoning conflictSessionSelect
+            already relies on for loadJournalEntries above). Each entry
+            gets a jump-to-record button rather than just a label, since
+            there's no reason to make the DM re-find it by hand in the
+            other section's own picklist. */}}
+          var journalRelatedSection = function (heading, records, labelFn, sectionId, selectId, emptyText) {
+            var wrap = document.createElement("div");
+            wrap.className = "journal-related-section";
+            var h3 = document.createElement("h3");
+            h3.textContent = heading;
+            wrap.appendChild(h3);
+            if (!records.length) {
+              var empty = document.createElement("p");
+              empty.className = "entry-date";
+              empty.textContent = emptyText;
+              wrap.appendChild(empty);
+              return wrap;
+            }
+            var list = document.createElement("ul");
+            list.className = "journal-related-list";
+            records.forEach(function (record) {
+              var li = document.createElement("li");
+              var span = document.createElement("span");
+              span.textContent = labelFn(record);
+              li.appendChild(span);
+              var openBtn = document.createElement("button");
+              openBtn.type = "button";
+              openBtn.className = "journal-related-open-btn";
+              openBtn.textContent = "Open →";
+              openBtn.addEventListener("click", function () {
+                goToSection(sectionId);
+                var sel = document.getElementById(selectId);
+                sel.value = record.id;
+                sel.dispatchEvent(new Event("change"));
+              });
+              li.appendChild(openBtn);
+              list.appendChild(li);
+            });
+            wrap.appendChild(list);
+            return wrap;
+          };
+
           createRecordTracker({
             containerId: "campaign-journal",
             selectId: "campaign-journal-select",
@@ -4264,6 +4372,23 @@
               form.appendChild(makeFieldTextarea("journal", "Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
               form.appendChild(makeFieldTextarea("journal", "What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
               form.appendChild(makeFieldTextarea("journal", "Additional Notes", entry.notes, { field: "notes" }));
+
+              form.appendChild(journalRelatedSection(
+                "Campaign Conflicts",
+                loadConflicts().filter(function (c) { return c.sessionId === entry.id; }),
+                conflictLabel,
+                "campaign-conflicts",
+                "campaign-conflicts-select",
+                "No conflicts tied to this session."
+              ));
+              form.appendChild(journalRelatedSection(
+                "Travel",
+                loadTravelPlans().filter(function (p) { return p.sessionId === entry.id; }),
+                travelLabel,
+                "travel-planner",
+                "travel-planner-select",
+                "No travel plans tied to this session."
+              ));
             },
             collectFromForm: function (form, originalEntry) {
               var entry = { id: originalEntry.id, createdAt: originalEntry.createdAt };
