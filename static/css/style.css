@@ -1994,6 +1994,7 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   margin: 0;
 }
 .journal-related-list li {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2012,6 +2013,31 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   flex-shrink: 0;
 }
 .journal-related-open-btn:hover { color: var(--accent); background: rgba(201, 162, 39, 0.15); }
+
+/* Basic-info tooltip: hidden until the row is hovered/focused, positioned
+   just above it rather than following the cursor (simplest to anchor
+   reliably with pure CSS, no JS positioning math needed). */
+.journal-related-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 10;
+  margin-bottom: 0.35rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.85rem;
+  white-space: pre-line;
+  max-width: 22rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.journal-related-list li:hover .journal-related-tooltip,
+.journal-related-list li:focus-within .journal-related-tooltip {
+  display: block;
+}
 
 .travel-planner-controls, .npc-tracker-controls, .settlement-tracker-controls,
 .campaign-journal-controls, .campaign-conflicts-controls, .bastion-tracker-controls {

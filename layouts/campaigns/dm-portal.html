@@ -1806,6 +1806,23 @@
             return base;
           };
 
+          {{/* Basic-info hover text for Campaign Journal's pulled Travel
+            list (see journalRelatedSection below) — a per-stage summary,
+            the thing a DM would otherwise have to open the record to
+            see (Origin/Destination are already in the label itself). */}}
+          var travelHoverInfo = function (plan) {
+            var lines = [];
+            (plan.stages || []).forEach(function (stage, i) {
+              var parts = [];
+              if (stage.start || stage.end) parts.push((stage.start || "?") + " → " + (stage.end || "?"));
+              if (stage.distance) parts.push(stage.distance);
+              if (stage.terrain) parts.push(stage.terrain);
+              if (stage.weather) parts.push(stage.weather);
+              if (parts.length) lines.push("Stage " + (i + 1) + ": " + parts.join(" · "));
+            });
+            return lines.length ? lines.join("\n") : "No stage details yet.";
+          };
+
           createRecordTracker({
             containerId: "travel-planner",
             selectId: "travel-planner-select",
@@ -4290,7 +4307,7 @@
             gets a jump-to-record button rather than just a label, since
             there's no reason to make the DM re-find it by hand in the
             other section's own picklist. */}}
-          var journalRelatedSection = function (heading, records, labelFn, sectionId, selectId, emptyText) {
+          var journalRelatedSection = function (heading, records, labelFn, hoverInfoFn, sectionId, selectId, emptyText) {
             {{/* Styled as a .journal-field, same as Title/Number/Date
               above and the Notes textareas below, so this reads as just
               another field on the sheet rather than a visually distinct
@@ -4319,6 +4336,15 @@
               var span = document.createElement("span");
               span.textContent = labelFn(record);
               li.appendChild(span);
+              {{/* Basic-info tooltip, shown on hover/focus of the row via
+                the shared .journal-related-tooltip CSS — a custom element
+                rather than the native title attribute so it's styled
+                consistently with the rest of the portal and appears
+                instantly instead of after the browser's built-in delay. */}}
+              var tooltip = document.createElement("div");
+              tooltip.className = "journal-related-tooltip";
+              tooltip.textContent = hoverInfoFn(record);
+              li.appendChild(tooltip);
               var openBtn = document.createElement("button");
               openBtn.type = "button";
               openBtn.className = "journal-related-open-btn";
@@ -4385,6 +4411,7 @@
                 "Campaign Conflicts",
                 loadConflicts().filter(function (c) { return c.sessionId === entry.id; }),
                 conflictLabel,
+                conflictHoverInfo,
                 "campaign-conflicts",
                 "campaign-conflicts-select",
                 "No conflicts tied to this session."
@@ -4393,6 +4420,7 @@
                 "Travel",
                 loadTravelPlans().filter(function (p) { return p.sessionId === entry.id; }),
                 travelLabel,
+                travelHoverInfo,
                 "travel-planner",
                 "travel-planner-select",
                 "No travel plans tied to this session."
@@ -4531,6 +4559,30 @@
                 if (session) return (session.sessionNumber || "?") + " - " + base;
               }
               return base;
+            };
+
+            {{/* Basic-info hover text for Campaign Journal's pulled
+              Campaign Conflicts list (see journalRelatedSection below) —
+              combatants plus a Notes preview, the two things a DM would
+              otherwise have to open the record to see. */}}
+            var conflictHoverInfo = function (conflict) {
+              var lines = [];
+              var ids = conflict.adversaryNpcIds || [];
+              if (ids.length) {
+                var npcs = loadNpcs();
+                var quantities = conflict.adversaryNpcQuantities || {};
+                var names = ids
+                  .map(function (id) {
+                    var npc = npcs.filter(function (n) { return n.id === id; })[0];
+                    return npc ? conflictAdversaryDisplayLabel(npc, quantities[id] || 1) : null;
+                  })
+                  .filter(Boolean);
+                if (names.length) lines.push("Combatants: " + names.join(", "));
+              } else if (conflict.adversary) {
+                lines.push("Combatants: " + conflict.adversary);
+              }
+              if (conflict.notes && conflict.notes.trim()) lines.push("Notes: " + conflict.notes.trim());
+              return lines.length ? lines.join("\n") : "No additional details yet.";
             };
 
             var conflictEditInput = function (labelText, value, dataAttrs) {
