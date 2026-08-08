@@ -4291,16 +4291,25 @@
             there's no reason to make the DM re-find it by hand in the
             other section's own picklist. */}}
           var journalRelatedSection = function (heading, records, labelFn, sectionId, selectId, emptyText) {
+            {{/* Styled as a .journal-field, same as Title/Number/Date
+              above and the Notes textareas below, so this reads as just
+              another field on the sheet rather than a visually distinct
+              widget — the label matches every other field's label, and
+              the list sits inside the same boxed look inputs/textareas
+              already use (see .journal-related-box below). */}}
             var wrap = document.createElement("div");
-            wrap.className = "journal-related-section";
-            var h3 = document.createElement("h3");
-            h3.textContent = heading;
-            wrap.appendChild(h3);
+            wrap.className = "journal-field journal-related-field";
+            var label = document.createElement("label");
+            label.textContent = heading;
+            wrap.appendChild(label);
+            var box = document.createElement("div");
+            box.className = "journal-related-box";
             if (!records.length) {
               var empty = document.createElement("p");
-              empty.className = "entry-date";
+              empty.className = "entry-date journal-related-empty";
               empty.textContent = emptyText;
-              wrap.appendChild(empty);
+              box.appendChild(empty);
+              wrap.appendChild(box);
               return wrap;
             }
             var list = document.createElement("ul");
@@ -4323,7 +4332,8 @@
               li.appendChild(openBtn);
               list.appendChild(li);
             });
-            wrap.appendChild(list);
+            box.appendChild(list);
+            wrap.appendChild(box);
             return wrap;
           };
 
@@ -4369,11 +4379,9 @@
 
               form.appendChild(header);
 
-              form.appendChild(makeFieldTextarea("journal", "Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
-              form.appendChild(makeFieldTextarea("journal", "What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
-              form.appendChild(makeFieldTextarea("journal", "Additional Notes", entry.notes, { field: "notes" }));
-
-              form.appendChild(journalRelatedSection(
+              var relatedRow = document.createElement("div");
+              relatedRow.className = "journal-related-fields";
+              relatedRow.appendChild(journalRelatedSection(
                 "Campaign Conflicts",
                 loadConflicts().filter(function (c) { return c.sessionId === entry.id; }),
                 conflictLabel,
@@ -4381,7 +4389,7 @@
                 "campaign-conflicts-select",
                 "No conflicts tied to this session."
               ));
-              form.appendChild(journalRelatedSection(
+              relatedRow.appendChild(journalRelatedSection(
                 "Travel",
                 loadTravelPlans().filter(function (p) { return p.sessionId === entry.id; }),
                 travelLabel,
@@ -4389,6 +4397,11 @@
                 "travel-planner-select",
                 "No travel plans tied to this session."
               ));
+              form.appendChild(relatedRow);
+
+              form.appendChild(makeFieldTextarea("journal", "Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
+              form.appendChild(makeFieldTextarea("journal", "What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
+              form.appendChild(makeFieldTextarea("journal", "Additional Notes", entry.notes, { field: "notes" }));
             },
             collectFromForm: function (form, originalEntry) {
               var entry = { id: originalEntry.id, createdAt: originalEntry.createdAt };
