@@ -688,6 +688,18 @@
             var known = Array.prototype.some.call(sectionPanels, function (p) { return p.dataset.section === section; });
             if (!known) return;
             enterSection(section);
+            {{/* Character Manager has an extra step before its NPC
+              picker even exists in the DOM as anything but hidden — the
+              Playable/NPC chooser (see the "Character Manager" comment
+              further down) — so a deep link into it (e.g. from an NPC
+              name linked in Campaign Conflicts' combat table below) has
+              to click that first, same as the adversary picker's own
+              "add one in Character Manager" empty-state link already
+              does. */}}
+            if (section === "character-manager") {
+              var npcChooserBtn = document.querySelector('.npc-source-chooser-btn[data-manager-kind="npc"]');
+              if (npcChooserBtn) npcChooserBtn.click();
+            }
             var recordId = params.get("record");
             if (!recordId) return;
             var recordSelect = document.querySelector('.dm-section-panel[data-section="' + section + '"] select[id$="-select"]');
@@ -5053,7 +5065,7 @@
               empty.textContent = "No combatants yet — add adversary NPCs above, or add PCs in Character Manager.";
               wrap.appendChild(empty);
 
-              var combatRow = function (key, kindLabel, name, stats, ddbUrl, defaultHpMax) {
+              var combatRow = function (key, kindLabel, name, stats, linkInfo, defaultHpMax) {
                 stats = stats || {};
                 var tr = document.createElement("tr");
                 tr.className = "combat-row";
@@ -5067,19 +5079,41 @@
                 tag.textContent = kindLabel;
                 nameTd.appendChild(tag);
                 nameTd.appendChild(document.createTextNode(" "));
-                {{/* ddbUrl only ever arrives for PC rows (see renderRows —
-                  NPCs have no D&D Beyond sheet of their own) — an <a>
-                  rather than the plain <span> the no-link case still
-                  falls back to, same target/rel as PC Manager's own "View
-                  on D&D Beyond →" link above. Still gets
+                {{/* linkInfo arrives for PC rows (their D&D Beyond sheet —
+                  see renderRows) and now NPC rows too (their own base
+                  record in Character Manager's NPC Tracker, since a combat
+                  row/adversary-picker entry is just one live copy of that
+                  record) — an <a> rather than the plain <span> the no-link
+                  case still falls back to, same target/rel as PC Manager's
+                  own "View on D&D Beyond →" link above. Still gets
                   .combat-name-text either way, so measureNames' own
-                  offsetWidth check keeps working unchanged. */}}
-                var nameTextEl = document.createElement(ddbUrl ? "a" : "span");
+                  offsetWidth check keeps working unchanged. An internal
+                  link (linkInfo.recordId set) also intercepts a plain
+                  click to jump within this tab, same
+                  modified-click-still-opens-a-new-tab convention as
+                  journalRelatedSection's "Open →" links — a PC's external
+                  ddbUrl link has no in-page equivalent to jump to, so it's
+                  left as a plain always-new-tab link. */}}
+                var nameTextEl = document.createElement(linkInfo ? "a" : "span");
                 nameTextEl.className = "combat-name-text";
-                if (ddbUrl) {
-                  nameTextEl.href = ddbUrl;
+                if (linkInfo) {
+                  nameTextEl.href = linkInfo.href;
                   nameTextEl.target = "_blank";
                   nameTextEl.rel = "noopener";
+                  if (linkInfo.recordId) {
+                    nameTextEl.addEventListener("click", function (e) {
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                      e.preventDefault();
+                      goToSection("character-manager");
+                      var npcChooserBtn = document.querySelector('.npc-source-chooser-btn[data-manager-kind="npc"]');
+                      if (npcChooserBtn) npcChooserBtn.click();
+                      var npcSelect = document.getElementById("npc-tracker-select");
+                      if (npcSelect) {
+                        npcSelect.value = linkInfo.recordId;
+                        npcSelect.dispatchEvent(new Event("change"));
+                      }
+                    });
+                  }
                 }
                 nameTextEl.textContent = name;
 
@@ -6017,7 +6051,7 @@
                     real published pages get theirs from pcRealLinks. */}}
                   var rosterEntry = roster.filter(function (e) { return slugifyName(e.name) === slugifyName(name); })[0];
                   var ddbUrl = rosterEntry ? rosterEntry.link : pcRealLinks[name];
-                  tbody.appendChild(combatRow(key, "PC", name, stats, ddbUrl));
+                  tbody.appendChild(combatRow(key, "PC", name, stats, ddbUrl ? { href: ddbUrl } : null));
                 });
 
                 var checkedNpcIds = Array.prototype.map.call(
@@ -6051,7 +6085,8 @@
                       stats = { initiative: "", hpCurrent: defaults.hpMax, hpMax: defaults.hpMax, ac: defaults.ac, conditions: [] };
                     }
                     var rowLabel = qty > 1 ? npcLabel(npc) + " " + i : npcLabel(npc);
-                    var tr = combatRow(key, "NPC", rowLabel, stats, undefined, defaults.hpMax);
+                    var npcLinkInfo = { href: "?section=character-manager&record=" + encodeURIComponent(npc.id), recordId: npc.id };
+                    var tr = combatRow(key, "NPC", rowLabel, stats, npcLinkInfo, defaults.hpMax);
                     tbody.appendChild(tr);
                     {{/* Called unconditionally, not gated on "is this a
                       brand-new row" — renderRows tears down and rebuilds
