@@ -594,8 +594,18 @@
             }, 800);
           };
 
+          {{/* Returns a Promise (each pullX above now returns its own
+            syncPull().then() chain) so callers can wait for every pull to
+            actually settle before doing anything that reads freshly-
+            pulled data — see applyDeepLinkFromUrl below, which otherwise
+            raced this: a pull resolving after the deep link had already
+            selected a record calls that section's own clearDetail(),
+            wiping the selection's rendered form (the select itself stays
+            on the right value, since renderSelect preserves it, but the
+            detail underneath goes blank) the moment sync is enabled and
+            actually has something to pull. */}}
           window.dmPortalSyncPullAll = function () {
-            syncPullers.forEach(function (fn) { fn(); });
+            return Promise.all(syncPullers.map(function (fn) { return fn(); }));
           };
 
           {{/* Exposed so the password-gate script (a separate <script>
@@ -624,6 +634,13 @@
             sectionSelect.value = section;
             currentSection = section;
             if (section === "character-manager" && window.dmPortalRefreshCharacters) window.dmPortalRefreshCharacters();
+            {{/* Jumping here from deep within a scrolled-down record (a
+              Campaign Journal "Open →" link, an NPC combat-row link) must
+              land on the new section's own top, not whatever scroll
+              offset the page happened to be at — otherwise the new
+              section's content renders off-screen below the fold, and it
+              looks like nothing happened or the wrong thing loaded. */}}
+            window.scrollTo(0, 0);
           }
 
           {{/* Switching sections mid-edit would otherwise silently discard
@@ -667,6 +684,54 @@
           Array.prototype.forEach.call(landingEl.querySelectorAll(".dm-landing-btn"), function (b) {
             b.addEventListener("click", function () { enterSection(b.dataset.section); });
           });
+
+          {{/* Deep link support (?section=<id>&record=<recordId>) — what
+            makes the Campaign Journal's "Open →" links (see
+            journalRelatedSection below) real, ctrl/cmd-click-in-a-new-
+            -tab-able <a> elements instead of same-tab-only JS buttons: the
+            new tab just loads this same DM portal URL with these params.
+            Must run AFTER dmPortalSyncPullAll's pulls have settled, not
+            just after this script's own initial synchronous pass — a
+            pull that resolves later (real sync is enabled and the
+            Worker actually has something to pull) calls that section's
+            own clearDetail(), which would otherwise wipe the record this
+            just selected moments after selecting it (the select itself
+            keeps showing the right value, since renderSelect preserves
+            it, but the detail underneath goes blank — this shipped once
+            and had to be fixed). Exposed on window since the gate script
+            further down is what actually knows when a fresh unlock's own
+            pull cycle finishes; also called directly at the very end of
+            this same script for the no-gate case (blank password_hash
+            skips that whole script, but still calls dmPortalSyncPullAll
+            itself further down here, which resolves quickly regardless
+            since sync is never enabled without a password). */}}
+          var applyDeepLinkFromUrl = function () {
+            var params = new URLSearchParams(window.location.search);
+            var section = params.get("section");
+            if (!section) return;
+            var known = Array.prototype.some.call(sectionPanels, function (p) { return p.dataset.section === section; });
+            if (!known) return;
+            enterSection(section);
+            {{/* Character Manager has an extra step before its NPC
+              picker even exists in the DOM as anything but hidden — the
+              Playable/NPC chooser (see the "Character Manager" comment
+              further down) — so a deep link into it (e.g. from an NPC
+              name linked in Campaign Conflicts' combat table below) has
+              to click that first, same as the adversary picker's own
+              "add one in Character Manager" empty-state link already
+              does. */}}
+            if (section === "character-manager") {
+              var npcChooserBtn = document.querySelector('.npc-source-chooser-btn[data-manager-kind="npc"]');
+              if (npcChooserBtn) npcChooserBtn.click();
+            }
+            var recordId = params.get("record");
+            if (!recordId) return;
+            var recordSelect = document.querySelector('.dm-section-panel[data-section="' + section + '"] select[id$="-select"]');
+            if (!recordSelect) return;
+            recordSelect.value = recordId;
+            recordSelect.dispatchEvent(new Event("change"));
+          };
+          window.dmPortalApplyDeepLinkFromUrl = applyDeepLinkFromUrl;
 
           {{/* View mode: a read-friendly alternative skin over the
             existing edit forms in Character Manager, Campaign Journal,
@@ -757,6 +822,22 @@
             viewModeObserver.observe(scope, { childList: true, subtree: true });
           });
 
+          {{/* NPC Tracker's Monster Manual stat block override (see
+            npcRenderStatBlockPanel) has no Edit/Save of its own anymore
+            — it just follows this same View/Edit toggle and the NPC
+            form's own Save button, like every other field on that form.
+            currentStatBlockModeHandler(mode) re-renders whichever stat
+            block panel is currently open (top+bottom together) in the
+            new mode; currentStatBlockCollectOverride(), read from
+            renderNpcForm's own saveBtn handler, returns the currently-
+            edited override values so Save can fold them into the same
+            write as everything else. Both null when no Monster Manual
+            NPC's stat block is currently open (Custom NPCs, or nothing
+            selected) — single slots, not a list, since only one NPC
+            record's detail pane can ever be open at once. */}}
+          var currentStatBlockModeHandler = null;
+          var currentStatBlockCollectOverride = null;
+
           var applyPortalMode = function (mode) {
             currentPortalMode = mode;
             Array.prototype.forEach.call(viewScopeEls, function (scope) {
@@ -766,6 +847,7 @@
             Array.prototype.forEach.call(document.querySelectorAll(".dm-mode-toggle-btn"), function (b) {
               b.classList.toggle("is-active", b.dataset.mode === mode);
             });
+            if (currentStatBlockModeHandler) currentStatBlockModeHandler(mode);
           };
 
           {{/* Built fresh by whichever record just opened — see the
@@ -923,7 +1005,7 @@
               syncPush("characters", roster);
             };
             var pullRoster = function () {
-              syncPull("characters").then(function (result) {
+              return syncPull("characters").then(function (result) {
                 var remote = result.ok ? result.data : undefined;
                 if (remote) {
                   writeRosterLocal(remote);
@@ -1026,7 +1108,7 @@
               syncPush("pc-manager", data);
             };
             var pullPcData = function () {
-              syncPull("pc-manager").then(function (result) {
+              return syncPull("pc-manager").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -1602,7 +1684,7 @@
             registerSectionResetHook(cancelForm);
 
             var pull = function () {
-              syncPull(config.syncKey).then(function (result) {
+              return syncPull(config.syncKey).then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -1733,6 +1815,32 @@
             });
           };
 
+          {{/* Moved up from the Campaign Journal block below: Travel
+            Planner's own travelLabel/travelSessionSelect (right below)
+            read loadJournalEntries, and — unlike every other
+            cross-section reference in this portal, which only runs
+            inside a click handler or other lazily-invoked callback, long
+            after the whole script has finished its first synchronous
+            pass — createRecordTracker calls config.label/renderFields
+            eagerly, as part of its own setup, at travel-planner's own
+            spot in this same synchronous pass. Var hoisting only hoists
+            the declaration, not the assignment, so leaving
+            loadJournalEntries defined at its old spot (down in the
+            Campaign Journal block, later in this same script) left it
+            still undefined the moment travel-planner's initial
+            renderSelect() tried to label an existing session-tied plan —
+            throwing there and aborting the rest of this script's
+            synchronous run, on every reload of a campaign with at least
+            one such plan. */}}
+          var journalStorageKey = document.getElementById("campaign-journal").dataset.storageKey;
+          var loadJournalEntries = function () {
+            try {
+              return JSON.parse(window.localStorage.getItem(journalStorageKey) || "[]");
+            } catch (e) {
+              return [];
+            }
+          };
+
           {{/* Travel Planner: uses the shared createRecordTracker
             controller above. The sheet has 3 fixed Stage slots, each with
             its own pace radio group — the one part of this section that
@@ -1750,6 +1858,79 @@
             return [blankStage(), blankStage(), blankStage()];
           };
 
+          {{/* Exposed as a standalone loader (mirroring loadJournalEntries/
+            loadConflicts above) purely so Campaign Journal can read tied
+            travel plans directly — createRecordTracker's own load() stays
+            private to its closure otherwise. */}}
+          var loadTravelPlans = function () {
+            try {
+              return JSON.parse(window.localStorage.getItem(document.getElementById("travel-planner").dataset.storageKey) || "[]");
+            } catch (e) {
+              return [];
+            }
+          };
+
+          {{/* Ties a travel plan to a Campaign Journal session, same
+            pattern as conflictSessionSelect below (by the session's id,
+            not its number/title, so the tie survives a session being
+            renumbered/retitled later). Reads loadJournalEntries — defined
+            below in the Campaign Journal block, which always exists on
+            the page since every DM portal renders the full fixed section
+            list. */}}
+          var travelSessionSelect = function (labelText, value, dataAttrs) {
+            var wrap = document.createElement("div");
+            wrap.className = "travel-field";
+            var label = document.createElement("label");
+            label.textContent = labelText;
+            wrap.appendChild(label);
+            var select = document.createElement("select");
+            Object.keys(dataAttrs || {}).forEach(function (k) { select.dataset[k] = dataAttrs[k]; });
+            var placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "— Not tied to a session —";
+            select.appendChild(placeholder);
+            var sessions = loadJournalEntries().slice().sort(function (a, b) {
+              return (parseInt(a.sessionNumber, 10) || 0) - (parseInt(b.sessionNumber, 10) || 0);
+            });
+            sessions.forEach(function (session) {
+              var option = document.createElement("option");
+              option.value = session.id;
+              option.textContent = (session.sessionNumber || "?") + " - " + (session.title || "Untitled Session");
+              select.appendChild(option);
+            });
+            select.value = sessions.some(function (s) { return s.id === value; }) ? value : "";
+            wrap.appendChild(select);
+            return wrap;
+          };
+
+          {{/* Prefixed with the tied session's number, same as
+            conflictLabel below — untied plans are unprefixed. */}}
+          var travelLabel = function (plan) {
+            var base = (plan.origin || "?") + " - " + (plan.destination || "?");
+            if (plan.sessionId) {
+              var session = loadJournalEntries().filter(function (e) { return e.id === plan.sessionId; })[0];
+              if (session) return (session.sessionNumber || "?") + " - " + base;
+            }
+            return base;
+          };
+
+          {{/* Basic-info hover text for Campaign Journal's pulled Travel
+            list (see journalRelatedSection below) — a per-stage summary,
+            the thing a DM would otherwise have to open the record to
+            see (Origin/Destination are already in the label itself). */}}
+          var travelHoverInfo = function (plan) {
+            var lines = [];
+            (plan.stages || []).forEach(function (stage, i) {
+              var parts = [];
+              if (stage.start || stage.end) parts.push((stage.start || "?") + " → " + (stage.end || "?"));
+              if (stage.distance) parts.push(stage.distance);
+              if (stage.terrain) parts.push(stage.terrain);
+              if (stage.weather) parts.push(stage.weather);
+              if (parts.length) lines.push("Stage " + (i + 1) + ": " + parts.join(" · "));
+            });
+            return lines.length ? lines.join("\n") : "No stage details yet.";
+          };
+
           createRecordTracker({
             containerId: "travel-planner",
             selectId: "travel-planner-select",
@@ -1760,15 +1941,16 @@
             requiredError: "Origin and Destination are required.",
             cssPrefix: "travel",
             isValid: function (plan) { return Boolean(plan.origin && plan.origin.trim() && plan.destination && plan.destination.trim()); },
-            label: function (plan) { return (plan.origin || "?") + " - " + (plan.destination || "?"); },
+            label: travelLabel,
             makeBlank: function () {
-              return { origin: "", destination: "", stages: blankStages() };
+              return { origin: "", destination: "", stages: blankStages(), sessionId: "" };
             },
             renderFields: function (form, plan) {
               var header = document.createElement("div");
               header.className = "travel-header-fields";
               header.appendChild(markRequired(makeFieldInput("travel", "Origin", plan.origin, { field: "origin" })));
               header.appendChild(markRequired(makeFieldInput("travel", "Destination", plan.destination, { field: "destination" })));
+              header.appendChild(travelSessionSelect("Tied to Session", plan.sessionId, { field: "sessionId" }));
               form.appendChild(header);
 
               plan.stages.forEach(function (stage, i) {
@@ -1829,6 +2011,7 @@
                 createdAt: originalPlan.createdAt,
                 origin: "",
                 destination: "",
+                sessionId: "",
                 stages: blankStages(),
               };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
@@ -1923,7 +2106,7 @@
             var npcIsValid = function (npc) { return Boolean(npc.name && npc.name.trim()); };
 
             var pullNpcs = function () {
-              syncPull("npcs").then(function (result) {
+              return syncPull("npcs").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -2464,6 +2647,10 @@
               if (override.initiative !== undefined) merged.initiative = override.initiative;
               if (override.linesBefore) merged.linesBefore = override.linesBefore;
               if (override.abilities) merged.abilities = override.abilities;
+              if (override.linesAfter) merged.linesAfter = override.linesAfter;
+              if (override.sections) merged.sections = override.sections;
+              if (override.flavorText !== undefined) merged.flavorText = override.flavorText;
+              if (override.footerLines) merged.footerLines = override.footerLines;
               return merged;
             };
 
@@ -2484,17 +2671,35 @@
               title.textContent = sb.name;
               header.appendChild(title);
 
+              {{/* No dedicated Edit/Save/Cancel here anymore — this
+                panel just follows the NPC form's own View/Edit toggle
+                and Save button up in npc-form-actions (see
+                currentStatBlockModeHandler/currentStatBlockCollectOverride
+                below, and renderNpcForm's own saveBtn handler further
+                down), the same "main buttons" every other field on this
+                form already answers to. Reset is the one action that
+                stays here, since it's not a normal save/cancel — it
+                discards any override entirely and re-fetches from
+                aidedd.org — and it gets its own confirmation step
+                (wireConfirmDelete, same Yes/No inline prompt Remove
+                already uses everywhere) since that's a real "lose your
+                edits" action, unlike Edit/Save. */}}
               if (onOverrideSaved && onReset) {
+                {{/* Deliberately NOT npc-statblock-top-controls (used
+                  elsewhere for the Custom Stat Block Maker's own Edit
+                  button) — that class name matches the view-mode
+                  stylesheet's [class*="-top-controls"] hide rule, which
+                  would bury Reset right when a DM most needs it (they've
+                  just switched to View to check their edit and want an
+                  easy way to undo it). Reset has to survive both modes,
+                  unlike Save/Cancel above which only ever make sense
+                  mid-edit. */}}
                 var topControls = document.createElement("div");
-                topControls.className = "npc-statblock-top-controls";
-                var editBtn = document.createElement("button");
-                editBtn.type = "button";
-                editBtn.textContent = "Edit";
+                topControls.className = "npc-statblock-reset-controls";
                 var resetBtn = document.createElement("button");
                 resetBtn.type = "button";
                 resetBtn.textContent = "Reset";
                 resetBtn.title = "Discard any edits and re-fetch this stat block from aidedd.org";
-                topControls.appendChild(editBtn);
                 topControls.appendChild(resetBtn);
                 header.appendChild(topControls);
               }
@@ -2538,6 +2743,14 @@
                   topPart.appendChild(table);
                 }
               };
+
+              {{/* Reassigned near the bottom of renderTopEditable, once
+                its own field widgets actually exist — the header's
+                shared Save button (see topControls below) calls
+                whatever's currently assigned here at click time, well
+                after this whole function has finished defining
+                everything, so build order doesn't matter. */}}
+              var collectTopOverride = function () { return {}; };
 
               var renderTopEditable = function () {
                 topPart.innerHTML = "";
@@ -2769,16 +2982,50 @@
 
                   if (line.label === "HP") {
                     var parsedHp = npcParseHp(line.value);
-                    if (parsedHp && conAbility) {
+                    if (conAbility) {
+                      {{/* Traditional (dice count/size, auto-computed
+                        average) vs. Manual (DM just types the number) —
+                        a real toggle, not just Manual being whatever
+                        happens when parsing fails. Which one starts
+                        selected is still inferred from the stored value's
+                        shape (parses as dice notation → Traditional,
+                        anything else → Manual) — no separate "mode" field
+                        to persist; npcParseHp re-parsing its own prior
+                        output on the next edit is what makes that work,
+                        same convention npcFormatHp's other callers rely
+                        on already. */}}
                       var hpRow = document.createElement("div");
-                      hpRow.className = "npc-statblock-edit-row";
+                      hpRow.className = "npc-statblock-edit-row npc-statblock-hp-row";
                       var hpLabel = document.createElement("strong");
                       hpLabel.textContent = "HP";
+                      hpRow.appendChild(hpLabel);
+
+                      var hpModeName = "npc-hp-mode-" + Math.random().toString(36).slice(2);
+                      var hpModeWrap = document.createElement("span");
+                      hpModeWrap.className = "npc-statblock-hp-mode";
+                      var hpTraditionalRadio = document.createElement("input");
+                      hpTraditionalRadio.type = "radio";
+                      hpTraditionalRadio.name = hpModeName;
+                      var hpTraditionalRadioLabel = document.createElement("label");
+                      hpTraditionalRadioLabel.appendChild(hpTraditionalRadio);
+                      hpTraditionalRadioLabel.appendChild(document.createTextNode(" Traditional"));
+                      var hpManualRadio = document.createElement("input");
+                      hpManualRadio.type = "radio";
+                      hpManualRadio.name = hpModeName;
+                      var hpManualRadioLabel = document.createElement("label");
+                      hpManualRadioLabel.appendChild(hpManualRadio);
+                      hpManualRadioLabel.appendChild(document.createTextNode(" Manual"));
+                      hpModeWrap.appendChild(hpTraditionalRadioLabel);
+                      hpModeWrap.appendChild(hpManualRadioLabel);
+                      hpRow.appendChild(hpModeWrap);
+
+                      var hpTraditionalWrap = document.createElement("span");
+                      hpTraditionalWrap.className = "npc-statblock-hp-traditional";
                       var hpCountInput = document.createElement("input");
                       hpCountInput.type = "text";
                       npcRestrictNumericInput(hpCountInput, false);
                       hpCountInput.className = "npc-statblock-edit-input npc-statblock-hp-count";
-                      hpCountInput.value = String(parsedHp.diceCount);
+                      hpCountInput.value = String(parsedHp ? parsedHp.diceCount : 1);
                       var hpDLabel = document.createElement("span");
                       hpDLabel.className = "npc-statblock-inline-label";
                       hpDLabel.textContent = "d";
@@ -2790,17 +3037,45 @@
                         option.textContent = String(size);
                         hpSizeSelect.appendChild(option);
                       });
-                      hpSizeSelect.value = String(parsedHp.dieSize);
+                      hpSizeSelect.value = String(parsedHp ? parsedHp.dieSize : 8);
                       var hpComputedSpan = document.createElement("span");
                       hpComputedSpan.className = "npc-statblock-computed-text";
-                      hpRow.appendChild(hpLabel);
-                      hpRow.appendChild(hpCountInput);
-                      hpRow.appendChild(hpDLabel);
-                      hpRow.appendChild(hpSizeSelect);
-                      hpRow.appendChild(hpComputedSpan);
+                      hpTraditionalWrap.appendChild(hpCountInput);
+                      hpTraditionalWrap.appendChild(hpDLabel);
+                      hpTraditionalWrap.appendChild(hpSizeSelect);
+                      hpTraditionalWrap.appendChild(hpComputedSpan);
+
+                      var hpManualInput = document.createElement("input");
+                      hpManualInput.type = "text";
+                      hpManualInput.className = "npc-statblock-edit-input npc-statblock-hp-manual";
+                      hpManualInput.placeholder = "e.g. 50";
+                      hpManualInput.value = parsedHp ? "" : (line.value || "");
+                      hpRow.appendChild(hpManualInput);
+
                       topPart.appendChild(hpRow);
 
+                      {{/* Manual removes the dice fields from the DOM
+                        entirely rather than just hiding them — switching
+                        back to Traditional re-inserts the same wrap
+                        (values intact) right before the manual input, so
+                        row order stays stable either way. */}}
+                      var applyHpMode = function () {
+                        var manual = hpManualRadio.checked;
+                        if (manual) {
+                          if (hpTraditionalWrap.parentNode) hpTraditionalWrap.parentNode.removeChild(hpTraditionalWrap);
+                        } else if (!hpTraditionalWrap.parentNode) {
+                          hpRow.insertBefore(hpTraditionalWrap, hpManualInput);
+                        }
+                        hpManualInput.hidden = !manual;
+                      };
+                      hpTraditionalRadio.checked = Boolean(parsedHp);
+                      hpManualRadio.checked = !parsedHp;
+                      applyHpMode();
+                      hpTraditionalRadio.addEventListener("change", applyHpMode);
+                      hpManualRadio.addEventListener("change", applyHpMode);
+
                       var recomputeThisHp = function () {
+                        if (hpManualRadio.checked) return;
                         var count = parseInt(hpCountInput.value, 10);
                         var size = parseInt(hpSizeSelect.value, 10);
                         var conMod = parseInt(conAbility.mod.value, 10) || 0;
@@ -2812,7 +3087,14 @@
                       hpSizeSelect.addEventListener("change", recomputeThisHp);
                       recomputeHpDisplay = recomputeThisHp;
 
-                      return { type: "hp", label: line.label, countInput: hpCountInput, sizeInput: hpSizeSelect };
+                      return {
+                        type: "hp",
+                        label: line.label,
+                        countInput: hpCountInput,
+                        sizeInput: hpSizeSelect,
+                        manualInput: hpManualInput,
+                        isManual: function () { return hpManualRadio.checked; },
+                      };
                     }
                   }
 
@@ -2898,27 +3180,22 @@
 
                 if (abilityTable) topPart.appendChild(abilityTable);
 
-                var editActions = document.createElement("div");
-                editActions.className = "npc-statblock-edit-actions";
-                var saveBtn = document.createElement("button");
-                saveBtn.type = "button";
-                saveBtn.className = "npc-save-btn";
-                saveBtn.textContent = "Save";
-                var cancelBtn = document.createElement("button");
-                cancelBtn.type = "button";
-                cancelBtn.className = "npc-cancel-btn";
-                cancelBtn.textContent = "Cancel";
-                editActions.appendChild(saveBtn);
-                editActions.appendChild(cancelBtn);
-                topPart.appendChild(editActions);
-
-                saveBtn.addEventListener("click", function () {
+                {{/* Reassigns the outer collectTopOverride placeholder
+                  (declared below, before this function exists yet — same
+                  deferred-hook pattern as recomputeInitiativeDisplay
+                  above) so the header's single shared Save button can
+                  read these fields without topPart owning its own
+                  Save/Cancel — see the header controls' comment. */}}
+                collectTopOverride = function () {
                   var newLinesBefore = linesBeforeWidgets.map(function (w) {
                     if (w.type === "ac") {
                       var acValue = parseInt(w.valueInput.value, 10) || 0;
                       return { label: w.label, value: npcFormatAc(acValue, w.noteInput.value.trim()) };
                     }
                     if (w.type === "hp") {
+                      if (w.isManual()) {
+                        return { label: w.label, value: w.manualInput.value.trim() };
+                      }
                       var count = parseInt(w.countInput.value, 10) || 1;
                       var size = parseInt(w.sizeInput.value, 10) || 8;
                       var conMod = conAbility ? (parseInt(conAbility.mod.value, 10) || 0) : 0;
@@ -2937,7 +3214,7 @@
                     ? npcFormatInitiative((dexAbility ? parseInt(dexAbility.mod.value, 10) || 0 : 0) + (parseInt(initBonusInput.value, 10) || 0))
                     : (initFallbackInput ? initFallbackInput.value : sb.initiative);
 
-                  var override = {
+                  return {
                     name: nameInput.value,
                     typeLine: typeLineInput.value,
                     initiative: initiativeValue,
@@ -2951,60 +3228,233 @@
                       };
                     }),
                   };
-                  sb = npcApplyStatBlockOverride(rawSb, override);
-                  title.textContent = sb.name;
-                  renderTopReadOnly();
-                  onOverrideSaved(override);
-                });
-
-                cancelBtn.addEventListener("click", renderTopReadOnly);
+                };
               };
 
               renderTopReadOnly();
 
-              if (onOverrideSaved && onReset) {
-                editBtn.addEventListener("click", renderTopEditable);
-                resetBtn.addEventListener("click", onReset);
-              }
+              {{/* Bottom part: Skills/Gear/Senses/Languages/CR
+                (linesAfter), Traits/Actions/Reactions/etc. (sections),
+                flavor text, and the Habitat/Treasure footer — everything
+                below the ability table. Shares the top part's single
+                Edit/Save/Cancel/Reset cluster in the header above (see
+                its comment) rather than getting its own — switches into
+                its editable render whenever the top part does, via the
+                same enterEditMode/exitEditMode below. Section headings
+                themselves stay fixed (matching what aidedd.org actually
+                parsed) — only each section's intro/entries are editable,
+                with add/remove for entries (same repeatable-row pattern
+                as the Custom Stat Block Maker's own section editor
+                below), since adding a whole new category of section is
+                that maker's job, not this override's. */}}
+              var bottomPart = document.createElement("div");
+              bottomPart.className = "npc-statblock-bottom";
+              container.appendChild(bottomPart);
 
-              sb.linesAfter.forEach(function (line) { container.appendChild(npcStatBlockLine(line.label, line.value)); });
+              {{/* Same deferred-hook pattern as collectTopOverride
+                above — reassigned near the end of renderBottomEditable,
+                once its own field widgets exist. */}}
+              var collectBottomOverride = function () { return {}; };
 
-              sb.sections.forEach(function (section) {
-                if (!section.entries.length && !section.intro) return;
-                var heading = document.createElement("h5");
-                heading.textContent = section.heading;
-                container.appendChild(heading);
-                if (section.intro) {
-                  var introP = document.createElement("p");
-                  introP.className = "npc-statblock-intro";
-                  introP.textContent = section.intro;
-                  container.appendChild(introP);
-                }
-                section.entries.forEach(function (entry) {
-                  var p = document.createElement("p");
-                  if (entry.name) {
-                    var nameSpan = document.createElement("span");
-                    nameSpan.className = "npc-statblock-action-name";
-                    nameSpan.textContent = entry.name + ". ";
-                    p.appendChild(nameSpan);
+              var renderBottomReadOnly = function () {
+                bottomPart.innerHTML = "";
+                sb.linesAfter.forEach(function (line) { bottomPart.appendChild(npcStatBlockLine(line.label, line.value)); });
+
+                sb.sections.forEach(function (section) {
+                  if (!section.entries.length && !section.intro) return;
+                  var heading = document.createElement("h5");
+                  heading.textContent = section.heading;
+                  bottomPart.appendChild(heading);
+                  if (section.intro) {
+                    var introP = document.createElement("p");
+                    introP.className = "npc-statblock-intro";
+                    introP.textContent = section.intro;
+                    bottomPart.appendChild(introP);
                   }
-                  p.appendChild(document.createTextNode(entry.description));
-                  container.appendChild(p);
+                  section.entries.forEach(function (entry) {
+                    var p = document.createElement("p");
+                    if (entry.name) {
+                      var nameSpan = document.createElement("span");
+                      nameSpan.className = "npc-statblock-action-name";
+                      nameSpan.textContent = entry.name + ". ";
+                      p.appendChild(nameSpan);
+                    }
+                    p.appendChild(document.createTextNode(entry.description));
+                    bottomPart.appendChild(p);
+                  });
                 });
-              });
 
-              if (sb.flavorText) {
-                var flavor = document.createElement("p");
-                flavor.className = "npc-statblock-flavor";
-                flavor.textContent = sb.flavorText;
-                container.appendChild(flavor);
-              }
+                if (sb.flavorText) {
+                  var flavor = document.createElement("p");
+                  flavor.className = "npc-statblock-flavor";
+                  flavor.textContent = sb.flavorText;
+                  bottomPart.appendChild(flavor);
+                }
 
-              if (sb.footerLines.length) {
-                var footer = document.createElement("p");
-                footer.className = "npc-statblock-footer";
-                footer.textContent = sb.footerLines.join("    ");
-                container.appendChild(footer);
+                if (sb.footerLines.length) {
+                  var footer = document.createElement("p");
+                  footer.className = "npc-statblock-footer";
+                  footer.textContent = sb.footerLines.join("    ");
+                  bottomPart.appendChild(footer);
+                }
+              };
+
+              var renderBottomEditable = function () {
+                bottomPart.innerHTML = "";
+
+                var linesAfterWidgets = sb.linesAfter.map(function (line) {
+                  var row = document.createElement("div");
+                  row.className = "npc-statblock-edit-row";
+                  var label = document.createElement("strong");
+                  label.textContent = line.label;
+                  var input = document.createElement("input");
+                  input.type = "text";
+                  input.className = "npc-statblock-edit-input";
+                  input.value = line.value || "";
+                  row.appendChild(label);
+                  row.appendChild(input);
+                  bottomPart.appendChild(row);
+                  return { label: line.label, input: input };
+                });
+
+                var sectionsWrap = document.createElement("div");
+                sectionsWrap.className = "npc-statblock-sections-edit";
+                var sectionBlocks = sb.sections.map(function (section) {
+                  var block = document.createElement("div");
+                  block.className = "npc-statblock-section-block";
+                  var heading = document.createElement("h5");
+                  heading.textContent = section.heading;
+                  block.appendChild(heading);
+
+                  var introInput = document.createElement("textarea");
+                  introInput.placeholder = "Intro text (optional)";
+                  introInput.value = section.intro || "";
+                  block.appendChild(introInput);
+
+                  var entriesWrap = document.createElement("div");
+                  block.appendChild(entriesWrap);
+                  var entryInputs = [];
+                  var addEntryRow = function (name, description) {
+                    var row = document.createElement("div");
+                    row.className = "npc-statblock-section-entry";
+                    var entryNameInput = document.createElement("input");
+                    entryNameInput.type = "text";
+                    entryNameInput.className = "npc-statblock-edit-input";
+                    entryNameInput.placeholder = "Entry name (optional)";
+                    entryNameInput.value = name || "";
+                    var descInput = document.createElement("textarea");
+                    descInput.placeholder = "Description";
+                    descInput.value = description || "";
+                    var removeEntryBtn = document.createElement("button");
+                    removeEntryBtn.type = "button";
+                    removeEntryBtn.className = "npc-statblock-list-remove";
+                    removeEntryBtn.textContent = "×";
+                    removeEntryBtn.addEventListener("click", function () {
+                      entriesWrap.removeChild(row);
+                      entryInputs = entryInputs.filter(function (e) { return e.row !== row; });
+                    });
+                    row.appendChild(entryNameInput);
+                    row.appendChild(descInput);
+                    row.appendChild(removeEntryBtn);
+                    entriesWrap.appendChild(row);
+                    entryInputs.push({ row: row, nameInput: entryNameInput, descInput: descInput });
+                  };
+                  section.entries.forEach(function (e) { addEntryRow(e.name, e.description); });
+
+                  var addEntryBtn = document.createElement("button");
+                  addEntryBtn.type = "button";
+                  addEntryBtn.className = "npc-statblock-list-add";
+                  addEntryBtn.textContent = "+ Add Entry";
+                  addEntryBtn.addEventListener("click", function () { addEntryRow("", ""); });
+                  block.appendChild(addEntryBtn);
+
+                  sectionsWrap.appendChild(block);
+                  return { heading: section.heading, introInput: introInput, getEntries: function () { return entryInputs; } };
+                });
+                bottomPart.appendChild(sectionsWrap);
+
+                var flavorRow = document.createElement("div");
+                flavorRow.className = "npc-statblock-edit-row";
+                var flavorLabel = document.createElement("strong");
+                flavorLabel.textContent = "Flavor Text";
+                var flavorInput = document.createElement("textarea");
+                flavorInput.value = sb.flavorText || "";
+                flavorRow.appendChild(flavorLabel);
+                flavorRow.appendChild(flavorInput);
+                bottomPart.appendChild(flavorRow);
+
+                var footerRow = document.createElement("div");
+                footerRow.className = "npc-statblock-edit-row";
+                var footerLabel = document.createElement("strong");
+                footerLabel.textContent = "Habitat / Treasure";
+                var footerInput = document.createElement("input");
+                footerInput.type = "text";
+                footerInput.className = "npc-statblock-edit-input";
+                footerInput.placeholder = "e.g. Habitat: Any    Treasure: Individual";
+                footerInput.value = sb.footerLines.join("    ");
+                footerRow.appendChild(footerLabel);
+                footerRow.appendChild(footerInput);
+                bottomPart.appendChild(footerRow);
+
+                collectBottomOverride = function () {
+                  return {
+                    linesAfter: linesAfterWidgets.map(function (w) { return { label: w.label, value: w.input.value }; }),
+                    sections: sectionBlocks.map(function (b) {
+                      return {
+                        heading: b.heading,
+                        intro: b.introInput.value,
+                        entries: b.getEntries()
+                          .map(function (e) { return { name: e.nameInput.value, description: e.descInput.value }; })
+                          .filter(function (e) { return e.name || e.description; }),
+                      };
+                    }),
+                    flavorText: flavorInput.value,
+                    footerLines: footerInput.value.trim() ? [footerInput.value.trim()] : [],
+                  };
+                };
+              };
+
+              var renderBoth = function (mode) {
+                if (mode === "edit") {
+                  renderTopEditable();
+                  renderBottomEditable();
+                } else {
+                  renderTopReadOnly();
+                  renderBottomReadOnly();
+                }
+              };
+              renderBoth(currentPortalMode);
+
+              if (onOverrideSaved && onReset) {
+                {{/* Single-slot, not an array — only one NPC record's
+                  stat block panel can ever be open at once (this is
+                  Character Manager's own detail pane), so there's never
+                  more than one live handler to track, and the next
+                  panel render simply overwrites both slots. See
+                  applyPortalMode's own call site for
+                  currentStatBlockModeHandler, and renderNpcForm's own
+                  saveBtn handler for currentStatBlockCollectOverride. */}}
+                currentStatBlockModeHandler = renderBoth;
+                currentStatBlockCollectOverride = function () {
+                  var topOverride = collectTopOverride();
+                  var bottomOverride = collectBottomOverride();
+                  return {
+                    name: topOverride.name,
+                    typeLine: topOverride.typeLine,
+                    initiative: topOverride.initiative,
+                    linesBefore: topOverride.linesBefore,
+                    abilities: topOverride.abilities,
+                    linesAfter: bottomOverride.linesAfter,
+                    sections: bottomOverride.sections,
+                    flavorText: bottomOverride.flavorText,
+                    footerLines: bottomOverride.footerLines,
+                  };
+                };
+                wireConfirmDelete(resetBtn, function () {
+                  currentStatBlockModeHandler = null;
+                  currentStatBlockCollectOverride = null;
+                  onReset();
+                });
               }
             };
 
@@ -3827,6 +4277,15 @@
               npcDetail.innerHTML = "";
               if (!npc) return;
               npcDirty = false;
+              {{/* Reset here, not just left over from whichever NPC was
+                open before — a Monster Manual NPC re-populates these
+                (see npcRenderStatBlockPanel) later in this same render
+                if that's what this npc turns out to be; a Custom NPC (or
+                nothing) leaves them null, which is what we want: nothing
+                stale from a previously-open different NPC's stat block
+                for the outer Save handler below to wrongly collect. */}}
+              currentStatBlockModeHandler = null;
+              currentStatBlockCollectOverride = null;
 
               var actions = document.createElement("div");
               actions.className = "npc-form-actions";
@@ -3930,6 +4389,16 @@
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectNpcFromForm(form, npc);
+                {{/* Only while actually in Edit mode — currentStatBlockCollectOverride
+                  reads the stat block panel's live <input> values, which
+                  only reflect real edits when that panel is rendered
+                  editable; in View mode those same fields are locked and
+                  unchanged, so leave updated.statBlockOverride at
+                  whatever collectNpcFromForm already carried forward
+                  above rather than risk collecting a stale/empty read. */}}
+                if (currentPortalMode === "edit" && currentStatBlockCollectOverride) {
+                  updated.statBlockOverride = currentStatBlockCollectOverride();
+                }
                 if (!updated.name || !updated.name.trim()) {
                   error.textContent = "NPC Name is required.";
                   error.hidden = false;
@@ -4191,19 +4660,13 @@
             Kept as its own self-contained block for the same reason NPC
             Tracker is. */}}
           {{/* Campaign Journal: uses the shared createRecordTracker
-            controller above. loadJournalEntries is kept as its own
-            standalone function (rather than folded into the tracker
-            config) since Campaign Conflicts below reads it directly to
-            tie a conflict to a session and to build the session picker. */}}
-          var journalStorageKey = document.getElementById("campaign-journal").dataset.storageKey;
-          var loadJournalEntries = function () {
-            try {
-              return JSON.parse(window.localStorage.getItem(journalStorageKey) || "[]");
-            } catch (e) {
-              return [];
-            }
-          };
-
+            controller above. loadJournalEntries itself is defined earlier
+            in this script, right before Travel Planner's own
+            createRecordTracker call (see the comment there for why —
+            it's an eagerly-evaluated ordering issue, not the usual
+            lazy-handler hoisting that lets most of this portal's
+            cross-section references get away with declaration order not
+            mattering). */}}
           var nextJournalSessionNumber = function (entries) {
             var max = 0;
             entries.forEach(function (e) {
@@ -4217,6 +4680,88 @@
             var d = new Date();
             var pad = function (n) { return n < 10 ? "0" + n : String(n); };
             return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+          };
+
+          {{/* Read-only rollup of records tied to this session (via each
+            record's own "Tied to Session" field) — pulled live from
+            Campaign Conflicts/Travel Planner's own storage rather than
+            duplicated into the journal entry itself, so editing a
+            conflict or travel plan elsewhere is instantly reflected here
+            with nothing to keep in sync. loadConflicts/conflictLabel are
+            defined below in the Campaign Conflicts block, which always
+            exists on the page since every DM portal renders the full
+            fixed section list (same reasoning conflictSessionSelect
+            already relies on for loadJournalEntries above). Each entry
+            gets a jump-to-record button rather than just a label, since
+            there's no reason to make the DM re-find it by hand in the
+            other section's own picklist. */}}
+          var journalRelatedSection = function (heading, records, labelFn, hoverInfoFn, sectionId, selectId, emptyText) {
+            {{/* Styled as a .journal-field, same as Title/Number/Date
+              above and the Notes textareas below, so this reads as just
+              another field on the sheet rather than a visually distinct
+              widget — the label matches every other field's label, and
+              the list sits inside the same boxed look inputs/textareas
+              already use (see .journal-related-box below). */}}
+            var wrap = document.createElement("div");
+            wrap.className = "journal-field journal-related-field";
+            var label = document.createElement("label");
+            label.textContent = heading;
+            wrap.appendChild(label);
+            var box = document.createElement("div");
+            box.className = "journal-related-box";
+            if (!records.length) {
+              var empty = document.createElement("p");
+              empty.className = "entry-date journal-related-empty";
+              empty.textContent = emptyText;
+              box.appendChild(empty);
+              wrap.appendChild(box);
+              return wrap;
+            }
+            var list = document.createElement("ul");
+            list.className = "journal-related-list";
+            records.forEach(function (record) {
+              var li = document.createElement("li");
+              var span = document.createElement("span");
+              span.textContent = labelFn(record);
+              li.appendChild(span);
+              {{/* Basic-info tooltip, shown on hover/focus of the row via
+                the shared .journal-related-tooltip CSS — a custom element
+                rather than the native title attribute so it's styled
+                consistently with the rest of the portal and appears
+                instantly instead of after the browser's built-in delay. */}}
+              var tooltip = document.createElement("div");
+              tooltip.className = "journal-related-tooltip";
+              tooltip.textContent = hoverInfoFn(record);
+              li.appendChild(tooltip);
+              {{/* A real <a>, not a <button> — target="_blank" plus a
+                genuine deep-link href (?section=...&record=..., read by
+                applyDeepLinkFromUrl above) means ctrl/cmd-click,
+                middle-click, and "Open link in new tab" all just work,
+                the standard browser way. A plain unmodified left click is
+                still intercepted to jump within this same tab instead —
+                the more useful default for the common case — but any
+                modified click falls through to the anchor's own default
+                action (open a new tab) untouched. */}}
+              var openLink = document.createElement("a");
+              openLink.className = "journal-related-open-btn";
+              openLink.textContent = "Open →";
+              openLink.href = window.location.pathname + "?section=" + encodeURIComponent(sectionId) + "&record=" + encodeURIComponent(record.id);
+              openLink.target = "_blank";
+              openLink.rel = "noopener";
+              openLink.addEventListener("click", function (e) {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                e.preventDefault();
+                goToSection(sectionId);
+                var sel = document.getElementById(selectId);
+                sel.value = record.id;
+                sel.dispatchEvent(new Event("change"));
+              });
+              li.appendChild(openLink);
+              list.appendChild(li);
+            });
+            box.appendChild(list);
+            wrap.appendChild(box);
+            return wrap;
           };
 
           createRecordTracker({
@@ -4261,8 +4806,34 @@
 
               form.appendChild(header);
 
-              form.appendChild(makeFieldTextarea("journal", "Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
-              form.appendChild(makeFieldTextarea("journal", "What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
+              var relatedRow = document.createElement("div");
+              relatedRow.className = "journal-related-fields";
+              relatedRow.appendChild(journalRelatedSection(
+                "Campaign Conflicts",
+                loadConflicts().filter(function (c) { return c.sessionId === entry.id; }),
+                conflictLabel,
+                conflictHoverInfo,
+                "campaign-conflicts",
+                "campaign-conflicts-select",
+                "No conflicts tied to this session."
+              ));
+              relatedRow.appendChild(journalRelatedSection(
+                "Travel",
+                loadTravelPlans().filter(function (p) { return p.sessionId === entry.id; }),
+                travelLabel,
+                travelHoverInfo,
+                "travel-planner",
+                "travel-planner-select",
+                "No travel plans tied to this session."
+              ));
+              form.appendChild(relatedRow);
+
+              var recapRow = document.createElement("div");
+              recapRow.className = "journal-textarea-row";
+              recapRow.appendChild(makeFieldTextarea("journal", "Important Events from Earlier Sessions", entry.priorEvents, { field: "priorEvents" }));
+              recapRow.appendChild(makeFieldTextarea("journal", "What's Planned for This Session", entry.plannedSummary, { field: "plannedSummary" }));
+              form.appendChild(recapRow);
+
               form.appendChild(makeFieldTextarea("journal", "Additional Notes", entry.notes, { field: "notes" }));
             },
             collectFromForm: function (form, originalEntry) {
@@ -4319,7 +4890,7 @@
             var conflictIsValid = function (conflict) { return Boolean(conflict.name && conflict.name.trim() && conflict.adversaryNpcIds && conflict.adversaryNpcIds.length); };
 
             var pullConflicts = function () {
-              syncPull("conflicts").then(function (result) {
+              return syncPull("conflicts").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -4389,6 +4960,30 @@
                 if (session) return (session.sessionNumber || "?") + " - " + base;
               }
               return base;
+            };
+
+            {{/* Basic-info hover text for Campaign Journal's pulled
+              Campaign Conflicts list (see journalRelatedSection below) —
+              combatants plus a Notes preview, the two things a DM would
+              otherwise have to open the record to see. */}}
+            var conflictHoverInfo = function (conflict) {
+              var lines = [];
+              var ids = conflict.adversaryNpcIds || [];
+              if (ids.length) {
+                var npcs = loadNpcs();
+                var quantities = conflict.adversaryNpcQuantities || {};
+                var names = ids
+                  .map(function (id) {
+                    var npc = npcs.filter(function (n) { return n.id === id; })[0];
+                    return npc ? conflictAdversaryDisplayLabel(npc, quantities[id] || 1) : null;
+                  })
+                  .filter(Boolean);
+                if (names.length) lines.push("Combatants: " + names.join(", "));
+              } else if (conflict.adversary) {
+                lines.push("Combatants: " + conflict.adversary);
+              }
+              if (conflict.notes && conflict.notes.trim()) lines.push("Notes: " + conflict.notes.trim());
+              return lines.length ? lines.join("\n") : "No additional details yet.";
             };
 
             var conflictEditInput = function (labelText, value, dataAttrs) {
@@ -4798,7 +5393,7 @@
               empty.textContent = "No combatants yet — add adversary NPCs above, or add PCs in Character Manager.";
               wrap.appendChild(empty);
 
-              var combatRow = function (key, kindLabel, name, stats, ddbUrl, defaultHpMax) {
+              var combatRow = function (key, kindLabel, name, stats, linkInfo, defaultHpMax) {
                 stats = stats || {};
                 var tr = document.createElement("tr");
                 tr.className = "combat-row";
@@ -4812,19 +5407,41 @@
                 tag.textContent = kindLabel;
                 nameTd.appendChild(tag);
                 nameTd.appendChild(document.createTextNode(" "));
-                {{/* ddbUrl only ever arrives for PC rows (see renderRows —
-                  NPCs have no D&D Beyond sheet of their own) — an <a>
-                  rather than the plain <span> the no-link case still
-                  falls back to, same target/rel as PC Manager's own "View
-                  on D&D Beyond →" link above. Still gets
+                {{/* linkInfo arrives for PC rows (their D&D Beyond sheet —
+                  see renderRows) and now NPC rows too (their own base
+                  record in Character Manager's NPC Tracker, since a combat
+                  row/adversary-picker entry is just one live copy of that
+                  record) — an <a> rather than the plain <span> the no-link
+                  case still falls back to, same target/rel as PC Manager's
+                  own "View on D&D Beyond →" link above. Still gets
                   .combat-name-text either way, so measureNames' own
-                  offsetWidth check keeps working unchanged. */}}
-                var nameTextEl = document.createElement(ddbUrl ? "a" : "span");
+                  offsetWidth check keeps working unchanged. An internal
+                  link (linkInfo.recordId set) also intercepts a plain
+                  click to jump within this tab, same
+                  modified-click-still-opens-a-new-tab convention as
+                  journalRelatedSection's "Open →" links — a PC's external
+                  ddbUrl link has no in-page equivalent to jump to, so it's
+                  left as a plain always-new-tab link. */}}
+                var nameTextEl = document.createElement(linkInfo ? "a" : "span");
                 nameTextEl.className = "combat-name-text";
-                if (ddbUrl) {
-                  nameTextEl.href = ddbUrl;
+                if (linkInfo) {
+                  nameTextEl.href = linkInfo.href;
                   nameTextEl.target = "_blank";
                   nameTextEl.rel = "noopener";
+                  if (linkInfo.recordId) {
+                    nameTextEl.addEventListener("click", function (e) {
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                      e.preventDefault();
+                      goToSection("character-manager");
+                      var npcChooserBtn = document.querySelector('.npc-source-chooser-btn[data-manager-kind="npc"]');
+                      if (npcChooserBtn) npcChooserBtn.click();
+                      var npcSelect = document.getElementById("npc-tracker-select");
+                      if (npcSelect) {
+                        npcSelect.value = linkInfo.recordId;
+                        npcSelect.dispatchEvent(new Event("change"));
+                      }
+                    });
+                  }
                 }
                 nameTextEl.textContent = name;
 
@@ -5762,7 +6379,7 @@
                     real published pages get theirs from pcRealLinks. */}}
                   var rosterEntry = roster.filter(function (e) { return slugifyName(e.name) === slugifyName(name); })[0];
                   var ddbUrl = rosterEntry ? rosterEntry.link : pcRealLinks[name];
-                  tbody.appendChild(combatRow(key, "PC", name, stats, ddbUrl));
+                  tbody.appendChild(combatRow(key, "PC", name, stats, ddbUrl ? { href: ddbUrl } : null));
                 });
 
                 var checkedNpcIds = Array.prototype.map.call(
@@ -5796,7 +6413,8 @@
                       stats = { initiative: "", hpCurrent: defaults.hpMax, hpMax: defaults.hpMax, ac: defaults.ac, conditions: [] };
                     }
                     var rowLabel = qty > 1 ? npcLabel(npc) + " " + i : npcLabel(npc);
-                    var tr = combatRow(key, "NPC", rowLabel, stats, undefined, defaults.hpMax);
+                    var npcLinkInfo = { href: "?section=character-manager&record=" + encodeURIComponent(npc.id), recordId: npc.id };
+                    var tr = combatRow(key, "NPC", rowLabel, stats, npcLinkInfo, defaults.hpMax);
                     tbody.appendChild(tr);
                     {{/* Called unconditionally, not gated on "is this a
                       brand-new row" — renderRows tears down and rebuilds
@@ -6166,7 +6784,7 @@
             };
 
             var pullMagicItemState = function () {
-              syncPull("magic-items").then(function (result) {
+              return syncPull("magic-items").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -6385,7 +7003,7 @@
               handler below), so there's never an incomplete placeholder
               record to prune. */}}
             var pullFiles = function () {
-              syncPull("files").then(function (result) {
+              return syncPull("files").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -6812,6 +7430,19 @@
             renderFileList();
             pullFiles();
           }
+
+          {{/* No-gate case (blank password_hash — see the gate script
+            further down, which doesn't render at all here): nothing else
+            will ever call dmPortalSyncPullAll/applyDeepLinkFromUrl for
+            this page, so do it directly. Sync is never enabled without a
+            password (syncEnabled() checks for a token, and there's never
+            one to set here), so every pull below resolves immediately
+            with {ok: false} — this still goes through the same
+            pull-before-deep-link sequencing for consistency, it just
+            never actually waits on a real network round trip. */}}
+          if (!document.getElementById("dm-portal-gate").dataset.hash) {
+            window.dmPortalSyncPullAll().then(applyDeepLinkFromUrl);
+          }
         })();
       </script>
 
@@ -6860,8 +7491,16 @@
               // previous unlock, so pull now too, not just on first
               // entry — otherwise this browser would only ever see
               // whatever was synced the very first time it was unlocked,
-              // no matter how stale that gets.
-              if (window.dmPortalSyncPullAll) window.dmPortalSyncPullAll();
+              // no matter how stale that gets. Deep-link application
+              // (see applyDeepLinkFromUrl's own comment) has to wait
+              // until this pull settles, not run alongside it — otherwise
+              // the pull's own clearDetail() can wipe the just-selected
+              // record's rendered form moments after this reveals it.
+              if (window.dmPortalSyncPullAll) {
+                window.dmPortalSyncPullAll().then(function () {
+                  if (window.dmPortalApplyDeepLinkFromUrl) window.dmPortalApplyDeepLinkFromUrl();
+                });
+              }
             }
 
             form.addEventListener("submit", function (e) {
@@ -6881,7 +7520,11 @@
                     // and an immediate pull picks up anything already synced
                     // from another device.
                     if (window.dmPortalSetSyncToken) window.dmPortalSetSyncToken(value);
-                    if (window.dmPortalSyncPullAll) window.dmPortalSyncPullAll();
+                    if (window.dmPortalSyncPullAll) {
+                      window.dmPortalSyncPullAll().then(function () {
+                        if (window.dmPortalApplyDeepLinkFromUrl) window.dmPortalApplyDeepLinkFromUrl();
+                      });
+                    }
                   } else {
                     error.hidden = false;
                   }
