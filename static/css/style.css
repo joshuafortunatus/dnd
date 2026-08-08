@@ -2003,12 +2003,14 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 }
 .journal-related-list li + li { border-top: 1px solid var(--border); }
 .journal-related-open-btn {
+  display: inline-block;
   background: none;
   border: 1px solid var(--border);
   color: var(--text-dim);
   border-radius: 4px;
   padding: 0.25rem 0.7rem;
   font-size: 0.85rem;
+  text-decoration: none;
   cursor: pointer;
   flex-shrink: 0;
 }

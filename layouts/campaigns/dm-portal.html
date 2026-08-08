@@ -668,6 +668,34 @@
             b.addEventListener("click", function () { enterSection(b.dataset.section); });
           });
 
+          {{/* Deep link support (?section=<id>&record=<recordId>) — what
+            makes the Campaign Journal's "Open →" links (see
+            journalRelatedSection below) real, ctrl/cmd-click-in-a-new-
+            -tab-able <a> elements instead of same-tab-only JS buttons: the
+            new tab just loads this same DM portal URL with these params.
+            Only defined here — actually invoked once, unconditionally, at
+            the very end of this script (after every section below has
+            finished its own setup, options and all) rather than gated on
+            the password gate unlocking: the gate only toggles a hidden
+            attribute on the content wrapper, it doesn't delay any of this
+            script's own execution, so section-switching/selecting a
+            record underneath it works (and is ready to reveal) whether
+            or not the gate has been unlocked yet. */}}
+          var applyDeepLinkFromUrl = function () {
+            var params = new URLSearchParams(window.location.search);
+            var section = params.get("section");
+            if (!section) return;
+            var known = Array.prototype.some.call(sectionPanels, function (p) { return p.dataset.section === section; });
+            if (!known) return;
+            enterSection(section);
+            var recordId = params.get("record");
+            if (!recordId) return;
+            var recordSelect = document.querySelector('.dm-section-panel[data-section="' + section + '"] select[id$="-select"]');
+            if (!recordSelect) return;
+            recordSelect.value = recordId;
+            recordSelect.dispatchEvent(new Event("change"));
+          };
+
           {{/* View mode: a read-friendly alternative skin over the
             existing edit forms in Character Manager, Campaign Journal,
             and Campaign Conflicts ONLY (the three ".dm-view-scope"
@@ -1731,6 +1759,32 @@
               currentValue = "";
               renderForm(pendingNew.id, true);
             });
+          };
+
+          {{/* Moved up from the Campaign Journal block below: Travel
+            Planner's own travelLabel/travelSessionSelect (right below)
+            read loadJournalEntries, and — unlike every other
+            cross-section reference in this portal, which only runs
+            inside a click handler or other lazily-invoked callback, long
+            after the whole script has finished its first synchronous
+            pass — createRecordTracker calls config.label/renderFields
+            eagerly, as part of its own setup, at travel-planner's own
+            spot in this same synchronous pass. Var hoisting only hoists
+            the declaration, not the assignment, so leaving
+            loadJournalEntries defined at its old spot (down in the
+            Campaign Journal block, later in this same script) left it
+            still undefined the moment travel-planner's initial
+            renderSelect() tried to label an existing session-tied plan —
+            throwing there and aborting the rest of this script's
+            synchronous run, on every reload of a campaign with at least
+            one such plan. */}}
+          var journalStorageKey = document.getElementById("campaign-journal").dataset.storageKey;
+          var loadJournalEntries = function () {
+            try {
+              return JSON.parse(window.localStorage.getItem(journalStorageKey) || "[]");
+            } catch (e) {
+              return [];
+            }
           };
 
           {{/* Travel Planner: uses the shared createRecordTracker
@@ -4266,19 +4320,13 @@
             Kept as its own self-contained block for the same reason NPC
             Tracker is. */}}
           {{/* Campaign Journal: uses the shared createRecordTracker
-            controller above. loadJournalEntries is kept as its own
-            standalone function (rather than folded into the tracker
-            config) since Campaign Conflicts below reads it directly to
-            tie a conflict to a session and to build the session picker. */}}
-          var journalStorageKey = document.getElementById("campaign-journal").dataset.storageKey;
-          var loadJournalEntries = function () {
-            try {
-              return JSON.parse(window.localStorage.getItem(journalStorageKey) || "[]");
-            } catch (e) {
-              return [];
-            }
-          };
-
+            controller above. loadJournalEntries itself is defined earlier
+            in this script, right before Travel Planner's own
+            createRecordTracker call (see the comment there for why —
+            it's an eagerly-evaluated ordering issue, not the usual
+            lazy-handler hoisting that lets most of this portal's
+            cross-section references get away with declaration order not
+            mattering). */}}
           var nextJournalSessionNumber = function (entries) {
             var max = 0;
             entries.forEach(function (e) {
@@ -4345,17 +4393,30 @@
               tooltip.className = "journal-related-tooltip";
               tooltip.textContent = hoverInfoFn(record);
               li.appendChild(tooltip);
-              var openBtn = document.createElement("button");
-              openBtn.type = "button";
-              openBtn.className = "journal-related-open-btn";
-              openBtn.textContent = "Open →";
-              openBtn.addEventListener("click", function () {
+              {{/* A real <a>, not a <button> — target="_blank" plus a
+                genuine deep-link href (?section=...&record=..., read by
+                applyDeepLinkFromUrl above) means ctrl/cmd-click,
+                middle-click, and "Open link in new tab" all just work,
+                the standard browser way. A plain unmodified left click is
+                still intercepted to jump within this same tab instead —
+                the more useful default for the common case — but any
+                modified click falls through to the anchor's own default
+                action (open a new tab) untouched. */}}
+              var openLink = document.createElement("a");
+              openLink.className = "journal-related-open-btn";
+              openLink.textContent = "Open →";
+              openLink.href = window.location.pathname + "?section=" + encodeURIComponent(sectionId) + "&record=" + encodeURIComponent(record.id);
+              openLink.target = "_blank";
+              openLink.rel = "noopener";
+              openLink.addEventListener("click", function (e) {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                e.preventDefault();
                 goToSection(sectionId);
                 var sel = document.getElementById(selectId);
                 sel.value = record.id;
                 sel.dispatchEvent(new Event("change"));
               });
-              li.appendChild(openBtn);
+              li.appendChild(openLink);
               list.appendChild(li);
             });
             box.appendChild(list);
@@ -7006,6 +7067,8 @@
             renderFileList();
             pullFiles();
           }
+
+          applyDeepLinkFromUrl();
         })();
       </script>
 
