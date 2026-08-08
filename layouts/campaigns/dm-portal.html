@@ -3044,7 +3044,6 @@
                       hpTraditionalWrap.appendChild(hpDLabel);
                       hpTraditionalWrap.appendChild(hpSizeSelect);
                       hpTraditionalWrap.appendChild(hpComputedSpan);
-                      hpRow.appendChild(hpTraditionalWrap);
 
                       var hpManualInput = document.createElement("input");
                       hpManualInput.type = "text";
@@ -3055,9 +3054,18 @@
 
                       topPart.appendChild(hpRow);
 
+                      {{/* Manual removes the dice fields from the DOM
+                        entirely rather than just hiding them — switching
+                        back to Traditional re-inserts the same wrap
+                        (values intact) right before the manual input, so
+                        row order stays stable either way. */}}
                       var applyHpMode = function () {
                         var manual = hpManualRadio.checked;
-                        hpTraditionalWrap.hidden = manual;
+                        if (manual) {
+                          if (hpTraditionalWrap.parentNode) hpTraditionalWrap.parentNode.removeChild(hpTraditionalWrap);
+                        } else if (!hpTraditionalWrap.parentNode) {
+                          hpRow.insertBefore(hpTraditionalWrap, hpManualInput);
+                        }
                         hpManualInput.hidden = !manual;
                       };
                       hpTraditionalRadio.checked = Boolean(parsedHp);
