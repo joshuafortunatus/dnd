@@ -594,8 +594,18 @@
             }, 800);
           };
 
+          {{/* Returns a Promise (each pullX above now returns its own
+            syncPull().then() chain) so callers can wait for every pull to
+            actually settle before doing anything that reads freshly-
+            pulled data — see applyDeepLinkFromUrl below, which otherwise
+            raced this: a pull resolving after the deep link had already
+            selected a record calls that section's own clearDetail(),
+            wiping the selection's rendered form (the select itself stays
+            on the right value, since renderSelect preserves it, but the
+            detail underneath goes blank) the moment sync is enabled and
+            actually has something to pull. */}}
           window.dmPortalSyncPullAll = function () {
-            syncPullers.forEach(function (fn) { fn(); });
+            return Promise.all(syncPullers.map(function (fn) { return fn(); }));
           };
 
           {{/* Exposed so the password-gate script (a separate <script>
@@ -624,6 +634,13 @@
             sectionSelect.value = section;
             currentSection = section;
             if (section === "character-manager" && window.dmPortalRefreshCharacters) window.dmPortalRefreshCharacters();
+            {{/* Jumping here from deep within a scrolled-down record (a
+              Campaign Journal "Open →" link, an NPC combat-row link) must
+              land on the new section's own top, not whatever scroll
+              offset the page happened to be at — otherwise the new
+              section's content renders off-screen below the fold, and it
+              looks like nothing happened or the wrong thing loaded. */}}
+            window.scrollTo(0, 0);
           }
 
           {{/* Switching sections mid-edit would otherwise silently discard
@@ -673,14 +690,21 @@
             journalRelatedSection below) real, ctrl/cmd-click-in-a-new-
             -tab-able <a> elements instead of same-tab-only JS buttons: the
             new tab just loads this same DM portal URL with these params.
-            Only defined here — actually invoked once, unconditionally, at
-            the very end of this script (after every section below has
-            finished its own setup, options and all) rather than gated on
-            the password gate unlocking: the gate only toggles a hidden
-            attribute on the content wrapper, it doesn't delay any of this
-            script's own execution, so section-switching/selecting a
-            record underneath it works (and is ready to reveal) whether
-            or not the gate has been unlocked yet. */}}
+            Must run AFTER dmPortalSyncPullAll's pulls have settled, not
+            just after this script's own initial synchronous pass — a
+            pull that resolves later (real sync is enabled and the
+            Worker actually has something to pull) calls that section's
+            own clearDetail(), which would otherwise wipe the record this
+            just selected moments after selecting it (the select itself
+            keeps showing the right value, since renderSelect preserves
+            it, but the detail underneath goes blank — this shipped once
+            and had to be fixed). Exposed on window since the gate script
+            further down is what actually knows when a fresh unlock's own
+            pull cycle finishes; also called directly at the very end of
+            this same script for the no-gate case (blank password_hash
+            skips that whole script, but still calls dmPortalSyncPullAll
+            itself further down here, which resolves quickly regardless
+            since sync is never enabled without a password). */}}
           var applyDeepLinkFromUrl = function () {
             var params = new URLSearchParams(window.location.search);
             var section = params.get("section");
@@ -707,6 +731,7 @@
             recordSelect.value = recordId;
             recordSelect.dispatchEvent(new Event("change"));
           };
+          window.dmPortalApplyDeepLinkFromUrl = applyDeepLinkFromUrl;
 
           {{/* View mode: a read-friendly alternative skin over the
             existing edit forms in Character Manager, Campaign Journal,
@@ -963,7 +988,7 @@
               syncPush("characters", roster);
             };
             var pullRoster = function () {
-              syncPull("characters").then(function (result) {
+              return syncPull("characters").then(function (result) {
                 var remote = result.ok ? result.data : undefined;
                 if (remote) {
                   writeRosterLocal(remote);
@@ -1066,7 +1091,7 @@
               syncPush("pc-manager", data);
             };
             var pullPcData = function () {
-              syncPull("pc-manager").then(function (result) {
+              return syncPull("pc-manager").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -1642,7 +1667,7 @@
             registerSectionResetHook(cancelForm);
 
             var pull = function () {
-              syncPull(config.syncKey).then(function (result) {
+              return syncPull(config.syncKey).then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -2064,7 +2089,7 @@
             var npcIsValid = function (npc) { return Boolean(npc.name && npc.name.trim()); };
 
             var pullNpcs = function () {
-              syncPull("npcs").then(function (result) {
+              return syncPull("npcs").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -4562,7 +4587,7 @@
             var conflictIsValid = function (conflict) { return Boolean(conflict.name && conflict.name.trim() && conflict.adversaryNpcIds && conflict.adversaryNpcIds.length); };
 
             var pullConflicts = function () {
-              syncPull("conflicts").then(function (result) {
+              return syncPull("conflicts").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -6456,7 +6481,7 @@
             };
 
             var pullMagicItemState = function () {
-              syncPull("magic-items").then(function (result) {
+              return syncPull("magic-items").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -6675,7 +6700,7 @@
               handler below), so there's never an incomplete placeholder
               record to prune. */}}
             var pullFiles = function () {
-              syncPull("files").then(function (result) {
+              return syncPull("files").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
@@ -7103,7 +7128,18 @@
             pullFiles();
           }
 
-          applyDeepLinkFromUrl();
+          {{/* No-gate case (blank password_hash — see the gate script
+            further down, which doesn't render at all here): nothing else
+            will ever call dmPortalSyncPullAll/applyDeepLinkFromUrl for
+            this page, so do it directly. Sync is never enabled without a
+            password (syncEnabled() checks for a token, and there's never
+            one to set here), so every pull below resolves immediately
+            with {ok: false} — this still goes through the same
+            pull-before-deep-link sequencing for consistency, it just
+            never actually waits on a real network round trip. */}}
+          if (!document.getElementById("dm-portal-gate").dataset.hash) {
+            window.dmPortalSyncPullAll().then(applyDeepLinkFromUrl);
+          }
         })();
       </script>
 
@@ -7152,8 +7188,16 @@
               // previous unlock, so pull now too, not just on first
               // entry — otherwise this browser would only ever see
               // whatever was synced the very first time it was unlocked,
-              // no matter how stale that gets.
-              if (window.dmPortalSyncPullAll) window.dmPortalSyncPullAll();
+              // no matter how stale that gets. Deep-link application
+              // (see applyDeepLinkFromUrl's own comment) has to wait
+              // until this pull settles, not run alongside it — otherwise
+              // the pull's own clearDetail() can wipe the just-selected
+              // record's rendered form moments after this reveals it.
+              if (window.dmPortalSyncPullAll) {
+                window.dmPortalSyncPullAll().then(function () {
+                  if (window.dmPortalApplyDeepLinkFromUrl) window.dmPortalApplyDeepLinkFromUrl();
+                });
+              }
             }
 
             form.addEventListener("submit", function (e) {
@@ -7173,7 +7217,11 @@
                     // and an immediate pull picks up anything already synced
                     // from another device.
                     if (window.dmPortalSetSyncToken) window.dmPortalSetSyncToken(value);
-                    if (window.dmPortalSyncPullAll) window.dmPortalSyncPullAll();
+                    if (window.dmPortalSyncPullAll) {
+                      window.dmPortalSyncPullAll().then(function () {
+                        if (window.dmPortalApplyDeepLinkFromUrl) window.dmPortalApplyDeepLinkFromUrl();
+                      });
+                    }
                   } else {
                     error.hidden = false;
                   }
