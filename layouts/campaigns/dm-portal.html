@@ -2982,16 +2982,50 @@
 
                   if (line.label === "HP") {
                     var parsedHp = npcParseHp(line.value);
-                    if (parsedHp && conAbility) {
+                    if (conAbility) {
+                      {{/* Traditional (dice count/size, auto-computed
+                        average) vs. Manual (DM just types the number) —
+                        a real toggle, not just Manual being whatever
+                        happens when parsing fails. Which one starts
+                        selected is still inferred from the stored value's
+                        shape (parses as dice notation → Traditional,
+                        anything else → Manual) — no separate "mode" field
+                        to persist; npcParseHp re-parsing its own prior
+                        output on the next edit is what makes that work,
+                        same convention npcFormatHp's other callers rely
+                        on already. */}}
                       var hpRow = document.createElement("div");
-                      hpRow.className = "npc-statblock-edit-row";
+                      hpRow.className = "npc-statblock-edit-row npc-statblock-hp-row";
                       var hpLabel = document.createElement("strong");
                       hpLabel.textContent = "HP";
+                      hpRow.appendChild(hpLabel);
+
+                      var hpModeName = "npc-hp-mode-" + Math.random().toString(36).slice(2);
+                      var hpModeWrap = document.createElement("span");
+                      hpModeWrap.className = "npc-statblock-hp-mode";
+                      var hpTraditionalRadio = document.createElement("input");
+                      hpTraditionalRadio.type = "radio";
+                      hpTraditionalRadio.name = hpModeName;
+                      var hpTraditionalRadioLabel = document.createElement("label");
+                      hpTraditionalRadioLabel.appendChild(hpTraditionalRadio);
+                      hpTraditionalRadioLabel.appendChild(document.createTextNode(" Traditional"));
+                      var hpManualRadio = document.createElement("input");
+                      hpManualRadio.type = "radio";
+                      hpManualRadio.name = hpModeName;
+                      var hpManualRadioLabel = document.createElement("label");
+                      hpManualRadioLabel.appendChild(hpManualRadio);
+                      hpManualRadioLabel.appendChild(document.createTextNode(" Manual"));
+                      hpModeWrap.appendChild(hpTraditionalRadioLabel);
+                      hpModeWrap.appendChild(hpManualRadioLabel);
+                      hpRow.appendChild(hpModeWrap);
+
+                      var hpTraditionalWrap = document.createElement("span");
+                      hpTraditionalWrap.className = "npc-statblock-hp-traditional";
                       var hpCountInput = document.createElement("input");
                       hpCountInput.type = "text";
                       npcRestrictNumericInput(hpCountInput, false);
                       hpCountInput.className = "npc-statblock-edit-input npc-statblock-hp-count";
-                      hpCountInput.value = String(parsedHp.diceCount);
+                      hpCountInput.value = String(parsedHp ? parsedHp.diceCount : 1);
                       var hpDLabel = document.createElement("span");
                       hpDLabel.className = "npc-statblock-inline-label";
                       hpDLabel.textContent = "d";
@@ -3003,17 +3037,37 @@
                         option.textContent = String(size);
                         hpSizeSelect.appendChild(option);
                       });
-                      hpSizeSelect.value = String(parsedHp.dieSize);
+                      hpSizeSelect.value = String(parsedHp ? parsedHp.dieSize : 8);
                       var hpComputedSpan = document.createElement("span");
                       hpComputedSpan.className = "npc-statblock-computed-text";
-                      hpRow.appendChild(hpLabel);
-                      hpRow.appendChild(hpCountInput);
-                      hpRow.appendChild(hpDLabel);
-                      hpRow.appendChild(hpSizeSelect);
-                      hpRow.appendChild(hpComputedSpan);
+                      hpTraditionalWrap.appendChild(hpCountInput);
+                      hpTraditionalWrap.appendChild(hpDLabel);
+                      hpTraditionalWrap.appendChild(hpSizeSelect);
+                      hpTraditionalWrap.appendChild(hpComputedSpan);
+                      hpRow.appendChild(hpTraditionalWrap);
+
+                      var hpManualInput = document.createElement("input");
+                      hpManualInput.type = "text";
+                      hpManualInput.className = "npc-statblock-edit-input npc-statblock-hp-manual";
+                      hpManualInput.placeholder = "e.g. 50";
+                      hpManualInput.value = parsedHp ? "" : (line.value || "");
+                      hpRow.appendChild(hpManualInput);
+
                       topPart.appendChild(hpRow);
 
+                      var applyHpMode = function () {
+                        var manual = hpManualRadio.checked;
+                        hpTraditionalWrap.hidden = manual;
+                        hpManualInput.hidden = !manual;
+                      };
+                      hpTraditionalRadio.checked = Boolean(parsedHp);
+                      hpManualRadio.checked = !parsedHp;
+                      applyHpMode();
+                      hpTraditionalRadio.addEventListener("change", applyHpMode);
+                      hpManualRadio.addEventListener("change", applyHpMode);
+
                       var recomputeThisHp = function () {
+                        if (hpManualRadio.checked) return;
                         var count = parseInt(hpCountInput.value, 10);
                         var size = parseInt(hpSizeSelect.value, 10);
                         var conMod = parseInt(conAbility.mod.value, 10) || 0;
@@ -3025,7 +3079,14 @@
                       hpSizeSelect.addEventListener("change", recomputeThisHp);
                       recomputeHpDisplay = recomputeThisHp;
 
-                      return { type: "hp", label: line.label, countInput: hpCountInput, sizeInput: hpSizeSelect };
+                      return {
+                        type: "hp",
+                        label: line.label,
+                        countInput: hpCountInput,
+                        sizeInput: hpSizeSelect,
+                        manualInput: hpManualInput,
+                        isManual: function () { return hpManualRadio.checked; },
+                      };
                     }
                   }
 
@@ -3124,6 +3185,9 @@
                       return { label: w.label, value: npcFormatAc(acValue, w.noteInput.value.trim()) };
                     }
                     if (w.type === "hp") {
+                      if (w.isManual()) {
+                        return { label: w.label, value: w.manualInput.value.trim() };
+                      }
                       var count = parseInt(w.countInput.value, 10) || 1;
                       var size = parseInt(w.sizeInput.value, 10) || 8;
                       var conMod = conAbility ? (parseInt(conAbility.mod.value, 10) || 0) : 0;
