@@ -1702,28 +1702,42 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 
 /* Slim View: PCs only (NPC rows are deliberately untouched, per an
    explicit product decision — a DM still needs an adversary's full
-   HP/conditions to run the fight) hide just the Heal/Damage/Current/Max/
-   Temp HP module (and its divider) — Conditions and Notes stay visible,
-   per an explicit correction; only the HP module was ever meant to
-   collapse. display: none rather than leaving these fields out of the
-   row entirely — see renderCombatSection's own comment on
-   applyCombatViewMode — so nothing already typed here is lost, it's just
-   not shown while Slim View is active. The divider can just display:none
-   (nothing needs its width preserved), but the HP module itself uses
-   visibility: hidden + height: 0 instead — collapsing its vertical
-   footprint to nothing while keeping its rendered *width*, which is what
-   .combat-hp-module-stack's own width is sized from (see the rAF call in
-   combatRow). Losing that width here would let the stack shrink down to
-   Death Saves' own (narrower) width, sliding Death Saves left of where
-   it sits in Full View — an explicit requirement is that Slim View keeps
-   Death Saves at that exact same horizontal spot. */
+   HP/conditions to run the fight) hide the Heal/Damage/Current/Max/Temp
+   HP module (and its divider) plus Armor Class — Conditions and Notes
+   stay visible, per an explicit correction. display: none rather than
+   leaving these fields out of the row entirely — see renderCombatSection's
+   own comment on applyCombatViewMode — so nothing already typed here is
+   lost, it's just not shown while Slim View is active. The divider and
+   Armor Class can just display:none (nothing needs their width
+   preserved), but the HP module itself uses visibility: hidden + height: 0
+   instead — collapsing its vertical footprint to nothing while keeping
+   its rendered *width*, which is what .combat-hp-module-stack's own width
+   is sized from (see the rAF call in combatRow). Losing that width here
+   would let the stack shrink down to Death Saves' own (narrower) width,
+   sliding Death Saves left of where it sits in Full View — an explicit
+   requirement is that Slim View keeps Death Saves at that exact same
+   horizontal spot. */
 .combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-hp-adjust-wrap {
   visibility: hidden;
   height: 0;
   overflow: hidden;
 }
-.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-death-divider {
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-death-divider,
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-ac-group {
   display: none;
+}
+/* Slim View shrinks a PC row's Combat Block content (Initiative +
+   Death Saves only, now that Armor Class and the whole HP module are
+   collapsed above) well below the height of the Combatant cell beside it
+   (Reaction/Select Conditions/Notes stay full-size there) — under the
+   sitewide default td/th { vertical-align: top }, that left the now-short
+   Combat Block content flush against the top of a much taller row instead
+   of centered in it. Scoped to Slim View PC rows only, not the base
+   .combat-block-cell rule, since Full View's Combat Block content is
+   already close enough to the Combatant cell's height that top-alignment
+   never looked off there. */
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-block-cell {
+  vertical-align: middle;
 }
 /* Death Saves — three fail circles (red) on the left, three success
    circles (green) on the right, flanking the label. Sits below the whole

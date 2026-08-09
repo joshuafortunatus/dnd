@@ -5771,7 +5771,17 @@
                 acInput.dataset.combatField = "ac";
                 acInput.value = stats.ac || "";
                 npcRestrictNumericInput(acInput, false);
-                initStack.appendChild(makeHpValueGroup("Armor Class", acInput));
+                {{/* .combat-ac-group exists purely so CSS can hide this row
+                  for PC rows in Slim View (see style.css) without touching
+                  the value itself — same non-destructive
+                  visibility:hidden;height:0 approach the HP module already
+                  uses below, per an explicit correction (Armor Class was
+                  previously left visible in Slim View, unlike the HP
+                  module). NPC rows are untouched, same as the HP module's
+                  own PC-only scoping. */}}
+                var acGroup = makeHpValueGroup("Armor Class", acInput);
+                acGroup.classList.add("combat-ac-group");
+                initStack.appendChild(acGroup);
 
                 {{/* PCs get an editable HP cell too, same as NPCs — a
                   player's HP normally lives on their own D&D Beyond sheet,
