@@ -1435,15 +1435,20 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 /* gap matches .combat-hp-adjust-wrap's own gap below — the
    Initiative/AC stack sits the same distance from Heal/Damage as
    Heal/Damage sits from Current/Max, rather than a tighter, unrelated
-   gap of its own. align-items: center, not flex-start — the
-   Initiative/Tiebreaker/AC stack is now a variable 2 or 3 rows tall
+   gap of its own. align-items: flex-start, not center — the
+   Initiative/Tiebreaker/AC stack is a variable 2 or 3 rows tall
    (Tiebreaker only shows while its row is actually tied; see
-   updateTiebreakers in dm-portal.html), so a fixed top alignment would
-   leave the Heal/Damage/Current/Max module looking too high whenever a
-   tie shows Tiebreaker and the two stacks' heights diverge. Centering
-   keeps every stack balanced against the others regardless of which one
-   is tallest at the moment. */
-.combat-block-wrap { display: flex; align-items: center; gap: 1rem; }
+   updateTiebreakers in dm-portal.html), and centering the two stacks
+   against each other's *current* height meant Initiative (and, in Slim
+   View, Death Saves beside it) shifted vertical position the moment
+   that row's own Tiebreaker appeared — a tied row's Initiative box
+   landed at a different height than an untied row's, so the whole
+   Combat Block column read as misaligned row to row. Top-aligning
+   instead pins Initiative (and the HP module's own top) to the same
+   spot regardless of Tiebreaker, so every row's Combat Block lines up
+   with every other row's; Tiebreaker/AC simply grow the stack further
+   down without disturbing that anchor. */
+.combat-block-wrap { display: flex; align-items: flex-start; gap: 1rem; }
 /* Same box for all three — Initiative, Tiebreaker, and AC read as a
    matched set, not one sized to its own value's typical digit count. */
 .combat-initiative-input,
@@ -1515,12 +1520,10 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
    moment either side's content changes. max-width keeps the whole module
    from stretching to whatever width the table's auto column-sizing hands
    the HP cell (driven mostly by the much wider Combatant column). */
-/* No title above Heal/Damage — .combat-block-wrap's align-items: center
-   means this wrap has no fixed relationship to any one row of the
-   sibling Initiative/Tiebreaker/AC stack (which one it lands beside
-   shifts as that stack's height changes), so a title here would drift
-   against different rows depending on whether Tiebreaker is currently
-   shown rather than reliably lining up with any of them. */
+/* No title above Heal/Damage — unlabeled is still the simpler choice
+   even now that .combat-block-wrap uses align-items: flex-start (see
+   that rule's own comment), which does pin this wrap's top to
+   Initiative's own top across every row regardless of Tiebreaker. */
 .combat-hp-adjust-wrap { display: flex; align-items: stretch; gap: 1rem; max-width: 16rem; }
 /* A small fixed gap plus flex-grow on the amount field (not
    justify-content: space-between, which spent the wrap's stretched
@@ -1707,37 +1710,102 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
    stay visible, per an explicit correction. display: none rather than
    leaving these fields out of the row entirely — see renderCombatSection's
    own comment on applyCombatViewMode — so nothing already typed here is
-   lost, it's just not shown while Slim View is active. The divider and
-   Armor Class can just display:none (nothing needs their width
-   preserved), but the HP module itself uses visibility: hidden + height: 0
-   instead — collapsing its vertical footprint to nothing while keeping
-   its rendered *width*, which is what .combat-hp-module-stack's own width
-   is sized from (see the rAF call in combatRow). Losing that width here
-   would let the stack shrink down to Death Saves' own (narrower) width,
-   sliding Death Saves left of where it sits in Full View — an explicit
-   requirement is that Slim View keeps Death Saves at that exact same
-   horizontal spot. */
-.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-hp-adjust-wrap {
+   lost, it's just not shown while Slim View is active. The divider can
+   just display:none (nothing needs its width preserved — its own width
+   is set in JS off hpAdjustWrap, see below), but the HP module and
+   Armor Class both use visibility: hidden + height: 0 instead —
+   collapsing their vertical footprint to nothing while keeping their
+   rendered *width*. For the HP module, that width is what
+   .combat-hp-module-stack's own width is sized from (see the rAF call
+   in combatRow) — losing it would shrink the stack down to Death
+   Saves' own (narrower) width, sliding Death Saves left of where it
+   sits in Full View. For Armor Class, .combat-init-stack is a CSS grid
+   with grid-template-columns: max-content — a display:none'd Armor
+   Class group is fully removed from that column's intrinsic-width
+   calculation (not just unpainted), so the column narrows to whatever
+   Initiative/Tiebreaker need on their own, and Initiative's centered
+   box then lands at a different x than it does in Full View, where
+   Armor Class's longer label is back in the mix widening the column.
+   Keeping Armor Class's box (zero-height, invisible) in the layout
+   holds that column at its Full View width always, so Initiative
+   never visibly shifts sideways when the view toggles. An explicit
+   requirement is that Slim View keeps both Death Saves and Initiative
+   at that exact same horizontal spot as Full View. */
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-hp-adjust-wrap,
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-ac-group {
   visibility: hidden;
   height: 0;
   overflow: hidden;
 }
-.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-death-divider,
-.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-ac-group {
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-death-divider {
   display: none;
 }
-/* Slim View shrinks a PC row's Combat Block content (Initiative +
-   Death Saves only, now that Armor Class and the whole HP module are
-   collapsed above) well below the height of the Combatant cell beside it
-   (Reaction/Select Conditions/Notes stay full-size there) — under the
-   sitewide default td/th { vertical-align: top }, that left the now-short
-   Combat Block content flush against the top of a much taller row instead
-   of centered in it. Scoped to Slim View PC rows only, not the base
-   .combat-block-cell rule, since Full View's Combat Block content is
-   already close enough to the Combatant cell's height that top-alignment
-   never looked off there. */
+/* vertical-align: top (the sitewide td/th default — see that rule's own
+   comment), NOT middle. This cell's own content height varies row to row
+   (Tiebreaker only shows while that row is actually tied), and middle
+   would center each row's Combat Block against ITS OWN height rather
+   than a shared one — an untied row's short Initiative-only content
+   would center deep into the row while a tied row's taller
+   Initiative+Tiebreaker content centers higher up, so the whole block
+   visibly bounces up and down from row to row depending on tie state.
+   Top-aligning instead anchors every row's Combat Block at the same
+   fixed offset from its own row's top regardless of Tiebreaker, which
+   is what actually keeps the column looking aligned. Scoped to Slim
+   View PC rows only, not the base .combat-block-cell rule, since Full
+   View's Combat Block content is already close enough to the Combatant
+   cell's height that this never showed up there. */
+/* Death Saves, unlike Initiative, is meant to float at the vertical
+   center of the whole row in Slim View rather than pin to the top.
+   height: 100% on the wrap is what lets align-self: center below
+   center it against the row's actual full height rather than against
+   .combat-init-stack's own (shorter, content-driven) height — that
+   distinction matters because .combat-init-stack grows a row taller
+   whenever Tiebreaker shows, and centering Death Saves against THAT
+   would make it drift up and down with tie state, the exact bug
+   already fixed above for Initiative. Centering against the row
+   instead (driven by the Combatant column's Reaction/Conditions/Notes,
+   which don't vary with combat state) keeps it tie-invariant.
+   height: 1px on .combat-block-cell is the actual mechanism that makes
+   the 100% below resolve at all: a percentage height only resolves
+   against an ancestor with a used height that isn't itself
+   content-derived ("auto"), and a bare td has no such height even
+   though its rendered row is taller — this is the standard table-cell
+   workaround, an explicit (if nonsensical on its own) height that
+   browsers then still expand to the row's real content-driven height,
+   which is what 100% below actually resolves against. Confirmed via
+   direct measurement (getBoundingClientRect), not assumed — without
+   it .combat-block-wrap's "100%" silently collapses back to
+   .combat-init-stack's own height and the tie-state drift comes right
+   back. align-self on .combat-hp-module-stack overrides just this one
+   flex item's cross-axis position — .combat-block-wrap's own
+   align-items: flex-start (see that rule) still governs Initiative by
+   default, pinning it to the top. */
 .combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-block-cell {
-  vertical-align: middle;
+  height: 1px;
+}
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-block-wrap {
+  height: 100%;
+}
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-hp-module-stack {
+  align-self: center;
+}
+/* Initiative's own top-pin (above) is only right for a TIED row, where
+   Tiebreaker sits below it and the row needs a stable anchor that
+   doesn't jump around as Tiebreaker shows/hides on its neighbors (see
+   that fix above). An untied row never shows Tiebreaker at all, so
+   there's nothing for Initiative to stay clear of — pinning it to the
+   top there just leaves it floating above Death Saves for no reason,
+   when the two would read better lined up on the same axis.
+   :has(.combat-tiebreaker-group[hidden]) targets exactly that
+   untied case (Tiebreaker's own [hidden] attribute — see
+   updateTiebreakers in dm-portal.html — is already the single source
+   of truth for tied/untied, so reading it here instead of duplicating
+   the condition can't drift out of sync with it) and overrides just
+   this row's Initiative stack to center alongside Death Saves instead
+   of pinning top. A tied row doesn't match this selector at all, so it
+   falls through to the plain top-pin above, unchanged. */
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-init-stack:has(.combat-tiebreaker-group[hidden]) {
+  align-self: center;
 }
 /* Death Saves — three fail circles (red) on the left, three success
    circles (green) on the right, flanking the label. Sits below the whole
