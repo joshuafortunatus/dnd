@@ -1435,11 +1435,19 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 /* gap matches .combat-hp-adjust-wrap's own gap below — the
    Initiative/AC stack sits the same distance from Heal/Damage as
    Heal/Damage sits from Current/Max, rather than a tighter, unrelated
-   gap of its own. */
-.combat-block-wrap { display: flex; align-items: flex-start; gap: 1rem; }
-/* Same box for both — Initiative and AC read as a matched pair, not one
-   sized to its own value's typical digit count. */
+   gap of its own. align-items: center, not flex-start — the
+   Initiative/Tiebreaker/AC stack is now a variable 2 or 3 rows tall
+   (Tiebreaker only shows while its row is actually tied; see
+   updateTiebreakers in dm-portal.html), so a fixed top alignment would
+   leave the Heal/Damage/Current/Max module looking too high whenever a
+   tie shows Tiebreaker and the two stacks' heights diverge. Centering
+   keeps every stack balanced against the others regardless of which one
+   is tallest at the moment. */
+.combat-block-wrap { display: flex; align-items: center; gap: 1rem; }
+/* Same box for all three — Initiative, Tiebreaker, and AC read as a
+   matched set, not one sized to its own value's typical digit count. */
 .combat-initiative-input,
+.combat-tiebreaker-input,
 .combat-ac-input {
   box-sizing: border-box;
   width: 3.5rem;
@@ -1453,15 +1461,17 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   text-align: center;
 }
 /* display: grid, not flex-direction: column — a grid's implicit column
-   is sized to the widest content across BOTH rows ("Armor Class" is
-   longer than "Initiative"), so every row's cell ends up exactly that
-   same width automatically, no hand-guessed rem value needed. That's
-   what actually fixes the alignment: each .combat-hp-value-group below
-   still centers its own label/box (align-items: center, untouched), but
-   now centers them within an equal, shared width instead of its own
-   (differently sized) content — so both labels center on the same axis,
-   and both fixed-width Initiative/AC boxes land at the same x position
-   as each other. */
+   is sized to the widest content across all rows ("Armor Class" is
+   longer than "Initiative"/"Tiebreaker"), so every row's cell ends up
+   exactly that same width automatically, no hand-guessed rem value
+   needed. That's what actually fixes the alignment: each
+   .combat-hp-value-group below still centers its own label/box
+   (align-items: center, untouched), but now centers them within an equal,
+   shared width instead of its own (differently sized) content — so every
+   label centers on the same axis, and every fixed-width box lands at the
+   same x position as the others. Tiebreaker's row is hidden (see
+   .combat-tiebreaker-group below) whenever it doesn't apply, so it
+   contributes to this shared width only while actually shown. */
 .combat-init-stack { display: grid; grid-template-columns: max-content; gap: 0.5rem; }
 /* width: auto, not the 3.8rem shared with the HP module's value-groups —
    that fixed width matches the Current/Max *input boxes*, but
@@ -1477,13 +1487,21 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 .combat-init-stack .combat-hp-value-group { width: auto; }
 /* line-height: 1, not the body's global 1.6 — that leading is meant for
    paragraph text, but here it pads a few px of empty space above
-   "Initiative"'s own glyphs, which .combat-block-wrap's align-items:
-   flex-start can't see (it aligns box edges, not ink) — so the *text*
-   still sat a few px below Heal's hard border-box top even once the
-   two boxes' top edges matched. Scoped to this stack only — Current/
-   Max/Temp's labels don't have anything to their right needing this
-   exact a match. */
+   "Initiative"'s own glyphs that align-items (on either the flex-start
+   this was written under, or the align-items: center it now uses) can't
+   see, since either aligns box edges, not ink. Scoped to this stack
+   only — Current/Max/Temp's labels don't have anything to their right
+   needing this exact a match. */
 .combat-init-stack .combat-hp-value-label { line-height: 1; }
+/* .combat-tiebreaker-group[hidden], not a bare selector — same fight as
+   .combat-death-saves/.npc-statblock-hp-traditional above: the shared
+   .combat-hp-value-group rule's own author display:flex would otherwise
+   beat the browser's default [hidden] { display: none }, since both are
+   author-origin-vs-UA-origin at that point (an author rule always wins
+   over UA regardless of specificity). Adding [hidden] to the selector
+   raises this rule's specificity above the bare class, which is what
+   actually wins the fight. */
+.combat-tiebreaker-group[hidden] { display: none; }
 /* Heal/Damage/Temp HP module — always on the page, not tucked behind a
    toggle (a fight moves too fast for an extra click just to deal damage),
    so it's a plain static block rather than the positioned popover an
@@ -1497,10 +1515,12 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
    moment either side's content changes. max-width keeps the whole module
    from stretching to whatever width the table's auto column-sizing hands
    the HP cell (driven mostly by the much wider Combatant column). */
-/* No title above Heal/Damage — .combat-block-wrap's align-items:
-   flex-start then puts this wrap's top flush with "Initiative"'s own
-   label text above it in the sibling stack, rather than with the
-   Initiative *box* one row down. */
+/* No title above Heal/Damage — .combat-block-wrap's align-items: center
+   means this wrap has no fixed relationship to any one row of the
+   sibling Initiative/Tiebreaker/AC stack (which one it lands beside
+   shifts as that stack's height changes), so a title here would drift
+   against different rows depending on whether Tiebreaker is currently
+   shown rather than reliably lining up with any of them. */
 .combat-hp-adjust-wrap { display: flex; align-items: stretch; gap: 1rem; max-width: 16rem; }
 /* A small fixed gap plus flex-grow on the amount field (not
    justify-content: space-between, which spent the wrap's stretched
@@ -1704,18 +1724,6 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 }
 .combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-death-divider {
   display: none;
-}
-/* With the HP module's own height collapsed to 0 (above), Death Saves is
-   now the only thing left with any real height inside
-   .combat-hp-module-stack — left at the block-wrap's default
-   align-items: flex-start, it would sit flush at the top of the Combat
-   Block cell instead of centered against Initiative/Armor Class beside
-   it. Centering the whole row here (not just Death Saves on its own)
-   is what actually centers it, since Death Saves' own container has no
-   extra height of its own to center within — the height difference to
-   center against belongs to .combat-init-stack, the sibling next to it. */
-.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-block-wrap {
-  align-items: center;
 }
 /* Death Saves — three fail circles (red) on the left, three success
    circles (green) on the right, flanking the label. Sits below the whole
