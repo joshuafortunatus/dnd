@@ -5244,6 +5244,16 @@
               return arr;
             })();
 
+            {{/* Numeric ordinals ("1st", "2nd", "3rd"...) per an explicit
+              spec, not word-form ordinals — mod 100 first so 11th/12th/13th
+              stay "th" rather than mod 10 alone wrongly landing on
+              "11st"/"12nd"/"13rd". */}}
+            var tiebreakerOrdinal = function (n) {
+              var mod100 = n % 100;
+              if (mod100 >= 11 && mod100 <= 13) return n + "th";
+              return n + ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th");
+            };
+
             {{/* Threshold for renderCombatSection's measureNames — a name
               rendered wider than this (at the table's normal font-size)
               gets .combat-name-text-small instead of the whole table
@@ -5500,6 +5510,7 @@
                       NPC's own default — not whatever Max happened to be
                       left at. */}}
                     initSelect.value = "";
+                    tiebreakerSelect.value = "";
                     hpCurrentInput.value = "0";
                     if (defaultHpMax) hpMaxInput.value = defaultHpMax;
                   } else {
@@ -5509,6 +5520,7 @@
                       drop to 0 HP later starts a clean set of saves rather
                       than reappearing already at 3 fails. */}}
                     initSelect.value = "";
+                    tiebreakerSelect.value = "";
                     hpCurrentInput.value = "0";
                     hpDeathFailsInput.value = "0";
                     hpDeathSuccessInput.value = "0";
@@ -5517,6 +5529,7 @@
                     successCircles.refresh();
                     refreshDeathSavesVisibility();
                   }
+                  updateTiebreakers();
                   resortRows();
                 });
                 nameTitleWrap.appendChild(reviveBtn);
@@ -5701,8 +5714,56 @@
                   initSelect.appendChild(option);
                 });
                 initSelect.value = stats.initiative || "";
-                initSelect.addEventListener("change", function () { resortRows(); });
+                initSelect.addEventListener("change", function () {
+                  updateTiebreakers();
+                  resortRows();
+                });
                 initStack.appendChild(makeHpValueGroup("Initiative", initSelect));
+
+                {{/* Tiebreaker order — only meaningful (and only shown)
+                  when two or more rows currently share the same rolled
+                  Initiative; see updateTiebreakers below, which owns
+                  populating this select's options (ordinals sized to
+                  however many rows are actually tied) and toggling its
+                  group's visibility. Built here regardless of whether this
+                  row is tied right now, same as Initiative/AC always
+                  existing regardless of value, so updateTiebreakers has a
+                  stable element to find on every row via resortRows'
+                  querySelector convention. */}}
+                var tiebreakerSelect = document.createElement("select");
+                tiebreakerSelect.className = "combat-tiebreaker-input";
+                tiebreakerSelect.dataset.combatField = "tiebreaker";
+                var tiebreakerPlaceholder = document.createElement("option");
+                tiebreakerPlaceholder.value = "";
+                tiebreakerPlaceholder.textContent = "—";
+                tiebreakerSelect.appendChild(tiebreakerPlaceholder);
+                tiebreakerSelect.value = stats.tiebreaker || "";
+                tiebreakerSelect.addEventListener("change", function () {
+                  {{/* Two combatants can't both go "1st" — picking a rank
+                    already claimed by another row tied at this same
+                    Initiative bumps that other row back to blank rather
+                    than leaving both selects showing the same value. Scoped
+                    to rows sharing this row's exact Initiative, not every
+                    row in the table, since a rank of "1st" at Initiative 15
+                    doesn't conflict with a different "1st" at Initiative
+                    10 — each tied group ranks independently. */}}
+                  var newValue = tiebreakerSelect.value;
+                  if (newValue) {
+                    Array.prototype.forEach.call(tbody.querySelectorAll("tr"), function (otherRow) {
+                      if (otherRow === tr) return;
+                      var otherInit = otherRow.querySelector('[data-combat-field="initiative"]');
+                      var otherTiebreaker = otherRow.querySelector('[data-combat-field="tiebreaker"]');
+                      if (otherInit.value === initSelect.value && otherTiebreaker.value === newValue) {
+                        otherTiebreaker.value = "";
+                      }
+                    });
+                  }
+                  resortRows();
+                });
+                var tiebreakerGroup = makeHpValueGroup("Tiebreaker", tiebreakerSelect);
+                tiebreakerGroup.classList.add("combat-tiebreaker-group");
+                tiebreakerGroup.hidden = true;
+                initStack.appendChild(tiebreakerGroup);
 
                 var acInput = document.createElement("input");
                 acInput.type = "text";
@@ -5710,7 +5771,17 @@
                 acInput.dataset.combatField = "ac";
                 acInput.value = stats.ac || "";
                 npcRestrictNumericInput(acInput, false);
-                initStack.appendChild(makeHpValueGroup("Armor Class", acInput));
+                {{/* .combat-ac-group exists purely so CSS can hide this row
+                  for PC rows in Slim View (see style.css) without touching
+                  the value itself — same non-destructive
+                  visibility:hidden;height:0 approach the HP module already
+                  uses below, per an explicit correction (Armor Class was
+                  previously left visible in Slim View, unlike the HP
+                  module). NPC rows are untouched, same as the HP module's
+                  own PC-only scoping. */}}
+                var acGroup = makeHpValueGroup("Armor Class", acInput);
+                acGroup.classList.add("combat-ac-group");
+                initStack.appendChild(acGroup);
 
                 {{/* PCs get an editable HP cell too, same as NPCs — a
                   player's HP normally lives on their own D&D Beyond sheet,
@@ -6070,7 +6141,9 @@
                     whatever it was rolled at, since a dead combatant has
                     no place in turn order until explicitly revived. */}}
                   initSelect.value = "";
+                  tiebreakerSelect.value = "";
                   refreshDeathSavesVisibility();
+                  updateTiebreakers();
                   resortRows();
                 };
 
@@ -6210,6 +6283,8 @@
                   if (atZero && !isDead) {
                     isDead = true;
                     initSelect.value = "";
+                    tiebreakerSelect.value = "";
+                    updateTiebreakers();
                     resortRows();
                   } else if (!atZero && isDead) {
                     isDead = false;
@@ -6245,6 +6320,65 @@
                 return tr;
               };
 
+              {{/* Groups rows by their current (raw string) Initiative
+                value and shows/repopulates the Tiebreaker select only on
+                rows whose group has 2+ members — a unique Initiative has
+                nothing to break a tie with, so its Tiebreaker stays hidden
+                and cleared rather than offering a meaningless single-option
+                "First". Options are regenerated to exactly match the tied
+                group's size every time (not a fixed range) so a 2-way tie
+                offers First/Second while a 4-way tie offers through
+                Fourth. A row's existing selection survives a re-group only
+                if it's still in range for the new group size; otherwise it
+                resets to blank rather than silently keeping a now-invalid
+                rank (e.g. a 3rd-place pick after a tied combatant's
+                Initiative changes and the group shrinks to two). Run after
+                every Initiative change and on every renderRows, since
+                either can create, grow, shrink, or dissolve a tied
+                group. */}}
+              var updateTiebreakers = function () {
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+                var groupsByInitiative = {};
+                rows.forEach(function (row) {
+                  var value = row.querySelector('[data-combat-field="initiative"]').value;
+                  if (!value) return;
+                  (groupsByInitiative[value] = groupsByInitiative[value] || []).push(row);
+                });
+                rows.forEach(function (row) {
+                  var tiebreakerSelect = row.querySelector('[data-combat-field="tiebreaker"]');
+                  var tiebreakerGroup = row.querySelector(".combat-tiebreaker-group");
+                  var value = row.querySelector('[data-combat-field="initiative"]').value;
+                  var tiedRows = value ? groupsByInitiative[value] : null;
+                  if (!tiedRows || tiedRows.length < 2) {
+                    tiebreakerGroup.hidden = true;
+                    tiebreakerSelect.value = "";
+                    return;
+                  }
+                  var previousValue = tiebreakerSelect.value;
+                  tiebreakerSelect.innerHTML = "";
+                  var placeholder = document.createElement("option");
+                  placeholder.value = "";
+                  placeholder.textContent = "—";
+                  tiebreakerSelect.appendChild(placeholder);
+                  for (var i = 1; i <= tiedRows.length; i++) {
+                    var option = document.createElement("option");
+                    option.value = String(i);
+                    option.textContent = tiebreakerOrdinal(i);
+                    tiebreakerSelect.appendChild(option);
+                  }
+                  tiebreakerSelect.value = parseInt(previousValue, 10) <= tiedRows.length ? previousValue : "";
+                  tiebreakerGroup.hidden = false;
+                });
+              };
+
+              {{/* Tiebreaker (see updateTiebreakers above) only ever
+                distinguishes rows that already share the same Initiative —
+                it's a pure secondary key, never consulted when Initiatives
+                already differ. An unset Tiebreaker among tied rows sorts
+                after any that have one (Infinity), rather than before or
+                erroring, so an unresolved tie just falls back to this
+                sort's own stable order — the same behavior resortRows had
+                before Tiebreaker existed. */}}
               var resortRows = function () {
                 var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
                 rows.sort(function (a, b) {
@@ -6252,7 +6386,12 @@
                   var bInit = parseInt(b.querySelector('[data-combat-field="initiative"]').value, 10);
                   if (isNaN(aInit)) aInit = -Infinity;
                   if (isNaN(bInit)) bInit = -Infinity;
-                  return bInit - aInit;
+                  if (aInit !== bInit) return bInit - aInit;
+                  var aTiebreaker = parseInt(a.querySelector('[data-combat-field="tiebreaker"]').value, 10);
+                  var bTiebreaker = parseInt(b.querySelector('[data-combat-field="tiebreaker"]').value, 10);
+                  if (isNaN(aTiebreaker)) aTiebreaker = Infinity;
+                  if (isNaN(bTiebreaker)) bTiebreaker = Infinity;
+                  return aTiebreaker - bTiebreaker;
                 });
                 rows.forEach(function (row) { tbody.appendChild(row); });
               };
@@ -6334,6 +6473,7 @@
                   var pcDeadEl = tr.querySelector('[data-combat-field="pcDead"]');
                   stats[key] = {
                     initiative: tr.querySelector('[data-combat-field="initiative"]').value,
+                    tiebreaker: tr.querySelector('[data-combat-field="tiebreaker"]').value,
                     hpCurrent: tr.querySelector('[data-combat-field="hpCurrent"]').value,
                     hpMax: tr.querySelector('[data-combat-field="hpMax"]').value,
                     hpTemp: tr.querySelector('[data-combat-field="hpTemp"]').value,
@@ -6432,6 +6572,7 @@
                 });
 
                 empty.hidden = tbody.children.length > 0;
+                updateTiebreakers();
                 resortRows();
                 measureNames();
               };
