@@ -5244,18 +5244,14 @@
               return arr;
             })();
 
-            {{/* Word-form ordinals ("First", "Second"...) per an explicit
-              spec, not numeric "1st"/"2nd" — the Tiebreaker dropdown reads
-              as a plain sentence ("goes First") rather than an abbreviation.
-              Falls back to a numeric suffix past this list's length, which
-              a real initiative tie (bounded by how many combatants are even
-              in the fight) should never actually reach. */}}
-            var TIEBREAKER_ORDINAL_WORDS = [
-              "First", "Second", "Third", "Fourth", "Fifth", "Sixth",
-              "Seventh", "Eighth", "Ninth", "Tenth", "Eleventh", "Twelfth",
-            ];
+            {{/* Numeric ordinals ("1st", "2nd", "3rd"...) per an explicit
+              spec, not word-form ordinals — mod 100 first so 11th/12th/13th
+              stay "th" rather than mod 10 alone wrongly landing on
+              "11st"/"12nd"/"13rd". */}}
             var tiebreakerOrdinal = function (n) {
-              return TIEBREAKER_ORDINAL_WORDS[n - 1] || (n + "th");
+              var mod100 = n % 100;
+              if (mod100 >= 11 && mod100 <= 13) return n + "th";
+              return n + ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th");
             };
 
             {{/* Threshold for renderCombatSection's measureNames — a name
@@ -5727,7 +5723,7 @@
                 {{/* Tiebreaker order — only meaningful (and only shown)
                   when two or more rows currently share the same rolled
                   Initiative; see updateTiebreakers below, which owns
-                  populating this select's options (word-ordinals sized to
+                  populating this select's options (ordinals sized to
                   however many rows are actually tied) and toggling its
                   group's visibility. Built here regardless of whether this
                   row is tied right now, same as Initiative/AC always
@@ -5742,7 +5738,28 @@
                 tiebreakerPlaceholder.textContent = "—";
                 tiebreakerSelect.appendChild(tiebreakerPlaceholder);
                 tiebreakerSelect.value = stats.tiebreaker || "";
-                tiebreakerSelect.addEventListener("change", function () { resortRows(); });
+                tiebreakerSelect.addEventListener("change", function () {
+                  {{/* Two combatants can't both go "1st" — picking a rank
+                    already claimed by another row tied at this same
+                    Initiative bumps that other row back to blank rather
+                    than leaving both selects showing the same value. Scoped
+                    to rows sharing this row's exact Initiative, not every
+                    row in the table, since a rank of "1st" at Initiative 15
+                    doesn't conflict with a different "1st" at Initiative
+                    10 — each tied group ranks independently. */}}
+                  var newValue = tiebreakerSelect.value;
+                  if (newValue) {
+                    Array.prototype.forEach.call(tbody.querySelectorAll("tr"), function (otherRow) {
+                      if (otherRow === tr) return;
+                      var otherInit = otherRow.querySelector('[data-combat-field="initiative"]');
+                      var otherTiebreaker = otherRow.querySelector('[data-combat-field="tiebreaker"]');
+                      if (otherInit.value === initSelect.value && otherTiebreaker.value === newValue) {
+                        otherTiebreaker.value = "";
+                      }
+                    });
+                  }
+                  resortRows();
+                });
                 var tiebreakerGroup = makeHpValueGroup("Tiebreaker", tiebreakerSelect);
                 tiebreakerGroup.classList.add("combat-tiebreaker-group");
                 tiebreakerGroup.hidden = true;
