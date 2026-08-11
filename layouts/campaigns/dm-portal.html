@@ -1052,44 +1052,61 @@
               })).then(function (results) {
                 var current = loadRoster();
                 var changed = false;
+
                 {{/* A rename changes slugifyName's output, which is the
-                  key every PC's Details data (Edition, Subclass, Game
-                  Expectations, Tracker Notes, etc.) is stored under —
-                  migrate that data to the new key so a D&D Beyond
-                  rename never silently orphans it. Skipped if something
-                  already occupies the new key (a genuine name
-                  collision) rather than risking overwriting unrelated
-                  data. */}}
-                var allData = loadPcData();
-                var dataChanged = false;
-                results.forEach(function (r) {
-                  if (!r) return;
-                  var entry = current.filter(function (e) { return e.id === r.id; })[0];
-                  if (!entry) return;
-                  if (entry.name && r.name && entry.name !== r.name) {
-                    var oldKey = slugifyName(entry.name);
-                    var newKey = slugifyName(r.name);
-                    if (oldKey !== newKey && allData[oldKey] && !allData[newKey]) {
-                      allData[newKey] = allData[oldKey];
-                      delete allData[oldKey];
-                      dataChanged = true;
-                      if (expandedKey === oldKey) expandedKey = newKey;
+                  key every PC's Details data (Player's Name, Edition,
+                  Subclass, Alignment, Game Expectations, Tracker Notes,
+                  etc.) is stored under — migrate that data to the new
+                  key so a D&D Beyond rename never silently orphans it.
+                  Skipped if something already occupies the new key (a
+                  genuine name collision) rather than risking
+                  overwriting unrelated data.
+
+                  This migration ends with a savePcData(allData) that
+                  pushes the WHOLE pc-manager blob (every PC's Details,
+                  not just the renamed one) up to the cross-device sync
+                  store. refreshRosterFromDdb can fire concurrently with
+                  pullPcData (both are syncPullers, run together on
+                  unlock/reveal and on every Character Manager open) —
+                  without re-pulling here first, allData could be this
+                  device's stale or never-synced local copy, and pushing
+                  it would silently blast every other PC's filled-out
+                  fields with old or blank values. Re-pulling immediately
+                  before touching allData makes sure the migration (and
+                  whatever it pushes back) is layered on top of the
+                  latest known state rather than clobbering it. */}}
+                pullPcData().then(function () {
+                  var allData = loadPcData();
+                  var dataChanged = false;
+                  results.forEach(function (r) {
+                    if (!r) return;
+                    var entry = current.filter(function (e) { return e.id === r.id; })[0];
+                    if (!entry) return;
+                    if (entry.name && r.name && entry.name !== r.name) {
+                      var oldKey = slugifyName(entry.name);
+                      var newKey = slugifyName(r.name);
+                      if (oldKey !== newKey && allData[oldKey] && !allData[newKey]) {
+                        allData[newKey] = allData[oldKey];
+                        delete allData[oldKey];
+                        dataChanged = true;
+                        if (expandedKey === oldKey) expandedKey = newKey;
+                      }
+                      entry.name = r.name;
+                      changed = true;
                     }
-                    entry.name = r.name;
-                    changed = true;
-                  }
-                  if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species) {
-                    entry.charClass = r.charClass;
-                    entry.level = r.level;
-                    entry.species = r.species;
-                    changed = true;
+                    if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species) {
+                      entry.charClass = r.charClass;
+                      entry.level = r.level;
+                      entry.species = r.species;
+                      changed = true;
+                    }
+                  });
+                  if (dataChanged) savePcData(allData);
+                  if (changed) {
+                    saveRoster(current);
+                    renderPcList();
                   }
                 });
-                if (dataChanged) savePcData(allData);
-                if (changed) {
-                  saveRoster(current);
-                  renderPcList();
-                }
               });
             };
 
