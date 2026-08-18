@@ -2192,17 +2192,31 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   background: rgba(201, 162, 39, 0.15);
 }
 
-.file-library-upload-form {
+/* Upload and Add Link are two forms, but one visual section — the
+   border/spacing that separates this section from the controls/list below
+   lives on the wrapper, not on either form, so the two forms read as
+   siblings rather than as separate features. */
+.file-library-add-section {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 1rem;
   padding-bottom: 1.5rem;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
 }
-.file-library-upload-form label { color: var(--text-dim); }
-.file-library-upload-form select {
+.file-library-upload-form,
+.file-library-link-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.file-library-upload-form label,
+.file-library-link-form label { color: var(--text-dim); }
+.file-library-upload-form select,
+.file-library-link-form select,
+.file-library-link-form input[type="text"],
+.file-library-link-form input[type="url"] {
   background: var(--bg-raised);
   border: 1px solid var(--border);
   color: var(--text);
@@ -2211,25 +2225,10 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   font-size: 1.05rem;
   font-family: inherit;
 }
-.file-library-upload-form button {
-  background: var(--bg-raised);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 4px;
-  padding: 0.4rem 1rem;
-  font-size: 1.05rem;
-  cursor: pointer;
-}
-.file-library-upload-form button:hover { background: rgba(201, 162, 39, 0.15); }
-.file-library-upload-form button:disabled { opacity: 0.6; cursor: default; }
-.file-library-error {
-  width: 100%;
-  color: #d16a6a;
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.file-library-add-link-btn {
+.file-library-link-form input[type="text"] { flex: 1 1 10rem; }
+.file-library-link-form input[type="url"] { flex: 1 1 14rem; }
+.file-library-upload-form button,
+.file-library-link-form button {
   background: var(--bg-raised);
   border: 1px solid var(--accent);
   color: var(--accent);
@@ -2238,9 +2237,16 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   font-size: 1.05rem;
   font-family: inherit;
   cursor: pointer;
-  margin-bottom: 1.5rem;
 }
-.file-library-add-link-btn:hover { background: rgba(201, 162, 39, 0.15); }
+.file-library-upload-form button:hover,
+.file-library-link-form button:hover { background: rgba(201, 162, 39, 0.15); }
+.file-library-upload-form button:disabled { opacity: 0.6; cursor: default; }
+.file-library-error {
+  width: 100%;
+  color: #d16a6a;
+  font-size: 0.9rem;
+  margin: 0;
+}
 
 .file-library-controls {
   display: flex;

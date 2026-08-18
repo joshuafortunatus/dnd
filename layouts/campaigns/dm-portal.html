@@ -269,31 +269,53 @@
                     <code>hugo.toml</code> first &mdash; see that file&rsquo;s header comment for the R2 setup steps.
                   </p>
                 {{ else }}
-                  {{/* No Name field here — the name is taken from the
-                    uploaded file's own filename (stripped of its
-                    extension) and can be changed afterward via each row's
-                    Edit action, so there's nothing to type before
-                    uploading. */}}
-                  <form class="file-library-upload-form" id="file-library-upload-form">
-                    <input type="file" id="file-library-file" aria-label="File" required>
-                    <label for="file-library-category">Category<span class="required-star" aria-hidden="true"> *</span></label>
-                    <select id="file-library-category" required>
-                      <option value="" selected disabled>Choose category&hellip;</option>
-                      <option value="map">Map</option>
-                      <option value="module">Module</option>
-                      <option value="misc">Misc.</option>
-                      <option value="npc-visual">NPC Visual</option>
-                      <option value="reference">Reference</option>
-                    </select>
-                    <button type="submit">Upload</button>
-                    <p class="file-library-error" id="file-library-error" hidden></p>
-                  </form>
+                  {{/* Upload and Add Link are two ways into the same list,
+                    so they live in one visually unified section (one
+                    bordered box) instead of reading as separate features —
+                    each is still its own <form> since they submit
+                    independently. */}}
+                  <div class="file-library-add-section">
+                    {{/* No Name field here — the name is taken from the
+                      uploaded file's own filename (stripped of its
+                      extension) and can be changed afterward via each row's
+                      Edit action, so there's nothing to type before
+                      uploading. */}}
+                    <form class="file-library-upload-form" id="file-library-upload-form">
+                      <input type="file" id="file-library-file" aria-label="File" required>
+                      <label for="file-library-category">Category<span class="required-star" aria-hidden="true"> *</span></label>
+                      <select id="file-library-category" required>
+                        <option value="" selected disabled>Choose category&hellip;</option>
+                        <option value="map">Map</option>
+                        <option value="module">Module</option>
+                        <option value="misc">Misc.</option>
+                        <option value="npc-visual">NPC Visual</option>
+                        <option value="reference">Reference</option>
+                      </select>
+                      <button type="submit">Upload</button>
+                      <p class="file-library-error" id="file-library-error" hidden></p>
+                    </form>
 
-                  {{/* A link has no bytes to put in R2, so it doesn't belong
-                    in the upload form above — it gets its own button that
-                    opens the same detail panel used for editing, pre-filled
-                    blank. */}}
-                  <button type="button" class="file-library-add-link-btn" id="file-library-add-link-btn">+ Add Link</button>
+                    {{/* A link has no bytes to put in R2, so it can't go
+                      through the upload form above, but it's created the
+                      same atomic way — submitting this form is what creates
+                      the record, there's no separate "+ Add" placeholder
+                      step first. */}}
+                    <form class="file-library-link-form" id="file-library-link-form">
+                      <input type="text" id="file-library-link-name" aria-label="Link name" placeholder="Link name" required>
+                      <input type="url" id="file-library-link-url" aria-label="URL" placeholder="https://&hellip;" required>
+                      <label for="file-library-link-category">Category<span class="required-star" aria-hidden="true"> *</span></label>
+                      <select id="file-library-link-category" required>
+                        <option value="" selected disabled>Choose category&hellip;</option>
+                        <option value="map">Map</option>
+                        <option value="module">Module</option>
+                        <option value="misc">Misc.</option>
+                        <option value="npc-visual">NPC Visual</option>
+                        <option value="reference">Reference</option>
+                      </select>
+                      <button type="submit">+ Add Link</button>
+                      <p class="file-library-error" id="file-library-link-error" hidden></p>
+                    </form>
+                  </div>
 
                   <div class="file-library-controls">
                     <label for="file-library-filter">Category</label>
@@ -7129,7 +7151,11 @@
             var flFileInput = document.getElementById("file-library-file");
             var flUploadBtn = flForm.querySelector("button[type=submit]");
             var flError = document.getElementById("file-library-error");
-            var flAddLinkBtn = document.getElementById("file-library-add-link-btn");
+            var flLinkForm = document.getElementById("file-library-link-form");
+            var flLinkNameInput = document.getElementById("file-library-link-name");
+            var flLinkUrlInput = document.getElementById("file-library-link-url");
+            var flLinkCategorySelect = document.getElementById("file-library-link-category");
+            var flLinkError = document.getElementById("file-library-link-error");
             var flFilterSelect = document.getElementById("file-library-filter");
             var flSortSelect = document.getElementById("file-library-sort");
             var flEmpty = document.getElementById("file-library-empty");
@@ -7176,9 +7202,9 @@
               below treats a missing type as "file" (see fileIsLink). No
               pruneOrphanedDrafts call here, unlike every other
               Save/Cancel/Delete section — a record can only ever be created
-              AFTER its upload succeeds or its Save button validates (see the
-              upload handler and renderNewLinkForm below), so there's never
-              an incomplete placeholder record to prune. */}}
+              AFTER its upload succeeds or its Add Link form validates (see
+              the two submit handlers below), so there's never an incomplete
+              placeholder record to prune. */}}
             var fileIsLink = function (file) { return file.type === "link"; };
             var pullFiles = function () {
               return syncPull("files").then(function (result) {
@@ -7599,91 +7625,45 @@
               cancelBtn.addEventListener("click", cancelFileLibraryForm);
             };
 
-            {{/* Mirrors the Upload handler's "atomic action" design (see
-              below) rather than every other section's "+ Add a blank
-              placeholder, then Save" pattern — a link record's only
-              prerequisite is client-side validation, so like an upload
-              there's nothing valid to create until Save succeeds, and
-              therefore no orphaned draft to ever prune. */}}
-            var renderNewLinkForm = function () {
-              flCurrentId = "";
-              flDirty = false;
-              flDetail.innerHTML = "";
-
-              var actions = document.createElement("div");
-              actions.className = "file-library-form-actions";
-              var saveBtn = document.createElement("button");
-              saveBtn.type = "button";
-              saveBtn.className = "file-library-save-btn";
-              saveBtn.textContent = "Add Link";
-              var cancelBtn = document.createElement("button");
-              cancelBtn.type = "button";
-              cancelBtn.className = "file-library-cancel-btn";
-              cancelBtn.textContent = "Cancel";
-              actions.appendChild(saveBtn);
-              actions.appendChild(cancelBtn);
-              flDetail.appendChild(actions);
-
-              var error = document.createElement("p");
-              error.className = "file-library-form-error";
-              error.hidden = true;
-              flDetail.appendChild(error);
-
-              var form = document.createElement("div");
-              form.className = "file-library-edit-form";
-              var header = document.createElement("div");
-              header.className = "file-library-header-fields";
-              header.appendChild(markRequired(flEditInput("Name", "", { field: "name" })));
-              header.appendChild(markRequired(flLinkUrlField("", { field: "url" })));
-              header.appendChild(markRequired(flEditSelect("Category", "", [{ value: "", label: "Choose category…" }].concat(FILE_CATEGORY_OPTIONS), { field: "category" })));
-              form.appendChild(header);
-              flDetail.appendChild(form);
-
-              form.addEventListener("input", function () { flDirty = true; });
-              form.addEventListener("change", function () { flDirty = true; });
-
-              saveBtn.addEventListener("click", function () {
-                var name = form.querySelector('[data-field="name"]').value.trim();
-                var url = form.querySelector('[data-field="url"]').value.trim();
-                var category = form.querySelector('[data-field="category"]').value;
-                if (!name) {
-                  error.textContent = "Name is required.";
-                  error.hidden = false;
-                  return;
-                }
-                if (!/^https?:\/\//i.test(url)) {
-                  error.textContent = "A valid URL (starting with http:// or https://) is required.";
-                  error.hidden = false;
-                  return;
-                }
-                if (!category) {
-                  error.textContent = "Choose a category.";
-                  error.hidden = false;
-                  return;
-                }
-                error.hidden = true;
-                var files = loadFiles();
-                files.push({
-                  id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-                  type: "link",
-                  name: name,
-                  url: url,
-                  category: category,
-                  uploadedAt: Date.now(),
-                  sentToPlayers: false,
-                });
-                saveFiles(files);
-                flDirty = false;
-                cancelFileLibraryForm();
-                renderFileList();
+            {{/* Mirrors the Upload handler's "atomic action" design below —
+              a link record's only prerequisite is client-side validation
+              (no async R2 PUT to wait on), so like an upload there's
+              nothing valid to create until this submit handler's checks
+              pass, and therefore no orphaned draft to ever prune. */}}
+            flLinkForm.addEventListener("submit", function (e) {
+              e.preventDefault();
+              var name = flLinkNameInput.value.trim();
+              var url = flLinkUrlInput.value.trim();
+              var category = flLinkCategorySelect.value;
+              if (!name) {
+                flLinkError.hidden = false;
+                flLinkError.textContent = "A link name is required.";
+                return;
+              }
+              if (!/^https?:\/\//i.test(url)) {
+                flLinkError.hidden = false;
+                flLinkError.textContent = "A valid URL (starting with http:// or https://) is required.";
+                return;
+              }
+              if (!category) {
+                flLinkError.hidden = false;
+                flLinkError.textContent = "Choose a category.";
+                return;
+              }
+              flLinkError.hidden = true;
+              var files = loadFiles();
+              files.push({
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                type: "link",
+                name: name,
+                url: url,
+                category: category,
+                uploadedAt: Date.now(),
+                sentToPlayers: false,
               });
-
-              cancelBtn.addEventListener("click", cancelFileLibraryForm);
-            };
-
-            flAddLinkBtn.addEventListener("click", function () {
-              if (!confirmLeaveIfDirty(flIsDirty)) return;
-              renderNewLinkForm();
+              saveFiles(files);
+              renderFileList();
+              flLinkForm.reset();
             });
 
             {{/* Upload is one atomic action, not "+ Add a blank
