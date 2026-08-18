@@ -661,6 +661,16 @@
             enter. */}}
           window.dmPortalSetSyncToken = setSyncToken;
 
+          {{/* Exposed so the password-gate script can tell "already
+            unlocked" (matching stored hash) apart from "already unlocked
+            AND still holds a working sync credential" — a browser can be
+            in the former state without the latter if it was unlocked
+            before this token-capture logic existed, or had localStorage
+            partially cleared, and would otherwise reveal into a silently
+            broken sync (every authenticated Worker call 401s with an
+            empty token) with nothing telling the DM why. */}}
+          window.dmPortalGetSyncToken = getSyncToken;
+
           var landingEl = document.getElementById("dm-landing");
           var experienceEl = document.getElementById("dm-section-experience");
           var sectionNav = document.getElementById("dm-section-nav");
@@ -7866,7 +7876,11 @@
                 .join("");
             }
 
-            if (window.localStorage.getItem(storageKey) === hash) {
+            var syncControl = document.getElementById("dm-sync-control");
+            var syncConfigured = Boolean(syncControl && syncControl.dataset.proxyUrl);
+            var hasSyncToken = window.dmPortalGetSyncToken ? Boolean(window.dmPortalGetSyncToken()) : true;
+
+            if (window.localStorage.getItem(storageKey) === hash && (!syncConfigured || hasSyncToken)) {
               reveal();
               // Returning visit on an already-unlocked device: the sync
               // token (== the DM password) was already captured on a
@@ -7884,6 +7898,13 @@
                 });
               }
             }
+            // Else: the gate's own hash matches (device is "unlocked"), but
+            // sync is configured and the token is missing — a browser that
+            // predates token capture, or had localStorage partially
+            // cleared. Falls through to the untouched default DOM state
+            // (form visible, content hidden), the same as a fresh device,
+            // so submitting the password below re-derives and stores the
+            // token instead of revealing into a silently broken sync.
 
             form.addEventListener("submit", function (e) {
               e.preventDefault();
