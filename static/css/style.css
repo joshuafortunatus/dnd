@@ -2028,7 +2028,7 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 .journal-save-btn, .journal-cancel-btn, .journal-delete-btn,
 .conflict-save-btn, .conflict-cancel-btn, .conflict-delete-btn,
 .bastion-save-btn, .bastion-cancel-btn, .bastion-delete-btn,
-.file-library-save-btn, .file-library-cancel-btn, .file-library-delete-btn {
+.file-library-save-btn, .file-library-cancel-btn, .file-library-delete-btn, .file-library-add-cancel-btn {
   background: var(--bg-raised);
   border: 1px solid var(--accent);
   color: var(--accent);
@@ -2043,12 +2043,12 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   background: rgba(201, 162, 39, 0.15);
 }
 .travel-cancel-btn, .npc-cancel-btn, .settlement-cancel-btn,
-.journal-cancel-btn, .conflict-cancel-btn, .bastion-cancel-btn, .file-library-cancel-btn {
+.journal-cancel-btn, .conflict-cancel-btn, .bastion-cancel-btn, .file-library-cancel-btn, .file-library-add-cancel-btn {
   border-color: var(--border);
   color: var(--text-dim);
 }
 .travel-cancel-btn:hover, .npc-cancel-btn:hover, .settlement-cancel-btn:hover,
-.journal-cancel-btn:hover, .conflict-cancel-btn:hover, .bastion-cancel-btn:hover, .file-library-cancel-btn:hover {
+.journal-cancel-btn:hover, .conflict-cancel-btn:hover, .bastion-cancel-btn:hover, .file-library-cancel-btn:hover, .file-library-add-cancel-btn:hover {
   color: var(--text);
 }
 .travel-delete-btn, .npc-delete-btn, .settlement-delete-btn,
@@ -2204,6 +2204,23 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
 }
+.file-library-add-mode-row { display: flex; gap: 0.75rem; }
+.file-library-add-mode-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.file-library-add-mode-btn:hover { color: var(--text); }
+.file-library-add-mode-btn.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(201, 162, 39, 0.15);
+}
 .file-library-upload-form,
 .file-library-link-form {
   display: flex;
@@ -2211,6 +2228,13 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   flex-wrap: wrap;
   gap: 0.75rem;
 }
+/* `display: flex` above and the `[hidden]` attribute have equal
+   specificity (one class vs. one attribute selector) — without this,
+   source order would let `display: flex` win and show the form even while
+   `hidden` is set, since the browser's own `[hidden] { display: none }`
+   rule comes first in the cascade. */
+.file-library-upload-form[hidden],
+.file-library-link-form[hidden] { display: none; }
 .file-library-upload-form label,
 .file-library-link-form label { color: var(--text-dim); }
 .file-library-upload-form select,

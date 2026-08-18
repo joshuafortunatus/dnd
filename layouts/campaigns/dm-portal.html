@@ -269,18 +269,26 @@
                     <code>hugo.toml</code> first &mdash; see that file&rsquo;s header comment for the R2 setup steps.
                   </p>
                 {{ else }}
-                  {{/* Upload and Add Link are two ways into the same list,
-                    so they live in one visually unified section (one
-                    bordered box) instead of reading as separate features —
-                    each is still its own <form> since they submit
-                    independently. */}}
+                  {{/* Upload and Add Link are two ways into the same list —
+                    one toggle row picks which form is open, so only one
+                    ever shows at a time instead of both forms permanently
+                    on screen. Each is still its own <form> since they
+                    submit independently; picking the other mode, a
+                    successful submit, or leaving the section (see
+                    registerSectionResetHook below) all collapse back to
+                    just the two buttons. */}}
                   <div class="file-library-add-section">
+                    <div class="file-library-add-mode-row">
+                      <button type="button" class="file-library-add-mode-btn" id="file-library-add-mode-upload" data-mode="upload">Upload</button>
+                      <button type="button" class="file-library-add-mode-btn" id="file-library-add-mode-link" data-mode="link">+ Link</button>
+                    </div>
+
                     {{/* No Name field here — the name is taken from the
                       uploaded file's own filename (stripped of its
                       extension) and can be changed afterward via each row's
                       Edit action, so there's nothing to type before
                       uploading. */}}
-                    <form class="file-library-upload-form" id="file-library-upload-form">
+                    <form class="file-library-upload-form" id="file-library-upload-form" hidden>
                       <input type="file" id="file-library-file" aria-label="File" required>
                       <label for="file-library-category">Category<span class="required-star" aria-hidden="true"> *</span></label>
                       <select id="file-library-category" required>
@@ -292,6 +300,7 @@
                         <option value="reference">Reference</option>
                       </select>
                       <button type="submit">Upload</button>
+                      <button type="button" class="file-library-add-cancel-btn" id="file-library-upload-cancel-btn">Cancel</button>
                       <p class="file-library-error" id="file-library-error" hidden></p>
                     </form>
 
@@ -300,7 +309,7 @@
                       same atomic way — submitting this form is what creates
                       the record, there's no separate "+ Add" placeholder
                       step first. */}}
-                    <form class="file-library-link-form" id="file-library-link-form">
+                    <form class="file-library-link-form" id="file-library-link-form" hidden>
                       <input type="text" id="file-library-link-name" aria-label="Link name" placeholder="Link name" required>
                       <input type="url" id="file-library-link-url" aria-label="URL" placeholder="https://&hellip;" required>
                       <label for="file-library-link-category">Category<span class="required-star" aria-hidden="true"> *</span></label>
@@ -313,6 +322,7 @@
                         <option value="reference">Reference</option>
                       </select>
                       <button type="submit">+ Add Link</button>
+                      <button type="button" class="file-library-add-cancel-btn" id="file-library-link-cancel-btn">Cancel</button>
                       <p class="file-library-error" id="file-library-link-error" hidden></p>
                     </form>
                   </div>
@@ -7167,6 +7177,55 @@
             registerDirtyTracker(flIsDirty, function () { cancelFileLibraryForm(); });
             registerSectionResetHook(function () { cancelFileLibraryForm(); });
 
+            {{/* Upload and Add Link toggle between showing one form or
+              neither — never both — so picking one, cancelling, or
+              successfully submitting all route through this same
+              show-one-or-none state instead of each form managing its own
+              visibility. */}}
+            var flAddModeBtns = Array.prototype.slice.call(document.querySelectorAll(".file-library-add-mode-btn"));
+            var flAddForms = { upload: flForm, link: flLinkForm };
+            var flAddMode = "";
+            var flAddDirty = false;
+            var flAddIsDirty = function () { return flAddDirty; };
+
+            var showAddMode = function (mode) {
+              Object.keys(flAddForms).forEach(function (m) { flAddForms[m].hidden = m !== mode; });
+              flAddModeBtns.forEach(function (btn) { btn.classList.toggle("is-active", btn.dataset.mode === mode); });
+              flAddMode = mode;
+            };
+
+            var collapseAddSection = function () {
+              flForm.reset();
+              flLinkForm.reset();
+              flError.hidden = true;
+              flLinkError.hidden = true;
+              flAddDirty = false;
+              showAddMode("");
+            };
+            registerDirtyTracker(flAddIsDirty, collapseAddSection);
+            registerSectionResetHook(collapseAddSection);
+
+            {{/* Same confirm-before-discard convention as every Edit button
+              elsewhere in this file (see confirmLeaveIfDirty above) —
+              switching from one form to the other, or hitting Cancel,
+              discards whatever's half-typed into the currently open form. */}}
+            var requestAddMode = function (mode) {
+              if (flAddMode === mode) mode = "";
+              if (!confirmLeaveIfDirty(flAddIsDirty)) return;
+              collapseAddSection();
+              showAddMode(mode);
+            };
+
+            flAddModeBtns.forEach(function (btn) {
+              btn.addEventListener("click", function () { requestAddMode(btn.dataset.mode); });
+            });
+            document.getElementById("file-library-upload-cancel-btn").addEventListener("click", function () { requestAddMode(""); });
+            document.getElementById("file-library-link-cancel-btn").addEventListener("click", function () { requestAddMode(""); });
+            flForm.addEventListener("input", function () { flAddDirty = true; });
+            flForm.addEventListener("change", function () { flAddDirty = true; });
+            flLinkForm.addEventListener("input", function () { flAddDirty = true; });
+            flLinkForm.addEventListener("change", function () { flAddDirty = true; });
+
             {{/* Matches the Worker's own MAX_FILE_BYTES — fails fast
               client-side instead of wasting a full upload attempt, but
               the Worker enforces the real limit too (a client could
@@ -7663,7 +7722,7 @@
               });
               saveFiles(files);
               renderFileList();
-              flLinkForm.reset();
+              collapseAddSection();
             });
 
             {{/* Upload is one atomic action, not "+ Add a blank
@@ -7735,7 +7794,7 @@
                   });
                   saveFiles(files);
                   renderFileList();
-                  flForm.reset();
+                  collapseAddSection();
                 })
                 .catch(function () {
                   flUploadBtn.disabled = false;
