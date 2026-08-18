@@ -7708,9 +7708,7 @@
                 saveFiles(allFiles);
                 flDirty = false;
                 renderFileList();
-                var originalText = saveBtn.textContent;
-                saveBtn.textContent = "Saved";
-                setTimeout(function () { saveBtn.textContent = originalText; }, 1200);
+                cancelFileLibraryForm();
               });
 
               cancelBtn.addEventListener("click", cancelFileLibraryForm);
