@@ -38,6 +38,11 @@
  *    fast. R2 has no such per-object ceiling, so file bytes live there
  *    instead, addressed by the same id as their KV metadata record.
  *
+ *    File Library also holds external links (an item with a `type: "link"`
+ *    field and a `url` instead of file metadata) — those have no bytes at
+ *    all, so they live purely in the "files" KV list above and never touch
+ *    R2 or the /files or /public-files routes' byte-serving paths below.
+ *
  *    There's no separate sync passphrase to invent or type in anywhere:
  *    the DM portal page's own password (whatever you set password_hash to,
  *    in the campaign's dm/_index.md front matter) doubles as the sync
