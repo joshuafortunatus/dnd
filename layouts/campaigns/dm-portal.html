@@ -7515,17 +7515,21 @@
             };
 
             {{/* flDetail lives once in the DOM (see the static markup
-              above) and is repositioned rather than rebuilt — moving it
-              right after the row it's editing, instead of leaving it
-              pinned below the whole list, is what makes the edit form
-              appear next to the record a DM actually clicked. Rebuilding
-              flList's innerHTML detaches flDetail if it was previously
-              parented inside the list, so every render needs to
-              re-attach it to whichever row (if any) is still open. */}}
+              above) and is repositioned rather than rebuilt — appending it
+              inside the <li> it's editing, instead of leaving it pinned
+              below the whole list, is what makes the edit form appear
+              right under the record a DM actually clicked. It goes
+              *inside* that <li> (after the row, before the </li>) rather
+              than as a sibling after it, so the item's own border-bottom
+              divider wraps the open form too instead of cutting between
+              the record and its editor. Rebuilding flList's innerHTML
+              detaches flDetail if it was previously parented inside the
+              list, so every render needs to re-attach it to whichever
+              row (if any) is still open. */}}
             var flReattachDetail = function () {
               if (!flCurrentId) return;
               var row = flList.querySelector('[data-file-id="' + flCurrentId + '"]');
-              if (row) row.insertAdjacentElement("afterend", flDetail);
+              if (row) row.appendChild(flDetail);
             };
 
             var renderFileList = function () {
