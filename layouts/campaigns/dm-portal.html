@@ -7368,6 +7368,7 @@
             var buildFileRow = function (file) {
               var li = document.createElement("li");
               li.className = "file-library-item";
+              li.dataset.fileId = file.id;
               var row = document.createElement("div");
               row.className = "file-library-row";
 
@@ -7513,6 +7514,20 @@
               return li;
             };
 
+            {{/* flDetail lives once in the DOM (see the static markup
+              above) and is repositioned rather than rebuilt — moving it
+              right after the row it's editing, instead of leaving it
+              pinned below the whole list, is what makes the edit form
+              appear next to the record a DM actually clicked. Rebuilding
+              flList's innerHTML detaches flDetail if it was previously
+              parented inside the list, so every render needs to
+              re-attach it to whichever row (if any) is still open. */}}
+            var flReattachDetail = function () {
+              if (!flCurrentId) return;
+              var row = flList.querySelector('[data-file-id="' + flCurrentId + '"]');
+              if (row) row.insertAdjacentElement("afterend", flDetail);
+            };
+
             var renderFileList = function () {
               var files = loadFiles();
               var filtered = flFilterCategory ? files.filter(function (f) { return f.category === flFilterCategory; }) : files.slice();
@@ -7520,6 +7535,7 @@
               flEmpty.hidden = filtered.length > 0;
               flList.innerHTML = "";
               filtered.forEach(function (file) { flList.appendChild(buildFileRow(file)); });
+              flReattachDetail();
             };
 
             flFilterSelect.addEventListener("change", function () {
@@ -7534,6 +7550,7 @@
             var clearFileDetail = function () {
               flCurrentId = "";
               flDetail.innerHTML = "";
+              flList.parentNode.insertBefore(flDetail, flList.nextSibling);
             };
 
             var cancelFileLibraryForm = function () {
@@ -7618,6 +7635,7 @@
 
             var renderFileDetail = function (fileId) {
               flCurrentId = fileId;
+              flReattachDetail();
               var files = loadFiles();
               var file = files.filter(function (f) { return f.id === fileId; })[0];
               flDetail.innerHTML = "";
