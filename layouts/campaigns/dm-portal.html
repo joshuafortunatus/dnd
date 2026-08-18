@@ -243,17 +243,24 @@
               </div>
             {{ else if eq .id "file-library" }}
               {{/* Uploaded reference material (maps, module PDFs, misc.
-                files, reference material) with a per-file "send to
+                files, reference material) plus external links (wiki pages,
+                images hosted elsewhere, etc.) — both share one list, the
+                same category/sort/filter controls, and a per-item "send to
                 players" flag that surfaces it in the public campaign
                 hub's Images tab. Unlike every other section, this one
-                has no meaningful local-only mode — a file that never
-                leaves this browser can't be shared with players — so
-                the whole interactive UI (not just the upload form, like
-                PC Manager) only renders once the Worker/R2 are deployed.
-                Actual file bytes live in a Cloudflare R2 bucket proxied
-                through the same Worker, not in this section's KV
-                metadata blob — see worker/ddb-character-proxy.js's
-                header comment for why. */}}
+                has no meaningful local-only mode — a file (or link) that
+                never leaves this browser can't be shared with players —
+                so the whole interactive UI (not just the upload form, like
+                PC Manager) only renders once the Worker/R2 are deployed;
+                links don't strictly need R2, but keeping the whole section
+                gated together is simpler than a partial local-only mode for
+                just one of its two item types. Actual file bytes live in a
+                Cloudflare R2 bucket proxied through the same Worker, not in
+                this section's KV metadata blob — see
+                worker/ddb-character-proxy.js's header comment for why. A
+                link has no bytes at all, so its record lives purely in that
+                KV metadata blob alongside file records — see the "Record
+                shape" comment further down. */}}
               <div class="file-library" id="file-library" data-proxy-url="{{ $proxyURL }}" data-slug="{{ $slug }}" data-storage-key="dm-portal-files-{{ $slug }}">
                 {{ if eq $proxyURL "" }}
                   <p class="entry-date">
@@ -282,6 +289,12 @@
                     <p class="file-library-error" id="file-library-error" hidden></p>
                   </form>
 
+                  {{/* A link has no bytes to put in R2, so it doesn't belong
+                    in the upload form above — it gets its own button that
+                    opens the same detail panel used for editing, pre-filled
+                    blank. */}}
+                  <button type="button" class="file-library-add-link-btn" id="file-library-add-link-btn">+ Add Link</button>
+
                   <div class="file-library-controls">
                     <label for="file-library-filter">Category</label>
                     <select id="file-library-filter">
@@ -294,14 +307,14 @@
                     </select>
                     <label for="file-library-sort">Sort by</label>
                     <select id="file-library-sort">
-                      <option value="uploadedAt">Upload date (newest first)</option>
+                      <option value="uploadedAt">Date added (newest first)</option>
                       <option value="name">Name</option>
                       <option value="category">Category</option>
                       <option value="sentToPlayers">Sent to players</option>
                     </select>
                   </div>
 
-                  <p class="entry-date" id="file-library-empty" hidden>No files yet &mdash; upload one above.</p>
+                  <p class="entry-date" id="file-library-empty" hidden>Nothing here yet &mdash; upload a file or add a link above.</p>
                   <ul class="file-library-list" id="file-library-list"></ul>
                   <div class="file-library-detail" id="file-library-detail"></div>
                 {{ end }}
@@ -7116,6 +7129,7 @@
             var flFileInput = document.getElementById("file-library-file");
             var flUploadBtn = flForm.querySelector("button[type=submit]");
             var flError = document.getElementById("file-library-error");
+            var flAddLinkBtn = document.getElementById("file-library-add-link-btn");
             var flFilterSelect = document.getElementById("file-library-filter");
             var flSortSelect = document.getElementById("file-library-sort");
             var flEmpty = document.getElementById("file-library-empty");
@@ -7150,16 +7164,22 @@
               syncPush("files", files);
             };
 
-            {{/* Record shape: { id, name, category, uploadedAt (Date.now(),
-              epoch ms), sentToPlayers, contentType, size, fileName }.
+            {{/* Record shape: { id, type, name, category, uploadedAt
+              (Date.now(), epoch ms), sentToPlayers, ...type-specific fields
+              }. type "file" adds { contentType, size, fileName } —
               `fileName` (the original File.name) is kept distinct from
               `name` (the DM's own display label) so a download always
               gets a sane filename even if the display name doesn't have
-              one. No pruneOrphanedDrafts call here, unlike every other
-              Save/Cancel/Delete section — a file metadata record can only
-              ever be created AFTER its R2 upload succeeds (see the upload
-              handler below), so there's never an incomplete placeholder
-              record to prune. */}}
+              one. type "link" adds { url } instead — an external URL has no
+              bytes to store in R2, so it's metadata-only. Records saved
+              before links existed have no `type` at all; every read site
+              below treats a missing type as "file" (see fileIsLink). No
+              pruneOrphanedDrafts call here, unlike every other
+              Save/Cancel/Delete section — a record can only ever be created
+              AFTER its upload succeeds or its Save button validates (see the
+              upload handler and renderNewLinkForm below), so there's never
+              an incomplete placeholder record to prune. */}}
+            var fileIsLink = function (file) { return file.type === "link"; };
             var pullFiles = function () {
               return syncPull("files").then(function (result) {
                 if (!result.ok) return;
@@ -7219,6 +7239,16 @@
             };
 
             var FILE_CATEGORY_LABELS = { map: "Map", module: "Module", misc: "Misc.", "npc-visual": "NPC Visual", reference: "Reference" };
+            {{/* Same 5 categories apply to links as to uploaded files —
+              shared by the edit form (both file and link) and the new-link
+              form below, instead of a 3rd copy of this option list. */}}
+            var FILE_CATEGORY_OPTIONS = [
+              { value: "map", label: "Map" },
+              { value: "module", label: "Module" },
+              { value: "misc", label: "Misc." },
+              { value: "npc-visual", label: "NPC Visual" },
+              { value: "reference", label: "Reference" },
+            ];
 
             var formatFileDate = function (ms) {
               return new Date(ms).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -7246,7 +7276,12 @@
               var row = document.createElement("div");
               row.className = "file-library-row";
 
-              if ((file.contentType || "").indexOf("image/") === 0) {
+              if (fileIsLink(file)) {
+                var linkBadge = document.createElement("span");
+                linkBadge.className = "file-library-thumb-badge";
+                linkBadge.textContent = "LINK";
+                row.appendChild(linkBadge);
+              } else if ((file.contentType || "").indexOf("image/") === 0) {
                 var thumb = document.createElement("span");
                 thumb.className = "file-library-thumb file-library-thumb-loading";
                 row.appendChild(thumb);
@@ -7282,7 +7317,11 @@
               info.appendChild(nameLine);
               var meta = document.createElement("div");
               meta.className = "file-library-meta";
-              meta.textContent = [FILE_CATEGORY_LABELS[file.category] || file.category, formatFileDate(file.uploadedAt)]
+              meta.textContent = [
+                FILE_CATEGORY_LABELS[file.category] || file.category,
+                formatFileDate(file.uploadedAt),
+                fileIsLink(file) ? refLinkHostname(file.url) : null,
+              ]
                 .filter(Boolean)
                 .join(" · ");
               info.appendChild(meta);
@@ -7291,21 +7330,30 @@
               var actions = document.createElement("div");
               actions.className = "file-library-row-actions";
 
-              {{/* Preview reuses the same authenticated blob-URL fetch as
-                the image thumbnail above (cached per file id either way),
-                just opened full-size in a new tab instead of shown small
-                — works for documents too, since browsers render a PDF
-                blob URL inline in its own tab rather than only offering a
-                download. */}}
               var previewBtn = document.createElement("button");
               previewBtn.type = "button";
               previewBtn.className = "file-library-preview-btn";
-              previewBtn.textContent = "Preview";
-              previewBtn.addEventListener("click", function () {
-                fetchFileBlobUrl(file.id).then(function (url) {
-                  if (url) window.open(url, "_blank", "noopener");
+              if (fileIsLink(file)) {
+                {{/* A link's "bytes" are just the URL itself — no
+                  authenticated R2 fetch needed, unlike the file case below. */}}
+                previewBtn.textContent = "Open ↗";
+                previewBtn.addEventListener("click", function () {
+                  window.open(file.url, "_blank", "noopener");
                 });
-              });
+              } else {
+                {{/* Preview reuses the same authenticated blob-URL fetch as
+                  the image thumbnail above (cached per file id either way),
+                  just opened full-size in a new tab instead of shown small
+                  — works for documents too, since browsers render a PDF
+                  blob URL inline in its own tab rather than only offering a
+                  download. */}}
+                previewBtn.textContent = "Preview";
+                previewBtn.addEventListener("click", function () {
+                  fetchFileBlobUrl(file.id).then(function (url) {
+                    if (url) window.open(url, "_blank", "noopener");
+                  });
+                });
+              }
               actions.appendChild(previewBtn);
 
               var sendBtn = document.createElement("button");
@@ -7337,24 +7385,33 @@
               deleteBtn.className = "file-library-delete-btn";
               deleteBtn.textContent = "Delete";
               actions.appendChild(deleteBtn);
-              {{/* Delete hits the Worker (removing the R2 object) BEFORE
-                touching local metadata — never strand a metadata record
-                pointing at bytes that no longer exist, and never remove a
-                metadata record while leaving its R2 object with no way to
-                retry deleting it from this UI. */}}
-              wireConfirmDelete(deleteBtn, function () {
-                fetch(flProxyUrl + "/files/" + flSlug + "/" + file.id, {
-                  method: "DELETE",
-                  headers: { Authorization: "Bearer " + getSyncToken() },
-                }).then(function (res) {
-                  if (!res.ok) return;
-                  var remaining = loadFiles().filter(function (f) { return f.id !== file.id; });
-                  saveFiles(remaining);
-                  revokeThumbUrl(file.id);
-                  if (flCurrentId === file.id) cancelFileLibraryForm();
-                  renderFileList();
+              var removeFileRecord = function () {
+                var remaining = loadFiles().filter(function (f) { return f.id !== file.id; });
+                saveFiles(remaining);
+                revokeThumbUrl(file.id);
+                if (flCurrentId === file.id) cancelFileLibraryForm();
+                renderFileList();
+              };
+              if (fileIsLink(file)) {
+                {{/* A link record has no R2 object behind it — nothing to
+                  delete but the metadata itself. */}}
+                wireConfirmDelete(deleteBtn, removeFileRecord);
+              } else {
+                {{/* Delete hits the Worker (removing the R2 object) BEFORE
+                  touching local metadata — never strand a metadata record
+                  pointing at bytes that no longer exist, and never remove a
+                  metadata record while leaving its R2 object with no way to
+                  retry deleting it from this UI. */}}
+                wireConfirmDelete(deleteBtn, function () {
+                  fetch(flProxyUrl + "/files/" + flSlug + "/" + file.id, {
+                    method: "DELETE",
+                    headers: { Authorization: "Bearer " + getSyncToken() },
+                  }).then(function (res) {
+                    if (!res.ok) return;
+                    removeFileRecord();
+                  });
                 });
-              });
+              }
 
               row.appendChild(actions);
               li.appendChild(row);
@@ -7425,6 +7482,45 @@
               return wrap;
             };
 
+            {{/* Lighter-weight than npcEditLinkInput's edit/view-mode toggle
+              above — File Library's detail panel has no separate read-only
+              view mode to toggle between, so this just shows a live "Open
+              ↗" preview next to the input as the DM types. */}}
+            var flLinkUrlField = function (value, dataAttrs) {
+              var wrap = document.createElement("div");
+              wrap.className = "file-library-field";
+              var label = document.createElement("label");
+              label.textContent = "URL";
+              wrap.appendChild(label);
+              var input = document.createElement("input");
+              input.type = "url";
+              input.placeholder = "https://…";
+              input.value = value || "";
+              Object.keys(dataAttrs || {}).forEach(function (k) { input.dataset[k] = dataAttrs[k]; });
+              wrap.appendChild(input);
+              var preview = document.createElement("a");
+              preview.className = "file-library-link-preview";
+              preview.target = "_blank";
+              preview.rel = "noopener";
+              preview.hidden = true;
+              wrap.appendChild(preview);
+              var updatePreview = function () {
+                var url = input.value.trim();
+                if (/^https?:\/\//i.test(url)) {
+                  preview.href = url;
+                  preview.textContent = "Open ↗";
+                  preview.hidden = false;
+                } else {
+                  preview.removeAttribute("href");
+                  preview.textContent = "";
+                  preview.hidden = true;
+                }
+              };
+              updatePreview();
+              input.addEventListener("input", updatePreview);
+              return wrap;
+            };
+
             var renderFileDetail = function (fileId) {
               flCurrentId = fileId;
               var files = loadFiles();
@@ -7453,22 +7549,19 @@
               error.textContent = "Name is required.";
               flDetail.appendChild(error);
 
+              var isLink = fileIsLink(file);
+
               var form = document.createElement("div");
               form.className = "file-library-edit-form";
               var header = document.createElement("div");
               header.className = "file-library-header-fields";
               header.appendChild(markRequired(flEditInput("Name", file.name, { field: "name" })));
-              header.appendChild(flEditSelect("Category", file.category, [
-                { value: "map", label: "Map" },
-                { value: "module", label: "Module" },
-                { value: "misc", label: "Misc." },
-                { value: "npc-visual", label: "NPC Visual" },
-                { value: "reference", label: "Reference" },
-              ], { field: "category" }));
+              if (isLink) header.appendChild(markRequired(flLinkUrlField(file.url, { field: "url" })));
+              header.appendChild(flEditSelect("Category", file.category, FILE_CATEGORY_OPTIONS, { field: "category" }));
               form.appendChild(header);
 
-              form.appendChild(flFieldStatic("Uploaded", formatFileDate(file.uploadedAt)));
-              form.appendChild(flFieldStatic("Original filename", file.fileName));
+              form.appendChild(flFieldStatic("Added", formatFileDate(file.uploadedAt)));
+              if (!isLink) form.appendChild(flFieldStatic("Original filename", file.fileName));
 
               flDetail.appendChild(form);
 
@@ -7478,8 +7571,11 @@
               saveBtn.addEventListener("click", function () {
                 var nameInput = form.querySelector('[data-field="name"]');
                 var categorySelect = form.querySelector('[data-field="category"]');
+                var urlInput = isLink ? form.querySelector('[data-field="url"]') : null;
                 var name = nameInput.value.trim();
-                if (!name) {
+                var url = urlInput ? urlInput.value.trim() : "";
+                if (!name || (isLink && !/^https?:\/\//i.test(url))) {
+                  error.textContent = !name ? "Name is required." : "A valid URL (starting with http:// or https://) is required.";
                   error.hidden = false;
                   return;
                 }
@@ -7490,6 +7586,7 @@
                 if (idx !== -1) {
                   allFiles[idx].name = name;
                   allFiles[idx].category = categorySelect.value;
+                  if (isLink) allFiles[idx].url = url;
                 }
                 saveFiles(allFiles);
                 flDirty = false;
@@ -7501,6 +7598,93 @@
 
               cancelBtn.addEventListener("click", cancelFileLibraryForm);
             };
+
+            {{/* Mirrors the Upload handler's "atomic action" design (see
+              below) rather than every other section's "+ Add a blank
+              placeholder, then Save" pattern — a link record's only
+              prerequisite is client-side validation, so like an upload
+              there's nothing valid to create until Save succeeds, and
+              therefore no orphaned draft to ever prune. */}}
+            var renderNewLinkForm = function () {
+              flCurrentId = "";
+              flDirty = false;
+              flDetail.innerHTML = "";
+
+              var actions = document.createElement("div");
+              actions.className = "file-library-form-actions";
+              var saveBtn = document.createElement("button");
+              saveBtn.type = "button";
+              saveBtn.className = "file-library-save-btn";
+              saveBtn.textContent = "Add Link";
+              var cancelBtn = document.createElement("button");
+              cancelBtn.type = "button";
+              cancelBtn.className = "file-library-cancel-btn";
+              cancelBtn.textContent = "Cancel";
+              actions.appendChild(saveBtn);
+              actions.appendChild(cancelBtn);
+              flDetail.appendChild(actions);
+
+              var error = document.createElement("p");
+              error.className = "file-library-form-error";
+              error.hidden = true;
+              flDetail.appendChild(error);
+
+              var form = document.createElement("div");
+              form.className = "file-library-edit-form";
+              var header = document.createElement("div");
+              header.className = "file-library-header-fields";
+              header.appendChild(markRequired(flEditInput("Name", "", { field: "name" })));
+              header.appendChild(markRequired(flLinkUrlField("", { field: "url" })));
+              header.appendChild(markRequired(flEditSelect("Category", "", [{ value: "", label: "Choose category…" }].concat(FILE_CATEGORY_OPTIONS), { field: "category" })));
+              form.appendChild(header);
+              flDetail.appendChild(form);
+
+              form.addEventListener("input", function () { flDirty = true; });
+              form.addEventListener("change", function () { flDirty = true; });
+
+              saveBtn.addEventListener("click", function () {
+                var name = form.querySelector('[data-field="name"]').value.trim();
+                var url = form.querySelector('[data-field="url"]').value.trim();
+                var category = form.querySelector('[data-field="category"]').value;
+                if (!name) {
+                  error.textContent = "Name is required.";
+                  error.hidden = false;
+                  return;
+                }
+                if (!/^https?:\/\//i.test(url)) {
+                  error.textContent = "A valid URL (starting with http:// or https://) is required.";
+                  error.hidden = false;
+                  return;
+                }
+                if (!category) {
+                  error.textContent = "Choose a category.";
+                  error.hidden = false;
+                  return;
+                }
+                error.hidden = true;
+                var files = loadFiles();
+                files.push({
+                  id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                  type: "link",
+                  name: name,
+                  url: url,
+                  category: category,
+                  uploadedAt: Date.now(),
+                  sentToPlayers: false,
+                });
+                saveFiles(files);
+                flDirty = false;
+                cancelFileLibraryForm();
+                renderFileList();
+              });
+
+              cancelBtn.addEventListener("click", cancelFileLibraryForm);
+            };
+
+            flAddLinkBtn.addEventListener("click", function () {
+              if (!confirmLeaveIfDirty(flIsDirty)) return;
+              renderNewLinkForm();
+            });
 
             {{/* Upload is one atomic action, not "+ Add a blank
               placeholder, then Save" like every other section — a file
@@ -7560,6 +7744,7 @@
                   var files = loadFiles();
                   files.push({
                     id: id,
+                    type: "file",
                     name: name,
                     category: flCategorySelect.value,
                     uploadedAt: Date.now(),

@@ -281,7 +281,7 @@
         </select>
         <label for="hub-shared-files-sort">Sort by</label>
         <select id="hub-shared-files-sort">
-          <option value="uploadedAt">Upload date (newest first)</option>
+          <option value="uploadedAt">Date added (newest first)</option>
           <option value="name">Name</option>
           <option value="category">Category</option>
         </select>
@@ -476,6 +476,25 @@
         docsList.innerHTML = "";
         empty.hidden = filtered.length > 0;
         filtered.forEach(function (file) {
+          {{/* A link record has no R2 bytes behind it — it always goes to
+            the plain list below, pointed at its own URL, never the image
+            grid (this feature makes no attempt to guess what a link points
+            to). */}}
+          if (file.type === "link") {
+            var linkLi = document.createElement("li");
+            var linkNameSpan = document.createElement("span");
+            linkNameSpan.textContent = file.name || "Untitled link";
+            linkLi.appendChild(linkNameSpan);
+            var openLink = document.createElement("a");
+            openLink.className = "ddb-link";
+            openLink.href = file.url;
+            openLink.target = "_blank";
+            openLink.rel = "noopener";
+            openLink.textContent = "Open →";
+            linkLi.appendChild(openLink);
+            docsList.appendChild(linkLi);
+            return;
+          }
           var byteUrl = proxyUrl + "/files/" + slug + "/" + file.id;
           if ((file.contentType || "").indexOf("image/") === 0) {
             var figure = document.createElement("figure");

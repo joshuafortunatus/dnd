@@ -2229,6 +2229,19 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   margin: 0;
 }
 
+.file-library-add-link-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+}
+.file-library-add-link-btn:hover { background: rgba(201, 162, 39, 0.15); }
+
 .file-library-controls {
   display: flex;
   flex-wrap: wrap;
@@ -2320,6 +2333,7 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 .file-library-field { display: flex; flex-direction: column; gap: 0.35rem; flex: 1 1 14rem; }
 .file-library-field label { color: var(--text-dim); font-size: 0.9rem; }
 .file-library-field input[type="text"],
+.file-library-field input[type="url"],
 .file-library-field select {
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -2329,6 +2343,7 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   font-size: 1rem;
   font-family: inherit;
 }
+.file-library-link-preview { display: block; color: var(--accent); font-size: 0.85rem; margin-top: 0.35rem; }
 .file-library-field-static {
   display: flex;
   flex-direction: column;
