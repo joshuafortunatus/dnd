@@ -129,29 +129,6 @@
       {{ with $dmPage }}<a class="hub-tab-btn hub-tab-link" href="{{ .RelPermalink }}">{{ partial "tab-icon.html" "shield" }}<span class="tab-label-text">DM Portal</span></a>{{ end }}
     </div>
 
-    {{/* Second, separate password gate from the view gate above — this
-      one unlocks the open-trial editors (add/edit/remove buttons and the
-      quest "Completed" toggle, all hidden by the .hub-edit-locked CSS
-      until unlocked), not the page content itself, which stays visible
-      regardless. Same SHA-256-hash-compare-and-cache-in-localStorage
-      pattern as every other gate on this site, plus (like the DM Portal)
-      stashing the plaintext as this device's Authorization bearer token
-      for the open-trial /sync writes — see worker/ddb-character-proxy.js's
-      EDIT_SECRET / editAuthorized(). */}}
-    {{ if $editLocked }}
-      <div class="hub-edit-gate" id="hub-edit-gate" data-hash="{{ $editHash }}" data-storage-key="hub-edit-auth-{{ $slug }}">
-        <button type="button" class="hub-edit-unlock-btn" id="hub-edit-unlock-btn">Unlock editing</button>
-        <form class="dm-portal-form" id="hub-edit-gate-form" hidden>
-          <label for="hub-edit-gate-password">Edit password</label>
-          <input type="password" id="hub-edit-gate-password" autocomplete="current-password" required>
-          <button type="submit">Unlock</button>
-          <button type="button" id="hub-edit-gate-cancel">Cancel</button>
-          <p class="dm-portal-error" id="hub-edit-gate-error" hidden>Incorrect password.</p>
-        </form>
-        <span class="hub-edit-unlocked-label" id="hub-edit-unlocked-label" hidden>Editing unlocked</span>
-      </div>
-    {{ end }}
-
     <div class="hub-panel" id="panel-sessions" data-tab="sessions" hidden>
       {{ if $editableTrial }}
         <div class="hub-session-editor" id="hub-session-editor" data-slug="{{ $slug }}" data-proxy-url="{{ $proxyURL }}">
@@ -339,6 +316,31 @@
         </article>
       {{ else }}
         {{ if not $editableTrial }}<p class="entry-date">Nothing here yet.</p>{{ end }}
+      {{ end }}
+
+      {{/* Password gate for the open-trial editors (add/edit/remove
+        buttons and the quest "Completed" toggle across every tab, all
+        hidden by the .hub-edit-locked CSS until unlocked) — not the page
+        content itself, which stays visible regardless. Lives here in
+        Misc rather than above the tab bar so it's tucked out of the way
+        instead of greeting every visitor on every tab. Same SHA-256-
+        hash-compare-and-cache-in-localStorage pattern as every other
+        gate on this site, plus (like the DM Portal) stashing the
+        plaintext as this device's Authorization bearer token for the
+        open-trial /sync writes — see worker/ddb-character-proxy.js's
+        EDIT_SECRET / editAuthorized(). */}}
+      {{ if $editLocked }}
+        <div class="hub-edit-gate" id="hub-edit-gate" data-hash="{{ $editHash }}" data-storage-key="hub-edit-auth-{{ $slug }}">
+          <button type="button" class="hub-edit-unlock-btn" id="hub-edit-unlock-btn">Unlock editing</button>
+          <form class="dm-portal-form" id="hub-edit-gate-form" hidden>
+            <label for="hub-edit-gate-password">Edit password</label>
+            <input type="password" id="hub-edit-gate-password" autocomplete="current-password" required>
+            <button type="submit">Unlock</button>
+            <button type="button" id="hub-edit-gate-cancel">Cancel</button>
+            <p class="dm-portal-error" id="hub-edit-gate-error" hidden>Incorrect password.</p>
+          </form>
+          <span class="hub-edit-unlocked-label" id="hub-edit-unlocked-label" hidden>Editing unlocked</span>
+        </div>
       {{ end }}
     </div>
   </div>
