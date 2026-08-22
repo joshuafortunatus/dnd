@@ -1117,51 +1117,56 @@
                   genuine name collision) rather than risking
                   overwriting unrelated data.
 
-                  This migration ends with a savePcData(allData) that
-                  pushes the WHOLE pc-manager blob (every PC's Details,
-                  not just the renamed one) up to the cross-device sync
-                  store. refreshRosterFromDdb can fire concurrently with
-                  pullPcData (both are syncPullers, run together on
-                  unlock/reveal and on every Character Manager open) —
-                  without re-pulling here first, allData could be this
-                  device's stale or never-synced local copy, and pushing
-                  it would silently blast every other PC's filled-out
-                  fields with old or blank values. Re-pulling immediately
-                  before touching allData makes sure the migration (and
-                  whatever it pushes back) is layered on top of the
-                  latest known state rather than clobbering it. */}}
-                pullPcData().then(function () {
-                  var allData = loadPcData();
-                  var dataChanged = false;
-                  results.forEach(function (r) {
-                    if (!r) return;
-                    var entry = current.filter(function (e) { return e.id === r.id; })[0];
-                    if (!entry) return;
-                    if (entry.name && r.name && entry.name !== r.name) {
-                      var oldKey = slugifyName(entry.name);
-                      var newKey = slugifyName(r.name);
-                      if (oldKey !== newKey && allData[oldKey] && !allData[newKey]) {
-                        allData[newKey] = allData[oldKey];
-                        delete allData[oldKey];
-                        dataChanged = true;
-                        if (expandedKey === oldKey) expandedKey = newKey;
-                      }
-                      entry.name = r.name;
-                      changed = true;
+                  Deliberately reads loadPcData() directly instead of
+                  re-pulling from sync first (an earlier version did
+                  pull first, reasoning that this device's local copy
+                  might be stale before pushing the migration back).
+                  That pull's writePcDataLocal(remote) unconditionally
+                  replaces the ENTIRE local pc-manager blob — every
+                  character's Game Theme and Flavor, Motivations,
+                  Tracker Notes, etc., not just the renamed/leveled-up
+                  one — with whatever was last pushed to the sync
+                  store. This D&D Beyond check runs every time Character
+                  Manager is (re)opened, not only when something on D&D
+                  Beyond actually changed, so that pull routinely raced
+                  a field's own 500ms save debounce / 800ms sync-push
+                  debounce and clobbered a field the DM just typed into
+                  with a stale pre-edit snapshot. A rename or level-up
+                  on D&D Beyond has nothing to do with any other field
+                  on this or any other record, so this migration only
+                  ever reads and writes data already local to this
+                  device — it must never trigger a sync overwrite of
+                  fields it wasn't asked to touch. */}}
+                var allData = loadPcData();
+                var dataChanged = false;
+                results.forEach(function (r) {
+                  if (!r) return;
+                  var entry = current.filter(function (e) { return e.id === r.id; })[0];
+                  if (!entry) return;
+                  if (entry.name && r.name && entry.name !== r.name) {
+                    var oldKey = slugifyName(entry.name);
+                    var newKey = slugifyName(r.name);
+                    if (oldKey !== newKey && allData[oldKey] && !allData[newKey]) {
+                      allData[newKey] = allData[oldKey];
+                      delete allData[oldKey];
+                      dataChanged = true;
+                      if (expandedKey === oldKey) expandedKey = newKey;
                     }
-                    if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species) {
-                      entry.charClass = r.charClass;
-                      entry.level = r.level;
-                      entry.species = r.species;
-                      changed = true;
-                    }
-                  });
-                  if (dataChanged) savePcData(allData);
-                  if (changed) {
-                    saveRoster(current);
-                    renderPcList();
+                    entry.name = r.name;
+                    changed = true;
+                  }
+                  if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species) {
+                    entry.charClass = r.charClass;
+                    entry.level = r.level;
+                    entry.species = r.species;
+                    changed = true;
                   }
                 });
+                if (dataChanged) savePcData(allData);
+                if (changed) {
+                  saveRoster(current);
+                  renderPcList();
+                }
               });
             };
 
@@ -1607,6 +1612,21 @@
                 pcList.appendChild(li);
               });
             };
+
+            {{/* Every other section collapses back to its own blank
+              landing state on any navigation away (see each one's own
+              registerSectionResetHook call) — PC Manager's expanded
+              Details panel was missed when Character Importer/
+              Expectations/Character Tracker were consolidated into it,
+              so a character left expanded here was still expanded the
+              next time Character Manager (or the Playable chooser
+              inside it) was reached, even via an unrelated section
+              switch or a fresh pass through the Playable/NPC chooser. */}}
+            registerSectionResetHook(function () {
+              if (expandedKey === null) return;
+              expandedKey = null;
+              renderPcList();
+            });
 
             renderPcList();
             pullRoster();
