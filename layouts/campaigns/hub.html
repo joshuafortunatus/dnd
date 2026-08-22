@@ -4,11 +4,17 @@
   {{ $proxyURL := site.Params.ddb_proxy_url | default "" }}
   {{ $hash := .Params.password_hash | default "" }}
   {{/* Trial: players can add/edit/remove sessions, quests, lore, NPCs,
-    locations, and misc. entries straight from this page, no password —
-    see worker/ddb-character-proxy.js's OPEN_TRIAL_EXCLUDED_SLUG /
+    locations, and misc. entries straight from this page — see
+    worker/ddb-character-proxy.js's OPEN_TRIAL_EXCLUDED_SLUG /
     OPEN_TRIAL_KEYS. This is the default for every campaign now; That's
     Fair is the one grandfathered exception, kept fully static. */}}
   {{ $editableTrial := ne $slug "thats-fair" }}
+  {{/* Separate password from $hash above: $hash only gates viewing the
+    page, edit_password_hash gates the open-trial editors themselves.
+    Blank (the default) means editing stays wide open, no gate at all —
+    same "blank skips the gate" rule as the view password. */}}
+  {{ $editHash := .Params.edit_password_hash | default "" }}
+  {{ $editLocked := and $editableTrial (ne $editHash "") }}
   <div class="hub-topline">
     <h1 id="hub-title">{{ .Title }}</h1>
     <a class="hub-symbol-link" href="{{ .Site.Home.RelPermalink }}">
@@ -100,7 +106,7 @@
     </div>
   </div>
 
-  <div class="hub-tabs" id="hub-experience" hidden>
+  <div class="hub-tabs {{ if $editLocked }}hub-edit-locked{{ end }}" id="hub-experience" hidden>
     <select class="hub-tab-select" id="hub-tab-select">
       <option value="sessions">Sessions</option>
       <option value="quests">Quests</option>
@@ -122,6 +128,29 @@
       <button type="button" class="hub-tab-btn" data-tab="misc">{{ partial "tab-icon.html" "dots" }}<span class="tab-label-text">Misc.</span></button>
       {{ with $dmPage }}<a class="hub-tab-btn hub-tab-link" href="{{ .RelPermalink }}">{{ partial "tab-icon.html" "shield" }}<span class="tab-label-text">DM Portal</span></a>{{ end }}
     </div>
+
+    {{/* Second, separate password gate from the view gate above — this
+      one unlocks the open-trial editors (add/edit/remove buttons and the
+      quest "Completed" toggle, all hidden by the .hub-edit-locked CSS
+      until unlocked), not the page content itself, which stays visible
+      regardless. Same SHA-256-hash-compare-and-cache-in-localStorage
+      pattern as every other gate on this site, plus (like the DM Portal)
+      stashing the plaintext as this device's Authorization bearer token
+      for the open-trial /sync writes — see worker/ddb-character-proxy.js's
+      EDIT_SECRET / editAuthorized(). */}}
+    {{ if $editLocked }}
+      <div class="hub-edit-gate" id="hub-edit-gate" data-hash="{{ $editHash }}" data-storage-key="hub-edit-auth-{{ $slug }}">
+        <button type="button" class="hub-edit-unlock-btn" id="hub-edit-unlock-btn">Unlock editing</button>
+        <form class="dm-portal-form" id="hub-edit-gate-form" hidden>
+          <label for="hub-edit-gate-password">Edit password</label>
+          <input type="password" id="hub-edit-gate-password" autocomplete="current-password" required>
+          <button type="submit">Unlock</button>
+          <button type="button" id="hub-edit-gate-cancel">Cancel</button>
+          <p class="dm-portal-error" id="hub-edit-gate-error" hidden>Incorrect password.</p>
+        </form>
+        <span class="hub-edit-unlocked-label" id="hub-edit-unlocked-label" hidden>Editing unlocked</span>
+      </div>
+    {{ end }}
 
     <div class="hub-panel" id="panel-sessions" data-tab="sessions" hidden>
       {{ if $editableTrial }}
@@ -555,6 +584,59 @@
     })();
   </script>
 
+  {{/* Shared by the three editors below (Sessions, the generic table
+    editor covering Quests/Lore/NPCs/Locations, and Misc.) — this page
+    has no localStorage at all, just an in-memory array fetched once on
+    load, so every add/edit/remove/toggle used to PUT that array
+    straight back with no re-fetch first. Since this is the "open
+    trial" — any visitor can edit, no password, so genuinely concurrent
+    edits from two different players are the normal case here, not an
+    edge case — that meant the second visitor to save always overwrote
+    the first visitor's entry outright, even one they never touched:
+    open the page, someone else adds a session, you edit an unrelated
+    field and save minutes later off your own stale in-memory copy, and
+    their session is just gone from the server.
+
+    Unlike the DM portal's equivalent fix (which merges a local
+    persistent cache against a pulled remote snapshot by per-record
+    updatedAt), this page has no local cache to reconcile — the fix
+    here is simpler: fetch the current server state immediately before
+    every write and apply the mutation to *that*, instead of to
+    whatever was in memory since page load. This closes the actual gap
+    (minutes of page-open time) at the cost of a much smaller one (the
+    fetch-to-PUT round trip) — the same residual accepted everywhere
+    else in this codebase that lacks real optimistic-concurrency/ETags
+    against the KV store. Crucially, this also means a real removal
+    can't be resurrected the way a naive local/remote union-merge would
+    resurrect it (the delete is applied to a fresh copy, not merged
+    against a stale one that still has the record). */}}
+  <script>
+    {{/* Reads the edit-password token the hub-edit-gate script (below)
+      stashed in localStorage once unlocked. Empty string if never
+      unlocked — the Worker then just 401s the PUT below, same failure
+      path as any other bad save. */}}
+    window.hubEditToken = function () {
+      return window.localStorage.getItem("hub-edit-auth-{{ $slug }}-token") || "";
+    };
+
+    var hubSaveWithFreshFetch = function (syncUrl, mutateFn, onSuccess, onFailure) {
+      fetch(syncUrl)
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (remote) {
+          var updated = mutateFn(remote || []);
+          return fetch(syncUrl, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + window.hubEditToken() },
+            body: JSON.stringify(updated),
+          }).then(function (res) {
+            if (!res.ok) throw new Error("save failed");
+            onSuccess(updated);
+          });
+        })
+        .catch(onFailure);
+    };
+  </script>
+
   <script>
     (function () {
       var editor = document.getElementById("hub-session-editor");
@@ -586,30 +668,23 @@
         return d.getFullYear() + "-" + month + "-" + day;
       };
 
-      var saveSessions = function (updated, onSuccess) {
-        fetch(syncUrl, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updated),
-        })
-          .then(function (res) {
-            if (!res.ok) throw new Error("save failed");
-            liveSessions = updated;
-            onSuccess();
-          })
-          .catch(function () {
-            if (form.hidden) {
-              window.alert("Couldn’t save. Try again.");
-            } else {
-              error.hidden = false;
-            }
-          });
+      var saveSessions = function (mutateFn, onSuccess) {
+        hubSaveWithFreshFetch(syncUrl, mutateFn, function (updated) {
+          liveSessions = updated;
+          onSuccess();
+        }, function () {
+          if (form.hidden) {
+            window.alert("Couldn’t save. Try again.");
+          } else {
+            error.hidden = false;
+          }
+        });
       };
 
       var removeEntry = function (id) {
         if (!window.confirm("Remove this session?")) return;
         if (editingId === id) hideForm();
-        saveSessions(liveSessions.filter(function (e) { return e.id !== id; }), renderLive);
+        saveSessions(function (fresh) { return fresh.filter(function (e) { return e.id !== id; }); }, renderLive);
       };
 
       var renderEntry = function (entry) {
@@ -712,11 +787,12 @@
         if (!title) return;
 
         var fields = { title: title, date: dateInput.value, recap: recapInput.value };
-        var updated = editingId
-          ? liveSessions.map(function (e) { return e.id === editingId ? Object.assign({}, e, fields) : e; })
-          : liveSessions.concat([Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2) }, fields)]);
-
-        saveSessions(updated, function () {
+        var newId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+        saveSessions(function (fresh) {
+          return editingId
+            ? fresh.map(function (e) { return e.id === editingId ? Object.assign({}, e, fields) : e; })
+            : fresh.concat([Object.assign({ id: newId }, fields)]);
+        }, function () {
           renderLive();
           hideForm();
         });
@@ -838,24 +914,17 @@
         emptyMsg.textContent = emptyLabel;
         container.appendChild(emptyMsg);
 
-        var saveEntries = function (updated, onSuccess) {
-          fetch(syncUrl, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updated),
-          })
-            .then(function (res) {
-              if (!res.ok) throw new Error("save failed");
-              entries = updated;
-              onSuccess();
-            })
-            .catch(function () {
-              if (form.hidden) {
-                window.alert("Couldn’t save. Try again.");
-              } else {
-                error.hidden = false;
-              }
-            });
+        var saveEntries = function (mutateFn, onSuccess) {
+          hubSaveWithFreshFetch(syncUrl, mutateFn, function (updated) {
+            entries = updated;
+            onSuccess();
+          }, function () {
+            if (form.hidden) {
+              window.alert("Couldn’t save. Try again.");
+            } else {
+              error.hidden = false;
+            }
+          });
         };
 
         var showForm, hideForm, renderAll;
@@ -863,7 +932,7 @@
         var removeEntry = function (id) {
           if (!window.confirm("Remove this entry?")) return;
           if (editingId === id) hideForm();
-          saveEntries(entries.filter(function (e) { return e.id !== id; }), renderAll);
+          saveEntries(function (fresh) { return fresh.filter(function (e) { return e.id !== id; }); }, renderAll);
         };
 
         showForm = function (entry) {
@@ -902,13 +971,14 @@
                   flipping it saves immediately without opening Edit. */}}
                 var toggle = document.createElement("input");
                 toggle.type = "checkbox";
+                toggle.className = "hub-table-toggle";
                 toggle.checked = Boolean(entry[col.key]);
                 toggle.addEventListener("change", function () {
                   var fields = {};
                   fields[col.key] = toggle.checked;
-                  saveEntries(entries.map(function (e) {
-                    return e.id === entry.id ? Object.assign({}, e, fields) : e;
-                  }), renderAll);
+                  saveEntries(function (fresh) {
+                    return fresh.map(function (e) { return e.id === entry.id ? Object.assign({}, e, fields) : e; });
+                  }, renderAll);
                 });
                 td.appendChild(toggle);
               } else {
@@ -962,11 +1032,12 @@
           });
           if (!valid) return;
 
-          var updated = editingId
-            ? entries.map(function (e) { return e.id === editingId ? Object.assign({}, e, fields) : e; })
-            : entries.concat([Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2) }, fields)]);
-
-          saveEntries(updated, function () {
+          var newId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+          saveEntries(function (fresh) {
+            return editingId
+              ? fresh.map(function (e) { return e.id === editingId ? Object.assign({}, e, fields) : e; })
+              : fresh.concat([Object.assign({ id: newId }, fields)]);
+          }, function () {
             renderAll();
             hideForm();
           });
@@ -1057,24 +1128,17 @@
       emptyMsg.textContent = emptyLabel;
       container.appendChild(emptyMsg);
 
-      var saveEntries = function (updated, onSuccess) {
-        fetch(syncUrl, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updated),
-        })
-          .then(function (res) {
-            if (!res.ok) throw new Error("save failed");
-            entries = updated;
-            onSuccess();
-          })
-          .catch(function () {
-            if (form.hidden) {
-              window.alert("Couldn’t save. Try again.");
-            } else {
-              error.hidden = false;
-            }
-          });
+      var saveEntries = function (mutateFn, onSuccess) {
+        hubSaveWithFreshFetch(syncUrl, mutateFn, function (updated) {
+          entries = updated;
+          onSuccess();
+        }, function () {
+          if (form.hidden) {
+            window.alert("Couldn’t save. Try again.");
+          } else {
+            error.hidden = false;
+          }
+        });
       };
 
       var showForm, hideForm, renderAll;
@@ -1082,7 +1146,7 @@
       var removeEntry = function (id) {
         if (!window.confirm("Remove this entry?")) return;
         if (editingId === id) hideForm();
-        saveEntries(entries.filter(function (e) { return e.id !== id; }), renderAll);
+        saveEntries(function (fresh) { return fresh.filter(function (e) { return e.id !== id; }); }, renderAll);
       };
 
       showForm = function (entry) {
@@ -1157,10 +1221,12 @@
         var title = titleInput.value.trim();
         if (!title) return;
         var fields = { title: title, body: bodyInput.value };
-        var updated = editingId
-          ? entries.map(function (e) { return e.id === editingId ? Object.assign({}, e, fields) : e; })
-          : entries.concat([Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2) }, fields)]);
-        saveEntries(updated, function () {
+        var newId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+        saveEntries(function (fresh) {
+          return editingId
+            ? fresh.map(function (e) { return e.id === editingId ? Object.assign({}, e, fields) : e; })
+            : fresh.concat([Object.assign({ id: newId }, fields)]);
+        }, function () {
           renderAll();
           hideForm();
         });
@@ -1205,6 +1271,73 @@
                   window.localStorage.setItem(storageKey, hash);
                   error.hidden = true;
                   reveal();
+                } else {
+                  error.hidden = false;
+                }
+              });
+          });
+        })();
+      </script>
+    {{ end }}
+
+    {{ if $editLocked }}
+      <script>
+        (function () {
+          var gate = document.getElementById("hub-edit-gate");
+          var hash = gate.dataset.hash;
+          var storageKey = gate.dataset.storageKey;
+          var tokenKey = storageKey + "-token";
+          var experience = document.getElementById("hub-experience");
+          var unlockBtn = document.getElementById("hub-edit-unlock-btn");
+          var form = document.getElementById("hub-edit-gate-form");
+          var cancelBtn = document.getElementById("hub-edit-gate-cancel");
+          var passwordInput = document.getElementById("hub-edit-gate-password");
+          var error = document.getElementById("hub-edit-gate-error");
+          var unlockedLabel = document.getElementById("hub-edit-unlocked-label");
+
+          function toHex(buffer) {
+            return Array.from(new Uint8Array(buffer))
+              .map(function (b) { return b.toString(16).padStart(2, "0"); })
+              .join("");
+          }
+
+          function setUnlocked() {
+            experience.classList.remove("hub-edit-locked");
+            unlockBtn.hidden = true;
+            form.hidden = true;
+            unlockedLabel.hidden = false;
+          }
+
+          if (window.localStorage.getItem(storageKey) === hash) {
+            setUnlocked();
+          }
+
+          unlockBtn.addEventListener("click", function () {
+            unlockBtn.hidden = true;
+            form.hidden = false;
+            passwordInput.focus();
+          });
+
+          cancelBtn.addEventListener("click", function () {
+            form.hidden = true;
+            unlockBtn.hidden = false;
+            passwordInput.value = "";
+            error.hidden = true;
+          });
+
+          form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var value = passwordInput.value;
+            window.crypto.subtle
+              .digest("SHA-256", new TextEncoder().encode(value))
+              .then(function (buffer) {
+                var entered = toHex(buffer);
+                if (entered === hash) {
+                  window.localStorage.setItem(storageKey, hash);
+                  window.localStorage.setItem(tokenKey, value);
+                  passwordInput.value = "";
+                  error.hidden = true;
+                  setUnlocked();
                 } else {
                   error.hidden = false;
                 }

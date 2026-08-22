@@ -390,6 +390,34 @@ body.is-home {
 .hub-table { margin-top: 1rem; }
 .hub-table td input[type="checkbox"] { cursor: pointer; }
 
+.hub-edit-gate { margin-bottom: 1.5rem; }
+.hub-edit-unlock-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.hub-edit-unlock-btn:hover { color: var(--accent); border-color: var(--accent); }
+.hub-edit-unlocked-label { color: var(--text-dim); font-size: 0.9rem; }
+
+/* Everything the open-trial editors use to add/change/remove content —
+  hidden until the hub-edit-gate script removes this class from
+  #hub-experience. Page content itself (the entries these controls edit)
+  stays visible the whole time; only the editing affordances are gated. */
+.hub-edit-locked .hub-session-add-btn,
+.hub-edit-locked .hub-session-edit-btn,
+.hub-edit-locked .hub-session-remove-btn,
+.hub-edit-locked .hub-table-add-btn,
+.hub-edit-locked .hub-table-edit-btn,
+.hub-edit-locked .hub-table-remove-btn,
+.hub-edit-locked .hub-table-toggle {
+  display: none;
+}
+
 #panel-characters h2,
 #panel-images h2 {
   padding-bottom: 0.5rem;

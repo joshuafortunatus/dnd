@@ -27,4 +27,14 @@ hero_image: ""
 #
 # then paste the printed hex string below.
 password_hash: ""
+# Second, separate password gating just the hub's open-trial editors
+# (add/edit/remove on Sessions, Quests, Lore, NPCs, Locations, Misc.) —
+# the page itself stays viewable per password_hash above regardless of
+# this. Leave blank to skip this gate entirely — editing stays wide open,
+# no password prompt at all (this is the default for existing campaigns).
+# Generate the hash the same way as password_hash above. Setting this
+# alone does nothing server-side — the campaign's slug must also be added
+# to worker/ddb-character-proxy.js's EDIT_LOCKED_SLUGS, and the Worker's
+# EDIT_SECRET env var must be set to this same plaintext password.
+edit_password_hash: ""
 ---
