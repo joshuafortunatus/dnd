@@ -390,7 +390,13 @@ body.is-home {
 .hub-table { margin-top: 1rem; }
 .hub-table td input[type="checkbox"] { cursor: pointer; }
 
-.hub-edit-gate { margin-bottom: 1.5rem; }
+.hub-edit-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-top: 2.5rem;
+}
+.hub-edit-gate .dm-portal-form { justify-content: flex-end; }
 .hub-edit-unlock-btn {
   background: var(--bg-raised);
   border: 1px solid var(--border);
