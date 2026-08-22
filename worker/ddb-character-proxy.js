@@ -53,6 +53,17 @@
  *    password whose hash you put in password_hash — not an independent
  *    value.
  *
+ *    Same pattern, second tier: the hub page's open-trial editors
+ *    (sessions, quests, lore, NPCs, locations, misc — see OPEN_TRIAL_KEYS)
+ *    are gated by their own "edit password" prompt on the hub page,
+ *    separate from both the hub's view-only password_hash and the DM
+ *    portal's password. Entering it correctly on a given browser saves it
+ *    as that device's edit token, sent as Authorization: Bearer on
+ *    open-trial writes. EDIT_SECRET below must be set to the exact same
+ *    plaintext password whose hash you put in the campaign's
+ *    edit_password_hash front matter. A valid DM portal password also
+ *    still works for these writes (see authorized() / editAuthorized()).
+ *
  * Deploy: two working paths, pick either.
  *
  *   CLI (verified working, no dashboard clicking): from this worker/
@@ -64,8 +75,9 @@
  *   and applies both the KV and R2 bindings declared in wrangler.toml in
  *   one shot. R2 must be enabled once on the account first (Cloudflare
  *   dashboard → R2 → follow its one-time enablement prompt; this part
- *   can't be done via API either). SYNC_SECRET (below) still needs
- *   `npx wrangler secret put SYNC_SECRET` (or the dashboard, either works)
+ *   can't be done via API either). SYNC_SECRET and EDIT_SECRET (below)
+ *   still need `npx wrangler secret put SYNC_SECRET` /
+ *   `npx wrangler secret put EDIT_SECRET` (or the dashboard, either works)
  *   since secrets are deliberately kept out of wrangler.toml.
  *
  *   Dashboard (no CLI/terminal needed): Workers & Pages → this Worker →
@@ -80,6 +92,11 @@
  *     password_hash for the DM portal page. This is never committed to
  *     git. Nothing further to configure client-side — logging into the DM
  *     portal on any device is what enables sync on that device.
+ *   - Same again for the hub's open-trial edit gate: add another
+ *     Environment Variable secret named `EDIT_SECRET`, set to the SAME
+ *     plaintext password used to generate a campaign's
+ *     edit_password_hash front matter. Unlocking editing on the hub page
+ *     is what enables these writes on that device.
  *   And, to enable File Library (job 4):
  *   - Workers & Pages → R2 → Create a bucket (any name, e.g. "dnd-portal-files").
  *   - This Worker → Settings → Variables → R2 Bucket Bindings → Add
@@ -93,13 +110,14 @@
  *                                             EXCEPT key=characters, which is a public read — the
  *                                             campaign hub page's Characters tab fetches it directly,
  *                                             unauthenticated, so any visitor can see the roster — and
- *                                             EXCEPT OPEN_TRIAL_KEYS for slug=borderlands, a trial letting
- *                                             players edit hub content (sessions, quests, lore, NPCs,
- *                                             locations, misc.) with no auth at all (see
- *                                             OPEN_TRIAL_EXCLUDED_SLUG / OPEN_TRIAL_KEYS below))
+ *                                             EXCEPT OPEN_TRIAL_KEYS reads, which are public for any
+ *                                             non-excluded slug (see OPEN_TRIAL_EXCLUDED_SLUG /
+ *                                             OPEN_TRIAL_KEYS below), since that's core hub content
+ *                                             anyone viewing the page should see)
  *   PUT  /sync/<slug>/<key>  (JSON body)   — write a stored JSON blob (Authorization: Bearer <SYNC_SECRET>,
- *                                             always required, EXCEPT OPEN_TRIAL_KEYS for slug=borderlands
- *                                             per the trial above)
+ *                                             always required, EXCEPT OPEN_TRIAL_KEYS writes, which
+ *                                             instead accept Authorization: Bearer <EDIT_SECRET> — the
+ *                                             hub page's own separate "edit password" gate)
  *   <slug> is a campaign slug; <key> is one of: characters, pc-manager,
  *     travel-plans, npcs, settlements, journal, conflicts, magic-items,
  *     bastions, files, sessions, hub-quests, hub-lore, hub-npcs,
@@ -140,8 +158,7 @@ const ALLOWED_SYNC_KEYS = [
 
 /* Trial: letting players edit campaign hub content (session recaps,
  * quests, lore, NPCs, locations, misc.) straight from the public campaign
- * page, no password, left wide open on purpose — no gate yet, revisit
- * once this proves out. This is now the default for every campaign;
+ * page. This is the default for every campaign, no password required;
  * That's Fair is the sole grandfathered exception, kept fully static.
  * Note the "hub-" prefix on the non-session keys: "npcs" alone is
  * already taken by the DM Portal's private NPC Tracker (see
@@ -149,6 +166,13 @@ const ALLOWED_SYNC_KEYS = [
  * clobber that DM-only data. */
 const OPEN_TRIAL_EXCLUDED_SLUG = "thats-fair";
 const OPEN_TRIAL_KEYS = ["sessions", "hub-quests", "hub-lore", "hub-npcs", "hub-locations", "hub-misc"];
+
+/* Campaigns whose open-trial writes above additionally require the
+ * hub's edit-password gate (see EDIT_SECRET / editAuthorized above) —
+ * everything else in OPEN_TRIAL_KEYS stays writable with no auth at
+ * all, same as before this existed. Reads are never gated by this list,
+ * even for a locked slug — only writes. */
+const EDIT_LOCKED_SLUGS = ["borderlands"];
 
 /* Sanity default, not a hard platform fact — Workers' request body size
  * ceiling can change by plan tier; re-check current Cloudflare docs before
@@ -172,6 +196,14 @@ function corsHeaders(request, extra) {
 function authorized(request, env) {
   const auth = request.headers.get("Authorization") || "";
   return Boolean(env.SYNC_SECRET) && auth === "Bearer " + env.SYNC_SECRET;
+}
+
+/* Second, weaker tier: unlocks the open-trial hub editors (see
+ * OPEN_TRIAL_KEYS) without handing out the full DM password. Same
+ * shared-secret-across-campaigns caveat as SYNC_SECRET applies. */
+function editAuthorized(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  return Boolean(env.EDIT_SECRET) && auth === "Bearer " + env.EDIT_SECRET;
 }
 
 const ALLOWED_MONSTER_URL = /^https:\/\/www\.aidedd\.org\/(monster\/[a-z0-9-]+|dnd\/monstres\.php\?vo=[a-z0-9-]+)$/i;
@@ -223,8 +255,18 @@ export default {
       // only, no DM notes) to any visitor, not just the DM. Writes still
       // always require the secret.
       const isPublicRosterRead = key === "characters" && request.method === "GET";
-      const isOpenTrial = OPEN_TRIAL_KEYS.includes(key) && slug !== OPEN_TRIAL_EXCLUDED_SLUG;
-      if (!isPublicRosterRead && !isOpenTrial && !authorized(request, env)) {
+      const isOpenTrialKey = OPEN_TRIAL_KEYS.includes(key) && slug !== OPEN_TRIAL_EXCLUDED_SLUG;
+      const isOpenTrialRead = isOpenTrialKey && request.method === "GET";
+      const isEditLockedSlug = EDIT_LOCKED_SLUGS.includes(slug);
+      const isOpenTrialWriteUnlocked = isOpenTrialKey && request.method === "PUT" && !isEditLockedSlug;
+      const canWriteLockedOpenTrial = isOpenTrialKey && isEditLockedSlug && editAuthorized(request, env);
+      if (
+        !isPublicRosterRead &&
+        !isOpenTrialRead &&
+        !isOpenTrialWriteUnlocked &&
+        !canWriteLockedOpenTrial &&
+        !authorized(request, env)
+      ) {
         return new Response("Unauthorized.", { status: 401, headers: corsHeaders(request) });
       }
       if (!env.PORTAL_DATA) {
