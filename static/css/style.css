@@ -1326,6 +1326,17 @@ textarea.autosize-textarea {
    width that ends up being; overflow-x: auto on the container below is
    the fallback if the panel still doesn't fit at that width, scrolling
    internally instead of stretching the table again. */
+/* The gold tbody-td divider above (.combat-table tbody td) exists to mark
+   where one combatant ends and the next begins — but an expanded stat
+   block is still part of THIS combatant's row, not the start of the next
+   one, so that same line landing directly above the panel reads as a
+   stray divider cutting the NPC off from its own stat block. :has() +
+   the next-sibling combinator targets exactly the NPC row currently
+   showing its (not [hidden]) stat block row right after it, without
+   needing a JS-toggled class on the row itself. */
+.combat-row:has(+ .combat-statblock-row:not([hidden])) > td {
+  border-bottom: none;
+}
 .combat-statblock-cell { width: 0; padding-top: 0.5rem; }
 .combat-statblock-container { max-width: 100%; overflow-x: auto; box-sizing: border-box; }
 /* width: 100% — with only two columns left now that Initiative/AC and
@@ -1770,6 +1781,28 @@ label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
    just works. */
 .combat-death-divider { height: 1px; background: var(--border); margin: 0.6rem 0 0; }
 
+/* NPC rows never get Death Saves (5e doesn't run those for monsters) or
+   the Slim View toggle (NPC rows always show the full block, per an
+   explicit product decision), so their Combat Block content is
+   naturally shorter than the row's actual height — a row's real height
+   is set by the Combatant column's Reaction/Conditions/Notes stack
+   (plus Show Stat Block for NPCs), not by anything in this cell. Left
+   top-aligned and left-hugging by default (.combat-block-wrap's base
+   align-items: flex-start, plus its own asymmetric left/right padding),
+   the block ends up floating in the top-left corner of a visibly taller
+   row instead of centered in it. height: 1px on the cell is the same
+   percentage-height-resolution workaround used for Death Saves in Slim
+   View above — a bare td has no height a child's 100% can resolve
+   against otherwise, even though the row itself renders taller. */
+.combat-row[data-combat-kind="npc"] .combat-block-cell {
+  height: 1px;
+}
+.combat-row[data-combat-kind="npc"] .combat-block-wrap {
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Slim View: PCs only (NPC rows are deliberately untouched, per an
    explicit product decision — a DM still needs an adversary's full
    HP/conditions to run the fight) hide the Heal/Damage/Current/Max/Temp
@@ -1856,22 +1889,17 @@ label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
 .combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-hp-module-stack {
   align-self: center;
 }
-/* Initiative's own top-pin (above) is only right for a TIED row, where
-   Tiebreaker sits below it and the row needs a stable anchor that
-   doesn't jump around as Tiebreaker shows/hides on its neighbors (see
-   that fix above). An untied row never shows Tiebreaker at all, so
-   there's nothing for Initiative to stay clear of — pinning it to the
-   top there just leaves it floating above Death Saves for no reason,
-   when the two would read better lined up on the same axis.
-   :has(.combat-tiebreaker-group[hidden]) targets exactly that
-   untied case (Tiebreaker's own [hidden] attribute — see
-   updateTiebreakers in dm-portal.html — is already the single source
-   of truth for tied/untied, so reading it here instead of duplicating
-   the condition can't drift out of sync with it) and overrides just
-   this row's Initiative stack to center alongside Death Saves instead
-   of pinning top. A tied row doesn't match this selector at all, so it
-   falls through to the plain top-pin above, unchanged. */
-.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-init-stack:has(.combat-tiebreaker-group[hidden]) {
+/* Initiative/Tiebreaker must line up with Death Saves on the same axis,
+   tied row or not — per an explicit correction, the earlier top-pin for
+   tied rows (kept so Initiative wouldn't visibly jump if a neighboring
+   row's tie state changed) read as misaligned against Death Saves' own
+   centered position instead. align-self: center here centers the whole
+   init-stack box (Initiative alone when untied, Initiative+Tiebreaker
+   together when tied — Armor Class stays height:0 in Slim View either
+   way) against the row's full height, same as .combat-hp-module-stack
+   below: that places the midpoint between Initiative's top and
+   Tiebreaker's bottom exactly on Death Saves' own center line. */
+.combat-tracker-wrap.combat-slim-view .combat-row[data-combat-kind="pc"] .combat-init-stack {
   align-self: center;
 }
 /* Death Saves — three fail circles (red) on the left, three success
