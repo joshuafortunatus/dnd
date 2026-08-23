@@ -4899,10 +4899,31 @@
             return String(max + 1);
           };
 
-          var todayForJournal = function () {
-            var d = new Date();
+          var formatDateYmd = function (d) {
             var pad = function (n) { return n < 10 ? "0" + n : String(n); };
             return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+          };
+
+          var todayForJournal = function () {
+            return formatDateYmd(new Date());
+          };
+
+          {{/* Normalizes a Session Date into the yyyy-mm-dd shape
+            <input type="date"> requires, so old free-text entries (this
+            field predates the calendar picker) still populate it
+            correctly instead of silently landing blank. Returns null,
+            never "", for a value that doesn't parse as a real date —
+            an empty string is a legitimate "already yyyy-mm-dd, just
+            unset" case the calendar picker should render as blank, but
+            null is the signal renderFields below uses to fall back to a
+            plain text input instead, so an unparseable legacy value is
+            preserved verbatim rather than silently blanked out by the
+            date input's own strict value validation on assignment. */}}
+          var normalizeSessionDate = function (raw) {
+            if (!raw) return "";
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+            var d = new Date(raw);
+            return isNaN(d.getTime()) ? null : formatDateYmd(d);
           };
 
           {{/* Read-only rollup of records tied to this session (via each
@@ -4998,7 +5019,14 @@
             cssPrefix: "journal",
             viewModeScope: true,
             isValid: function (entry) { return Boolean(entry.title && entry.title.trim()); },
-            label: function (entry) { return entry.title || "Untitled Session"; },
+            {{/* Same "N - Title" shape (and "?" fallback for a missing
+              number) the "Tied to Session" pickers in Travel Planner and
+              Conflicts already use for these same entries — a session
+              list reads faster with the number right on the label
+              instead of only inside the detail form. */}}
+            label: function (entry) {
+              return (entry.sessionNumber || "?") + " - " + (entry.title || "Untitled Session");
+            },
             {{/* Auto-filled but still editable — same plain text fields as
               before, just prefilled with a sensible default at creation
               time. */}}
@@ -5025,6 +5053,12 @@
 
               var sessionDateField = makeFieldInput("journal", "Session Date", entry.sessionDate, { field: "sessionDate" });
               sessionDateField.classList.add("journal-field-session-date");
+              var normalizedSessionDate = normalizeSessionDate(entry.sessionDate);
+              if (normalizedSessionDate !== null) {
+                var sessionDateInput = sessionDateField.querySelector("input");
+                sessionDateInput.type = "date";
+                sessionDateInput.value = normalizedSessionDate;
+              }
               header.appendChild(sessionDateField);
 
               form.appendChild(header);
