@@ -96,7 +96,7 @@
                 own markup/IDs (#pc-manager, #npc-tracker) and JS are
                 completely unchanged — this only adds a chooser and a
                 Back button above them (see the "Character Manager"
-                controller in the <script> below). Re-entering this
+                controller in the script tag below). Re-entering this
                 section from elsewhere always resets to the chooser
                 (registerSectionResetHook), the same "blank landing
                 state on every visit" rule every other section already
@@ -733,8 +733,8 @@
             return Promise.all(syncPullers.map(function (fn) { return fn(); }));
           };
 
-          {{/* Exposed so the password-gate script (a separate <script>
-            block further down, since it needs to run whether or not a
+          {{/* Exposed so the password-gate script (a separate script tag
+            further down, since it needs to run whether or not a
             password is even configured) can hand over the plaintext DM
             portal password the moment it's entered and verified — that
             password IS the sync credential, there's no separate one to
