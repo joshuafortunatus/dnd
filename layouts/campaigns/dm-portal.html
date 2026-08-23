@@ -31,8 +31,8 @@
     via NPC Tracker — see the "character-manager" panel below). */}}
   {{ $sections := slice
     (dict "id" "character-manager" "label" "Character Manager" "icon" "person")
-    (dict "id" "campaign-journal" "label" "Campaign Journal" "icon" "notebook")
-    (dict "id" "campaign-conflicts" "label" "Campaign Conflicts" "icon" "swords")
+    (dict "id" "campaign-journal" "label" "Journal" "icon" "notebook")
+    (dict "id" "campaign-conflicts" "label" "Conflicts" "icon" "swords")
     (dict "id" "file-library" "label" "File Library" "icon" "folder")
     (dict "id" "travel-planner" "label" "Travel Planner" "icon" "compass")
     (dict "id" "magic-item-tracker" "label" "Magic Item Tracker" "icon" "gem")
@@ -759,6 +759,13 @@
           var sectionPanels = document.querySelectorAll(".dm-section-panel");
           var currentSection = "";
 
+          {{/* Every open tab otherwise reads "DM Portal · <site>" per
+            baseof.html's <title>, indistinguishable from each other once
+            a DM has several sections open at once. Swap the section's
+            own label in as soon as one's picked. */}}
+          var sectionLabels = { {{ range $sections }}{{ .id }}: {{ .label }}, {{ end }} };
+          var portalSiteTitle = {{ .Site.Title }};
+
           function selectSection(section) {
             Array.prototype.forEach.call(sectionButtons, function (b) {
               b.classList.toggle("is-active", b.dataset.section === section);
@@ -768,6 +775,7 @@
             });
             sectionSelect.value = section;
             currentSection = section;
+            document.title = (sectionLabels[section] || "DM Portal") + " · " + portalSiteTitle;
             if (section === "character-manager" && window.dmPortalRefreshCharacters) window.dmPortalRefreshCharacters();
             {{/* Jumping here from deep within a scrolled-down record (a
               Campaign Journal "Open →" link, an NPC combat-row link) must
@@ -4995,7 +5003,7 @@
               var relatedRow = document.createElement("div");
               relatedRow.className = "journal-related-fields";
               relatedRow.appendChild(journalRelatedSection(
-                "Campaign Conflicts",
+                "Conflicts",
                 loadConflicts().filter(function (c) { return c.sessionId === entry.id; }),
                 conflictLabel,
                 conflictHoverInfo,

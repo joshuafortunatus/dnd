@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#14110f"/>
+  <rect x="2" y="2" width="60" height="60" rx="10" fill="none" stroke="#c9a227" stroke-width="2"/>
+  <text x="32" y="34" text-anchor="middle" dominant-baseline="central"
+        font-family="Georgia, 'Iowan Old Style', Charter, serif" font-size="28" font-weight="700"
+        fill="#c9a227" letter-spacing="-1">AH</text>
+</svg>
