@@ -2767,9 +2767,22 @@
 
               var header = document.createElement("div");
               header.className = "npc-statblock-header";
+              var titleWrap = document.createElement("div");
+              titleWrap.className = "npc-statblock-title-wrap";
               var title = document.createElement("h4");
               title.textContent = sb.name;
-              header.appendChild(title);
+              titleWrap.appendChild(title);
+              {{/* Same "has this Monster Manual NPC's stat block actually
+                been overridden" check npcLabel uses elsewhere — mirrored
+                here so the DM sees the same signal right on the stat
+                block itself, next to the monster name it belongs to. */}}
+              if (npc && npc.statBlockOverride) {
+                var modifiedBadge = document.createElement("span");
+                modifiedBadge.className = "npc-statblock-modified-badge";
+                modifiedBadge.textContent = "Modified";
+                titleWrap.appendChild(modifiedBadge);
+              }
+              header.appendChild(titleWrap);
 
               {{/* No dedicated Edit/Save/Cancel here anymore — this
                 panel just follows the NPC form's own View/Edit toggle
@@ -4386,6 +4399,13 @@
                 for the outer Save handler below to wrongly collect. */}}
               currentStatBlockModeHandler = null;
               currentStatBlockCollectOverride = null;
+              {{/* Set only by input/change events that bubble up from
+                inside a ".npc-statblock" panel (see the form-level
+                listeners below) — every other field (Alignment,
+                Personality, Loyalty, etc.) leaves this false, so Save
+                only recomputes/overwrites statBlockOverride when the
+                stat block itself was actually touched this session. */}}
+              var statBlockTouched = false;
 
               var actions = document.createElement("div");
               actions.className = "npc-form-actions";
@@ -4484,19 +4504,32 @@
 
               npcDetail.appendChild(form);
 
-              form.addEventListener("input", function () { npcDirty = true; });
-              form.addEventListener("change", function () { npcDirty = true; });
+              form.addEventListener("input", function (e) {
+                npcDirty = true;
+                if (e.target.closest(".npc-statblock")) statBlockTouched = true;
+              });
+              form.addEventListener("change", function (e) {
+                npcDirty = true;
+                if (e.target.closest(".npc-statblock")) statBlockTouched = true;
+              });
 
               saveBtn.addEventListener("click", function () {
                 var updated = collectNpcFromForm(form, npc);
-                {{/* Only while actually in Edit mode — currentStatBlockCollectOverride
-                  reads the stat block panel's live <input> values, which
-                  only reflect real edits when that panel is rendered
-                  editable; in View mode those same fields are locked and
-                  unchanged, so leave updated.statBlockOverride at
-                  whatever collectNpcFromForm already carried forward
-                  above rather than risk collecting a stale/empty read. */}}
-                if (currentPortalMode === "edit" && currentStatBlockCollectOverride) {
+                {{/* Only while actually in Edit mode AND the stat block
+                  panel itself was actually touched this session —
+                  currentStatBlockCollectOverride reads the stat block
+                  panel's live <input> values, which always reconstructs a
+                  full override object regardless of whether anything in
+                  it actually changed, so gating on statBlockTouched (not
+                  just edit mode) is what keeps an edit to an unrelated
+                  field like Alignment from spuriously (re)persisting the
+                  stat block override and flipping on the "Modified" tag.
+                  Leaving updated.statBlockOverride at whatever
+                  collectNpcFromForm already carried forward above is
+                  exactly what preserves an existing saved override
+                  untouched in every other case (View mode, or Edit mode
+                  with the stat block panel left alone). */}}
+                if (currentPortalMode === "edit" && currentStatBlockCollectOverride && statBlockTouched) {
                   updated.statBlockOverride = currentStatBlockCollectOverride();
                 }
                 if (!updated.name || !updated.name.trim()) {
