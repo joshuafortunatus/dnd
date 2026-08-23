@@ -1359,6 +1359,10 @@ textarea.autosize-textarea {
    wins regardless of which rule happens to come later in the
    stylesheet. */
 label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
+/* Advantage/Disadvantage on Next Roll toggles, stacked directly under
+   Reaction above — same solo-checkbox row rhythm, own class since they're
+   a distinct pair of fields rather than the Reaction flag itself. */
+label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
 /* Wraps just the combatant's name/link. No longer a hover-reveal scope
    for Revive (that's the whole dead row now, see .combat-row-dead below)
    — just the name/link's own layout. */
@@ -1382,6 +1386,7 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
 .combat-row-dead .combat-conditions-wrap,
 .combat-row-dead .combat-notes-input,
 .combat-row-dead .combat-reaction-toggle,
+.combat-row-dead .combat-next-roll-toggle,
 .combat-row-dead .combat-block-cell {
   opacity: 0.5;
 }

@@ -5899,6 +5899,32 @@
                 reactionToggle.appendChild(reactionCheckbox);
                 nameTd.appendChild(reactionToggle);
 
+                {{/* Advantage/Disadvantage on Next Roll — two more single
+                  checkboxes, same "yes/no per combatant" pattern as Reaction
+                  above rather than entries in the Conditions picklist below,
+                  since each is its own independent flag, not a multi-select
+                  status. Sit directly under Reaction so the three toggles
+                  read as one stacked block above Select Conditions. */}}
+                var advantageNextRollToggle = document.createElement("label");
+                advantageNextRollToggle.className = "pc-checkbox-option combat-next-roll-toggle";
+                var advantageNextRollCheckbox = document.createElement("input");
+                advantageNextRollCheckbox.type = "checkbox";
+                advantageNextRollCheckbox.dataset.combatField = "advantageNextRoll";
+                advantageNextRollCheckbox.checked = Boolean(stats.advantageNextRoll);
+                advantageNextRollToggle.appendChild(document.createTextNode("Has Advantage on Next Roll "));
+                advantageNextRollToggle.appendChild(advantageNextRollCheckbox);
+                nameTd.appendChild(advantageNextRollToggle);
+
+                var disadvantageNextRollToggle = document.createElement("label");
+                disadvantageNextRollToggle.className = "pc-checkbox-option combat-next-roll-toggle";
+                var disadvantageNextRollCheckbox = document.createElement("input");
+                disadvantageNextRollCheckbox.type = "checkbox";
+                disadvantageNextRollCheckbox.dataset.combatField = "disadvantageNextRoll";
+                disadvantageNextRollCheckbox.checked = Boolean(stats.disadvantageNextRoll);
+                disadvantageNextRollToggle.appendChild(document.createTextNode("Has Disadvantage on Next Roll "));
+                disadvantageNextRollToggle.appendChild(disadvantageNextRollCheckbox);
+                nameTd.appendChild(disadvantageNextRollToggle);
+
                 {{/* Created (and wired into refreshConditionsToggle) before
                   the picker below, but not appended until after it — the
                   toggle reads "above" the selected-conditions summary in
@@ -6868,6 +6894,8 @@
                     ac: tr.querySelector('[data-combat-field="ac"]').value,
                     conditions: selectedConditions,
                     reaction: tr.querySelector('[data-combat-field="reaction"]').checked,
+                    advantageNextRoll: tr.querySelector('[data-combat-field="advantageNextRoll"]').checked,
+                    disadvantageNextRoll: tr.querySelector('[data-combat-field="disadvantageNextRoll"]').checked,
                     notes: tr.querySelector('[data-combat-field="notes"]').value,
                     deathSaveFails: tr.querySelector('[data-combat-field="deathSaveFails"]').value,
                     deathSaveSuccesses: tr.querySelector('[data-combat-field="deathSaveSuccesses"]').value,
