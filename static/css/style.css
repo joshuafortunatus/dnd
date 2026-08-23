@@ -1314,6 +1314,20 @@ textarea.autosize-textarea {
    theme's own gold accent so a DM scanning the table at the table can
    actually see where one combatant ends and the next begins. */
 .combat-table tbody td { border-bottom: 1px solid rgba(201, 162, 39, 0.45); }
+/* width: 0 is a deliberate auto-layout hack, not a real width — without it
+   this colspan-2 row's own content (the ability score grid especially) is
+   wide enough that the table's auto layout sizes the WHOLE table to fit
+   it, blowing the combat tracker out past its normal reading-column width
+   (this happened for real: the stat block panel rendered wide enough to
+   spill past the page's dark content background into the margin outside
+   it). width: 0 tells the layout algorithm this cell contributes nothing
+   to column sizing, so the table stays sized to its normal two columns
+   (name + Combat Block) and this row is simply constrained to whatever
+   width that ends up being; overflow-x: auto on the container below is
+   the fallback if the panel still doesn't fit at that width, scrolling
+   internally instead of stretching the table again. */
+.combat-statblock-cell { width: 0; padding-top: 0.5rem; }
+.combat-statblock-container { max-width: 100%; overflow-x: auto; box-sizing: border-box; }
 /* width: 100% — with only two columns left now that Initiative/AC and
    HP share one Combat Block cell, the table's auto layout was dumping
    all the table's leftover width into that single remaining flexible
@@ -1329,6 +1343,11 @@ textarea.autosize-textarea {
    override the toggle sat flush against Reaction above it while the
    rows below it were evenly spaced. */
 .combat-name-cell .combat-conditions-toggle { margin-top: 0.35rem; }
+/* Same "sits under the name, own row" rhythm as Select Conditions above —
+   .combat-statblock-toggle also carries .combat-conditions-toggle for its
+   box/hover styling, this just adds the cell-specific spacing that class
+   doesn't otherwise assume. */
+.combat-name-cell .combat-statblock-toggle { margin-top: 0.35rem; max-width: none; }
 /* Sits between the name/tag line and Select Conditions — same
    margin-top rhythm as everything else stacked in this cell. Reuses
    .pc-checkbox-option for the checkbox+label layout itself (align-items/
