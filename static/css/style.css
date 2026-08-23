@@ -2214,11 +2214,16 @@ label.combat-reaction-toggle { display: flex; margin-top: 0.35rem; }
   flex: 1 1 20rem;
   max-width: 24rem;
 }
-/* Overrides the shared 24rem cap above (same specificity, so this must
-   come after it) — the conflict select's own label text ("N - Adventurers
-   vs. ...") runs much longer than the other trackers', so it should fill
-   the row instead of getting truncated/cramped next to the Add button. */
-.campaign-conflicts-select { flex: 1 1 auto; max-width: none; }
+/* Overrides the shared 20rem/24rem sizing above (same specificity, so
+   this must come after it) — every record picker fills the row next to
+   its Add button, matching the conflict select (whose own label text,
+   "N - Adventurers vs. ...", is what originally forced this here) rather
+   than each tracker getting its own cramped, inconsistent width. */
+.travel-planner-select, .npc-tracker-select, .settlement-tracker-select,
+.campaign-journal-select, .campaign-conflicts-select, .bastion-tracker-select {
+  flex: 1 1 auto;
+  max-width: none;
+}
 .travel-planner-add-btn, .npc-tracker-add-btn, .settlement-tracker-add-btn,
 .campaign-journal-add-btn, .campaign-conflicts-add-btn, .bastion-tracker-add-btn {
   background: var(--bg-raised);
