@@ -5082,16 +5082,16 @@
             var conflictDirty = false;
             var conflictCurrentValue = "";
             var currentCombatSection = null;
-            {{/* Full View is the default every time this section is entered
+            {{/* Slim View is the default every time this section is entered
               — never persisted (no localStorage key, same reasoning as
-              currentPortalMode above), so a DM who flips a record to Slim
+              currentPortalMode above), so a DM who flips a record to Full
               View and later leaves — a full page reload, or just switching
-              to another section and back — always lands back on Full View,
-              never a lingering Slim session from earlier. */}}
-            var currentCombatViewMode = "full";
+              to another section and back — always lands back on Slim
+              View, never a lingering Full session from earlier. */}}
+            var currentCombatViewMode = "slim";
             var conflictIsDirty = function () { return conflictDirty || Boolean(unsavedNewConflictId); };
             registerDirtyTracker(conflictIsDirty, function () { cancelConflictForm(); });
-            registerSectionResetHook(function () { cancelConflictForm(); currentCombatViewMode = "full"; });
+            registerSectionResetHook(function () { cancelConflictForm(); currentCombatViewMode = "slim"; });
 
             var loadConflicts = function () {
               try {
