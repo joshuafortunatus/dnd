@@ -935,6 +935,15 @@ body.is-home {
   margin: 0 0 0.15rem;
 }
 .npc-statblock-header h4 { margin: 0; }
+.npc-statblock-title-wrap { display: flex; align-items: baseline; gap: 0.5rem; }
+.npc-statblock-modified-badge {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
 .npc-statblock-top-controls, .npc-statblock-reset-controls { display: flex; gap: 0.5rem; }
 .npc-statblock-top-controls button, .npc-statblock-reset-controls button {
   background: var(--bg-raised);
