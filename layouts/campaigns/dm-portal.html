@@ -572,6 +572,86 @@
             return entries.filter(function (e) { return e.id === keepId || isValidFn(e); });
           };
 
+          {{/* Every array-shaped sync key (Travel Plans, Settlements,
+            Journal, Bastions via createRecordTracker; NPCs, Conflicts,
+            Files, the character roster by hand) used to pull by just
+            replacing the whole local array with whatever the server
+            last saw (writeXLocal(remote)) — same for the push direction,
+            which always sent the entire current local array. That means
+            whichever device synced last always won outright, even for
+            records it never touched: a stale local copy on Device A
+            could silently erase Device B's edit to a totally different
+            record the moment A pushed anything, and a stale *remote*
+            copy could just as easily wipe A's own fresh edit the moment
+            A next pulled. This merges per-record by id instead, keeping
+            whichever side's copy of a given id has the newer
+            `updatedAt` — a record that only exists on one side (created
+            there, not yet round-tripped to the other) is always kept,
+            never dropped, so neither a slow push nor an infrequent pull
+            can cost a record its own or another device's edits.
+
+            Deliberately NOT tombstone-aware: a record deleted on one
+            device can still reappear if another device's stale local
+            copy round-trips before it's pulled that deletion — this is
+            no worse than the blind-overwrite behavior it replaces (that
+            had the exact same race for deletes), it just no longer also
+            has the race for edits, which is what was actually reported
+            as silently wiped fields/content. Revisit with real
+            tombstones if delete-under-concurrency turns out to matter
+            in practice. */}}
+          var mergeRecordArrays = function (local, remote) {
+            var byId = {};
+            (Array.isArray(local) ? local : []).forEach(function (r) {
+              if (r && r.id) byId[r.id] = r;
+            });
+            (Array.isArray(remote) ? remote : []).forEach(function (r) {
+              if (!r || !r.id) return;
+              var existing = byId[r.id];
+              if (!existing || (r.updatedAt || 0) >= (existing.updatedAt || 0)) byId[r.id] = r;
+            });
+            return Object.keys(byId).map(function (id) { return byId[id]; });
+          };
+
+          {{/* Used after merging to decide whether the merge actually
+            picked anything other than what the server already has —
+            only then is a push back to the server worth it, so a pull
+            that changed nothing doesn't also trigger a redundant write. */}}
+          var recordArraysEqual = function (a, b) {
+            var sortById = function (records) {
+              return (records || []).slice().sort(function (x, y) { return String(x.id).localeCompare(String(y.id)); });
+            };
+            return JSON.stringify(sortById(a)) === JSON.stringify(sortById(b));
+          };
+
+          {{/* Same idea as mergeRecordArrays, for the one sync key
+            that's an object keyed by id/slug rather than an array —
+            PC Manager's per-character Details (pc-manager). Each
+            character's whole data blob is the unit of merge, same as
+            each record is the unit above. */}}
+          var mergeKeyedRecords = function (local, remote) {
+            var merged = {};
+            var localObj = local || {};
+            var remoteObj = remote || {};
+            Object.keys(localObj).forEach(function (key) { merged[key] = localObj[key]; });
+            Object.keys(remoteObj).forEach(function (key) {
+              var existing = merged[key];
+              var incoming = remoteObj[key];
+              if (!existing || ((incoming && incoming.updatedAt) || 0) >= ((existing && existing.updatedAt) || 0)) {
+                merged[key] = incoming;
+              }
+            });
+            return merged;
+          };
+
+          var keyedRecordsEqual = function (a, b) {
+            var sortKeys = function (obj) {
+              var out = {};
+              Object.keys(obj || {}).sort().forEach(function (k) { out[k] = obj[k]; });
+              return out;
+            };
+            return JSON.stringify(sortKeys(a)) === JSON.stringify(sortKeys(b));
+          };
+
           {{/*
             Cross-device sync: portal data (Character Importer roster,
             Expectations edits, Travel Planner plans) otherwise lives only
@@ -1071,7 +1151,9 @@
               return syncPull("characters").then(function (result) {
                 var remote = result.ok ? result.data : undefined;
                 if (remote) {
-                  writeRosterLocal(remote);
+                  var merged = mergeRecordArrays(loadRoster(), remote);
+                  writeRosterLocal(merged);
+                  if (!recordArraysEqual(merged, remote)) syncPush("characters", merged);
                   renderPcList();
                 } else if (result.ok && syncEnabled()) {
                   syncPush("characters", loadRoster());
@@ -1156,17 +1238,20 @@
                     var newKey = slugifyName(r.name);
                     if (oldKey !== newKey && allData[oldKey] && !allData[newKey]) {
                       allData[newKey] = allData[oldKey];
+                      allData[newKey].updatedAt = Date.now();
                       delete allData[oldKey];
                       dataChanged = true;
                       if (expandedKey === oldKey) expandedKey = newKey;
                     }
                     entry.name = r.name;
+                    entry.updatedAt = Date.now();
                     changed = true;
                   }
                   if (entry.charClass !== r.charClass || entry.level !== r.level || entry.species !== r.species) {
                     entry.charClass = r.charClass;
                     entry.level = r.level;
                     entry.species = r.species;
+                    entry.updatedAt = Date.now();
                     changed = true;
                   }
                 });
@@ -1197,7 +1282,9 @@
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
-                  writePcDataLocal(remote);
+                  var merged = mergeKeyedRecords(loadPcData(), remote);
+                  writePcDataLocal(merged);
+                  if (!keyedRecordsEqual(merged, remote)) syncPush("pc-manager", merged);
                   renderPcList();
                 } else if (syncEnabled()) {
                   syncPush("pc-manager", loadPcData());
@@ -1530,6 +1617,7 @@
                   });
                   var checked = form.querySelectorAll('[data-checkbox-group="motivations"]:checked');
                   updated.motivations = Array.prototype.map.call(checked, function (el) { return el.value; });
+                  updated.updatedAt = Date.now();
                   var allData = loadPcData();
                   allData[charKey] = updated;
                   savePcData(allData);
@@ -1691,7 +1779,7 @@
                     var species = (payload.data.race && payload.data.race.fullName) || "";
                     var roster = loadRoster();
                     if (!roster.some(function (e) { return e.id === id; })) {
-                      roster.push({ id: id, name: name, link: link, charClass: charClass, level: level, species: species });
+                      roster.push({ id: id, name: name, link: link, charClass: charClass, level: level, species: species, updatedAt: Date.now() });
                       saveRoster(roster);
                     }
                     renderPcList();
@@ -1788,9 +1876,10 @@
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
-                  var prunedRemote = pruneOrphanedDrafts(remote, config.isValid, unsavedNewId);
-                  writeLocal(prunedRemote);
-                  if (prunedRemote.length !== remote.length) syncPush(config.syncKey, prunedRemote);
+                  var merged = mergeRecordArrays(load(), remote);
+                  var prunedMerged = pruneOrphanedDrafts(merged, config.isValid, unsavedNewId);
+                  writeLocal(prunedMerged);
+                  if (!recordArraysEqual(prunedMerged, remote)) syncPush(config.syncKey, prunedMerged);
                   renderSelect();
                   clearDetail();
                 } else if (syncEnabled()) {
@@ -1852,6 +1941,7 @@
                   return;
                 }
                 error.hidden = true;
+                updated.updatedAt = Date.now();
                 var allRecords = load();
                 var idx = -1;
                 allRecords.forEach(function (r, rIdx) { if (r.id === record.id) idx = rIdx; });
@@ -2210,9 +2300,10 @@
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
-                  var prunedRemote = pruneOrphanedDrafts(remote, npcIsValid, unsavedNewNpcId);
-                  writeNpcsLocal(prunedRemote);
-                  if (prunedRemote.length !== remote.length) syncPush("npcs", prunedRemote);
+                  var merged = mergeRecordArrays(loadNpcs(), remote);
+                  var prunedMerged = pruneOrphanedDrafts(merged, npcIsValid, unsavedNewNpcId);
+                  writeNpcsLocal(prunedMerged);
+                  if (!recordArraysEqual(prunedMerged, remote)) syncPush("npcs", prunedMerged);
                   renderNpcSelect();
                   clearNpcDetail();
                 } else if (syncEnabled()) {
@@ -2340,6 +2431,7 @@
                 allNpcs.forEach(function (n, i) { if (n.id === npc.id) idx = i; });
                 if (idx === -1) return;
                 if (override) { allNpcs[idx].statBlockOverride = override; } else { delete allNpcs[idx].statBlockOverride; }
+                allNpcs[idx].updatedAt = Date.now();
                 saveNpcs(allNpcs);
               };
             };
@@ -4269,6 +4361,7 @@
                 allNpcs.forEach(function (n, i) { if (n.id === npc.id) idx = i; });
                 if (idx === -1) return;
                 allNpcs[idx].customStatBlock = custom;
+                allNpcs[idx].updatedAt = Date.now();
                 saveNpcs(allNpcs);
               };
             };
@@ -4539,6 +4632,7 @@
                   return;
                 }
                 error.hidden = true;
+                updated.updatedAt = Date.now();
                 var allNpcs = loadNpcs();
                 var idx = -1;
                 allNpcs.forEach(function (n, nIdx) { if (n.id === npc.id) idx = nIdx; });
@@ -5023,9 +5117,10 @@
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
-                  var prunedRemote = pruneOrphanedDrafts(remote, conflictIsValid, unsavedNewConflictId);
-                  writeConflictsLocal(prunedRemote);
-                  if (prunedRemote.length !== remote.length) syncPush("conflicts", prunedRemote);
+                  var merged = mergeRecordArrays(loadConflicts(), remote);
+                  var prunedMerged = pruneOrphanedDrafts(merged, conflictIsValid, unsavedNewConflictId);
+                  writeConflictsLocal(prunedMerged);
+                  if (!recordArraysEqual(prunedMerged, remote)) syncPush("conflicts", prunedMerged);
                   renderConflictSelect();
                   clearConflictDetail();
                 } else if (syncEnabled()) {
@@ -6875,6 +6970,7 @@
                   return;
                 }
                 error.hidden = true;
+                updated.updatedAt = Date.now();
                 var allConflicts = loadConflicts();
                 var idx = -1;
                 allConflicts.forEach(function (c, cIdx) { if (c.id === conflict.id) idx = cIdx; });
@@ -7053,13 +7149,42 @@
               });
             };
 
+            {{/* This tracker has no per-cell id/timestamp to merge by
+              (it's a fixed grid of plain booleans, not records) — a
+              blind overwrite here has the same "whichever device
+              synced last wins outright" risk as everywhere else, but
+              for this specific checklist there's a much simpler, safe
+              merge: OR each checkbox. Ticking one off is a one-way,
+              monotonic action (an item was awarded or it wasn't), so a
+              checked box from either side should never be able to
+              revert to unchecked just because the other side's copy
+              hadn't caught up yet. The tradeoff: unchecking a box made
+              in error on one device won't "win" over a still-checked
+              copy elsewhere until that device also unchecks it — an
+              acceptable cost for never silently losing a real one. */}}
+            var mergeMagicItemState = function (local, remote) {
+              var merged = blankMagicItemState();
+              MAGIC_ITEM_TIERS.forEach(function (tier) {
+                tier.rarities.forEach(function (rarity) {
+                  var localCells = (local && local[tier.key] && local[tier.key][rarity.key]) || [];
+                  var remoteCells = (remote && remote[tier.key] && remote[tier.key][rarity.key]) || [];
+                  for (var i = 0; i < rarity.count; i++) {
+                    merged[tier.key][rarity.key][i] = Boolean(localCells[i]) || Boolean(remoteCells[i]);
+                  }
+                });
+              });
+              return merged;
+            };
+
             var pullMagicItemState = function () {
               return syncPull("magic-items").then(function (result) {
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
-                  writeMagicItemStateLocal(remote);
-                  renderMagicItemTracker(remote);
+                  var merged = mergeMagicItemState(loadMagicItemState(), remote);
+                  writeMagicItemStateLocal(merged);
+                  if (JSON.stringify(merged) !== JSON.stringify(remote)) syncPush("magic-items", merged);
+                  renderMagicItemTracker(merged);
                 } else if (syncEnabled()) {
                   syncPush("magic-items", loadMagicItemState());
                 }
@@ -7337,7 +7462,9 @@
                 if (!result.ok) return;
                 var remote = result.data;
                 if (remote) {
-                  writeFilesLocal(remote);
+                  var merged = mergeRecordArrays(loadFiles(), remote);
+                  writeFilesLocal(merged);
+                  if (!recordArraysEqual(merged, remote)) syncPush("files", merged);
                   renderFileList();
                 } else if (syncEnabled()) {
                   syncPush("files", loadFiles());
@@ -7518,6 +7645,7 @@
                 var target = files.filter(function (f) { return f.id === file.id; })[0];
                 if (!target) return;
                 target.sentToPlayers = !target.sentToPlayers;
+                target.updatedAt = Date.now();
                 saveFiles(files);
                 renderFileList();
               });
@@ -7761,6 +7889,7 @@
                   allFiles[idx].name = name;
                   allFiles[idx].category = categorySelect.value;
                   if (isLink) allFiles[idx].url = url;
+                  allFiles[idx].updatedAt = Date.now();
                 }
                 saveFiles(allFiles);
                 flDirty = false;
@@ -7807,6 +7936,7 @@
                 url: url,
                 category: category,
                 uploadedAt: Date.now(),
+                updatedAt: Date.now(),
                 sentToPlayers: false,
               });
               saveFiles(files);
@@ -7876,6 +8006,7 @@
                     name: name,
                     category: flCategorySelect.value,
                     uploadedAt: Date.now(),
+                    updatedAt: Date.now(),
                     sentToPlayers: false,
                     contentType: file.type || "application/octet-stream",
                     size: file.size,
