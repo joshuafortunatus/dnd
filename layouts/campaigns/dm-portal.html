@@ -2849,7 +2849,7 @@
               two are omitted for read-only render paths that don't need
               editing (there are none currently, but keeps this function
               usable standalone). */}}
-            var npcRenderStatBlockPanel = function (container, rawSb, edition, npc, onOverrideSaved, onReset) {
+            var npcRenderStatBlockPanel = function (container, rawSb, edition, npc, onOverrideSaved, onReset, forceView) {
               container.innerHTML = "";
               var sb = npcApplyStatBlockOverride(rawSb, npc && npc.statBlockOverride);
 
@@ -3624,7 +3624,14 @@
                   renderBottomReadOnly();
                 }
               };
-              renderBoth(currentPortalMode);
+              {{/* forceView (Combat tracker's read-only display only, see
+                combatRow) skips the portal's live Edit/View mode entirely
+                — that toggle's Edit state has no Save wired up for this
+                use, so honoring it here would show a dead-end editable
+                form. onOverrideSaved/onReset are also expected null/absent
+                for this caller, which already skips the Reset button and
+                currentStatBlockModeHandler registration above. */}}
+              renderBoth(forceView ? "view" : currentPortalMode);
 
               if (onOverrideSaved && onReset) {
                 {{/* Single-slot, not an array — only one NPC record's
@@ -3670,7 +3677,7 @@
               can offer its own Edit/Save/Reset for the top part (name,
               type/alignment line, Initiative, AC/HP/Speed) without touching
               the ability table or anything below it. */}}
-            var npcFetchAndRenderMonsterStatBlock = function (container, edition, name, npc, persistOverride) {
+            var npcFetchAndRenderMonsterStatBlock = function (container, edition, name, npc, persistOverride, forceView) {
               container.innerHTML = "";
               container.hidden = true;
               if (!name || !NPC_PROXY_URL) return;
@@ -3684,11 +3691,11 @@
               var handleReset = function () {
                 persistOverride(undefined);
                 delete npcStatBlockCache[cacheKey];
-                npcFetchAndRenderMonsterStatBlock(container, edition, name, npc, persistOverride);
+                npcFetchAndRenderMonsterStatBlock(container, edition, name, npc, persistOverride, forceView);
               };
 
               if (npcStatBlockCache[cacheKey]) {
-                npcRenderStatBlockPanel(container, npcStatBlockCache[cacheKey], edition, npc, persistOverride, handleReset);
+                npcRenderStatBlockPanel(container, npcStatBlockCache[cacheKey], edition, npc, persistOverride, handleReset, forceView);
                 return;
               }
 
@@ -3707,7 +3714,7 @@
                   if (!sb) throw new Error("parse failed");
                   npcStatBlockCache[cacheKey] = sb;
                   if (container.dataset.pendingKey !== cacheKey) return;
-                  npcRenderStatBlockPanel(container, sb, edition, npc, persistOverride, handleReset);
+                  npcRenderStatBlockPanel(container, sb, edition, npc, persistOverride, handleReset, forceView);
                 })
                 .catch(function (err) {
                   console.error("Stat block fetch/parse failed for " + name + " (" + edition + "):", err);
@@ -5661,7 +5668,7 @@
               empty.textContent = "No combatants yet — add adversary NPCs above, or add PCs in Character Manager.";
               wrap.appendChild(empty);
 
-              var combatRow = function (key, kindLabel, name, stats, linkInfo, defaultHpMax) {
+              var combatRow = function (key, kindLabel, name, stats, linkInfo, defaultHpMax, npc) {
                 stats = stats || {};
                 var tr = document.createElement("tr");
                 tr.className = "combat-row";
@@ -5793,6 +5800,89 @@
                 nameTitleWrap.appendChild(reviveBtn);
                 nameTd.appendChild(nameTitleWrap);
                 tr.classList.toggle("combat-row-dead", isDead);
+
+                {{/* Stat block toggle, right under the name — NPCs only,
+                  and only once they actually carry a stat block of some
+                  kind (a bare Custom NPC never taken to the maker, or one
+                  still missing a chosen Monster Manual entry, has nothing
+                  to show). The panel itself renders in statBlockDetailRow,
+                  a full-width row of its own appended after this whole
+                  row (see the tbody.appendChild calls at this function's
+                  end, and resortRows/updateTiebreakers/
+                  collectCombatStatsFromRows' matching ".combat-row" scope
+                  below) rather than inside this narrow name cell — the
+                  real stat block (ability score grid, action text) is
+                  wide enough to badly overflow a cell that's sharing row
+                  width with the HP/Init/AC Combat Block, so it needs the
+                  full row's width below everything else (Combat Block AND
+                  Notes), not squeezed in beside them. Collapsed by
+                  default and fetched/rendered lazily on first expand,
+                  same "don't do the work until asked" shape as
+                  fillNpcCombatDefaultsAsync above — a fight with several
+                  NPC rows shouldn't eagerly hit aidedd.org for every one
+                  of them. Reuses the exact same npcRenderStatBlockPanel/
+                  npcFetchAndRenderMonsterStatBlock the NPC's own Character
+                  Manager record renders with (see npcCustomStatBlockField
+                  and npcFetchAndRenderMonsterStatBlock's other call
+                  sites) — forced to read-only view regardless of the
+                  portal's live Edit/View toggle, since there's no Save
+                  wired up for an edit made from inside a combat row. */}}
+                var statBlockDetailRow = null;
+                if (kindLabel === "NPC" && npc && (npc.statBlockSource === "custom" || npc.statBlockSource === "monster-manual")) {
+                  var statBlockToggle = document.createElement("button");
+                  statBlockToggle.type = "button";
+                  {{/* Reuses .combat-conditions-toggle's own box/hover
+                    styling (same "collapsed control under the name" shape
+                    as Select Conditions above it) rather than a new set of
+                    rules — see that class's own definition in style.css. */}}
+                  statBlockToggle.className = "combat-statblock-toggle combat-conditions-toggle";
+                  statBlockToggle.textContent = "Show Stat Block";
+                  {{/* Wrapped in a block-level div, same as
+                    .combat-conditions-wrap around Select Conditions' own
+                    toggle — a bare <button> is inline-block and would sit
+                    on the same line as the name/tag next to it instead of
+                    dropping to its own line below, since .combat-name-cell's
+                    white-space: nowrap only stops inline content from
+                    wrapping, it doesn't make an inline-block element break
+                    onto a new line by itself. */}}
+                  var statBlockToggleWrap = document.createElement("div");
+                  statBlockToggleWrap.appendChild(statBlockToggle);
+                  nameTd.appendChild(statBlockToggleWrap);
+
+                  statBlockDetailRow = document.createElement("tr");
+                  statBlockDetailRow.className = "combat-statblock-row";
+                  statBlockDetailRow.hidden = true;
+                  var statBlockDetailCell = document.createElement("td");
+                  statBlockDetailCell.className = "combat-statblock-cell";
+                  statBlockDetailCell.colSpan = 2;
+                  var statBlockContainer = document.createElement("div");
+                  statBlockContainer.className = "combat-statblock-container npc-statblock";
+                  statBlockDetailCell.appendChild(statBlockContainer);
+                  statBlockDetailRow.appendChild(statBlockDetailCell);
+
+                  var statBlockLoaded = false;
+                  statBlockToggle.addEventListener("click", function () {
+                    var expanding = statBlockDetailRow.hidden;
+                    statBlockDetailRow.hidden = !expanding;
+                    statBlockToggle.textContent = expanding ? "Hide Stat Block" : "Show Stat Block";
+                    {{/* Reuses Select Conditions' own open-state class
+                      (gold accent) rather than a new one — same "obviously
+                      toggled on" affordance, no new CSS needed. */}}
+                    statBlockToggle.classList.toggle("combat-conditions-toggle-open", expanding);
+                    if (!expanding || statBlockLoaded) return;
+                    statBlockLoaded = true;
+                    if (npc.statBlockSource === "custom") {
+                      {{/* Same lazy blank-maker fallback npcCustomStatBlockField
+                        uses for a pre-upgrade Custom NPC — display-only here,
+                        so it's never persisted back onto npc the way that
+                        field's own version is. */}}
+                      var customSb = npc.customStatBlock || npcBlankCustomStatBlock(npc.name, npc.statBlock);
+                      npcRenderStatBlockPanel(statBlockContainer, npcCustomStatBlockToSb(customSb), npcNormalizedEdition(npc), null, null, null, true);
+                    } else {
+                      npcFetchAndRenderMonsterStatBlock(statBlockContainer, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), npc, null, true);
+                    }
+                  });
+                }
 
                 {{/* Reaction — a single checkbox, not a picklist like
                   Conditions below it; a creature either has its reaction
@@ -5995,7 +6085,16 @@
                 tiebreakerPlaceholder.value = "";
                 tiebreakerPlaceholder.textContent = "—";
                 tiebreakerSelect.appendChild(tiebreakerPlaceholder);
-                tiebreakerSelect.value = stats.tiebreaker || "";
+                {{/* Can't set .value to the persisted rank here — only the
+                  "—" placeholder option exists until updateTiebreakers
+                  populates the real 1st/2nd/... options below, and setting
+                  .value to an option that doesn't exist yet is a silent
+                  no-op. Stashed on the dataset instead so updateTiebreakers'
+                  first pass (see its previousValue read) can pick it up
+                  once the real options exist; without this, a persisted
+                  tiebreaker was silently dropped back to blank on every
+                  re-render (e.g. reopening the conflict after Save). */}}
+                tiebreakerSelect.dataset.initialValue = stats.tiebreaker || "";
                 tiebreakerSelect.addEventListener("change", function () {
                   {{/* Two combatants can't both go "1st" — picking a rank
                     already claimed by another row tied at this same
@@ -6007,7 +6106,7 @@
                     10 — each tied group ranks independently. */}}
                   var newValue = tiebreakerSelect.value;
                   if (newValue) {
-                    Array.prototype.forEach.call(tbody.querySelectorAll("tr"), function (otherRow) {
+                    Array.prototype.forEach.call(tbody.querySelectorAll("tr.combat-row"), function (otherRow) {
                       if (otherRow === tr) return;
                       var otherInit = otherRow.querySelector('[data-combat-field="initiative"]');
                       var otherTiebreaker = otherRow.querySelector('[data-combat-field="tiebreaker"]');
@@ -6575,6 +6674,16 @@
 
                 tr.appendChild(combatBlockTd);
 
+                {{/* Appended here (rather than by combatRow's own two
+                  callers, as before the stat block row) so this row and
+                  its statBlockDetailRow companion (if any) land in tbody
+                  as an adjacent pair in one place — see resortRows below,
+                  which reads this same _statBlockDetailRow property to
+                  keep the pair adjacent after every re-sort. */}}
+                tr._statBlockDetailRow = statBlockDetailRow;
+                tbody.appendChild(tr);
+                if (statBlockDetailRow) tbody.appendChild(statBlockDetailRow);
+
                 return tr;
               };
 
@@ -6595,7 +6704,12 @@
                 either can create, grow, shrink, or dissolve a tied
                 group. */}}
               var updateTiebreakers = function () {
-                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+                {{/* .combat-row only — a NPC's statBlockDetailRow (see
+                  combatRow) is a plain full-width <tr> with none of the
+                  data-combat-field cells every real combatant row has, so
+                  including it here would throw on the very first
+                  querySelector('[data-combat-field="initiative"]') below. */}}
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr.combat-row"));
                 var groupsByInitiative = {};
                 rows.forEach(function (row) {
                   var value = row.querySelector('[data-combat-field="initiative"]').value;
@@ -6610,9 +6724,15 @@
                   if (!tiedRows || tiedRows.length < 2) {
                     tiebreakerGroup.hidden = true;
                     tiebreakerSelect.value = "";
+                    delete tiebreakerSelect.dataset.initialValue;
                     return;
                   }
-                  var previousValue = tiebreakerSelect.value;
+                  {{/* Falls back to dataset.initialValue only on a row's
+                    first pass through here (see where it's stashed above)
+                    — deleted right after so every later call goes back to
+                    trusting the select's own live value, same as before. */}}
+                  var previousValue = tiebreakerSelect.value || tiebreakerSelect.dataset.initialValue || "";
+                  delete tiebreakerSelect.dataset.initialValue;
                   tiebreakerSelect.innerHTML = "";
                   var placeholder = document.createElement("option");
                   placeholder.value = "";
@@ -6638,7 +6758,7 @@
                 sort's own stable order — the same behavior resortRows had
                 before Tiebreaker existed. */}}
               var resortRows = function () {
-                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr.combat-row"));
                 rows.sort(function (a, b) {
                   var aInit = parseInt(a.querySelector('[data-combat-field="initiative"]').value, 10);
                   var bInit = parseInt(b.querySelector('[data-combat-field="initiative"]').value, 10);
@@ -6651,7 +6771,17 @@
                   if (isNaN(bTiebreaker)) bTiebreaker = Infinity;
                   return aTiebreaker - bTiebreaker;
                 });
-                rows.forEach(function (row) { tbody.appendChild(row); });
+                {{/* Re-appends each combatant's statBlockDetailRow (see
+                  combatRow) right after it, same pairing combatRow itself
+                  set up on first render — appendChild on an
+                  already-attached node just moves it, so this keeps every
+                  expanded (or collapsed) stat block panel directly under
+                  its own row instead of drifting to wherever that row's
+                  detail happened to land before this sort. */}}
+                rows.forEach(function (row) {
+                  tbody.appendChild(row);
+                  if (row._statBlockDetailRow) tbody.appendChild(row._statBlockDetailRow);
+                });
               };
 
               {{/* Fills in a freshly-added NPC row's Initiative/HP/AC once
@@ -6719,7 +6849,7 @@
 
               var collectCombatStatsFromRows = function () {
                 var stats = {};
-                Array.prototype.forEach.call(tbody.querySelectorAll("tr"), function (tr) {
+                Array.prototype.forEach.call(tbody.querySelectorAll("tr.combat-row"), function (tr) {
                   var key = tr.dataset.combatantKey;
                   var checkedConditions = tr.querySelectorAll('[data-combat-field="conditions"] input[type="checkbox"]:checked');
                   var selectedConditions = Array.prototype.map.call(checkedConditions, function (el) { return el.value; });
@@ -6777,7 +6907,7 @@
                     real published pages get theirs from pcRealLinks. */}}
                   var rosterEntry = roster.filter(function (e) { return slugifyName(e.name) === slugifyName(name); })[0];
                   var ddbUrl = rosterEntry ? rosterEntry.link : pcRealLinks[name];
-                  tbody.appendChild(combatRow(key, "PC", name, stats, ddbUrl ? { href: ddbUrl } : null));
+                  combatRow(key, "PC", name, stats, ddbUrl ? { href: ddbUrl } : null);
                 });
 
                 var checkedNpcIds = Array.prototype.map.call(
@@ -6812,8 +6942,7 @@
                     }
                     var rowLabel = qty > 1 ? npcLabel(npc) + " " + i : npcLabel(npc);
                     var npcLinkInfo = { href: "?section=character-manager&record=" + encodeURIComponent(npc.id), recordId: npc.id };
-                    var tr = combatRow(key, "NPC", rowLabel, stats, npcLinkInfo, defaults.hpMax);
-                    tbody.appendChild(tr);
+                    var tr = combatRow(key, "NPC", rowLabel, stats, npcLinkInfo, defaults.hpMax, npc);
                     {{/* Called unconditionally, not gated on "is this a
                       brand-new row" — renderRows tears down and rebuilds
                       every row on any checkbox change, so checking a second
