@@ -2222,19 +2222,15 @@
             };
             syncPullers.push(pullNpcs);
 
-            {{/* A Monster Manual NPC whose stat block has been edited away
-              from the raw fetched version (npc.statBlockOverride present)
-              is flagged everywhere its name is shown — the adversary
-              picklist, the combat tracker, NPC Tracker's own select — so a
-              DM can tell at a glance this one no longer matches the vanilla
-              stat block. Custom NPCs have no "unmodified" baseline to
-              diverge from, so they never get the suffix. */}}
+            {{/* Every NPC name display outside the stat block itself —
+              the adversary picklist, the combat tracker, NPC Tracker's
+              own select — shows just the NPC's own name, nothing appended.
+              The "has this Monster Manual NPC's stat block been edited
+              away from the raw fetched version" signal lives only on the
+              stat block panel itself (see the "Modified" badge next to
+              the monster name in npcRenderStatBlockPanel). */}}
             var npcLabel = function (npc) {
-              var base = npc.name || "Unnamed NPC";
-              if (npc.statBlockSource === "monster-manual" && npc.statBlockOverride) {
-                return base + " - Modified";
-              }
-              return base;
+              return npc.name || "Unnamed NPC";
             };
 
             var npcEditInput = function (labelText, value, dataAttrs) {
