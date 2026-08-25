@@ -2436,6 +2436,177 @@
               };
             };
 
+            {{/* Same in-memory-mutate-then-persist-if-not-new shape as
+              npcMakeStatBlockOverridePersister above — an unsaved "+
+              Add"ed NPC has nothing in storage yet to patch, so the link
+              just rides along on the in-memory npc object until the
+              outer form's own Save (collectNpcFromForm now seeds
+              visualFileId from originalNpc, same as statBlockOverride). */}}
+            var npcMakeVisualFileIdPersister = function (npc, isNewNpc) {
+              return function (fileId) {
+                if (fileId) { npc.visualFileId = fileId; } else { delete npc.visualFileId; }
+                if (isNewNpc) return;
+                var allNpcs = loadNpcs();
+                var idx = -1;
+                allNpcs.forEach(function (n, i) { if (n.id === npc.id) idx = i; });
+                if (idx === -1) return;
+                if (fileId) { allNpcs[idx].visualFileId = fileId; } else { delete allNpcs[idx].visualFileId; }
+                allNpcs[idx].updatedAt = Date.now();
+                saveNpcs(allNpcs);
+              };
+            };
+
+            {{/* NPC Visual: an ordinary File Library entry (category
+              "npc-visual", titled after the NPC) that the NPC record
+              links back to via visualFileId — nothing NPC-specific lives
+              in storage or in the Worker, just this one extra field.
+              Upload is immediate, same atomic-action reasoning as File
+              Library's own upload form (see flForm's submit handler
+              below): the bytes exist in R2 the moment the PUT succeeds,
+              so there's nothing meaningful to undo by hitting Cancel on
+              the NPC form afterward — worst case is an orphaned-but-
+              harmless File Library entry a DM can delete by hand. Only
+              rendered once File Library itself is configured (flProxyUrl
+              set by the time this runs, since that block executes
+              unconditionally earlier in this same IIFE) — there's no
+              local-only fallback, same as File Library's own proxy gate. */}}
+            var npcVisualField = function (npc, isNewNpc, npcNameInputEl) {
+              var wrap = document.createElement("div");
+              wrap.className = "npc-visual-field";
+              if (!flProxyUrl) return wrap;
+
+              var persistVisualFileId = npcMakeVisualFileIdPersister(npc, isNewNpc);
+
+              var thumbBtn = document.createElement("button");
+              thumbBtn.type = "button";
+              thumbBtn.className = "npc-visual-thumb-btn";
+              thumbBtn.title = "Open full-size visual";
+              wrap.appendChild(thumbBtn);
+
+              var controls = document.createElement("div");
+              controls.className = "npc-visual-controls";
+              var uploadBtn = document.createElement("button");
+              uploadBtn.type = "button";
+              uploadBtn.className = "npc-visual-upload-btn";
+              var fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = "image/*";
+              fileInput.hidden = true;
+              var removeBtn = document.createElement("button");
+              removeBtn.type = "button";
+              removeBtn.className = "npc-visual-remove-btn";
+              removeBtn.textContent = "Remove";
+              controls.appendChild(uploadBtn);
+              controls.appendChild(fileInput);
+              controls.appendChild(removeBtn);
+              wrap.appendChild(controls);
+
+              var error = document.createElement("p");
+              error.className = "npc-visual-error";
+              error.hidden = true;
+              wrap.appendChild(error);
+
+              var renderThumb = function () {
+                var hasVisual = Boolean(npc.visualFileId);
+                thumbBtn.hidden = !hasVisual;
+                removeBtn.hidden = !hasVisual;
+                uploadBtn.textContent = hasVisual ? "Change Visual" : "+ Add Visual";
+                if (!hasVisual) return;
+                thumbBtn.innerHTML = "";
+                var loadingSpan = document.createElement("span");
+                loadingSpan.className = "npc-visual-thumb file-library-thumb-loading";
+                thumbBtn.appendChild(loadingSpan);
+                fetchFileBlobUrl(npc.visualFileId).then(function (url) {
+                  if (!url || !loadingSpan.parentNode) return;
+                  var img = document.createElement("img");
+                  img.className = "npc-visual-thumb";
+                  img.src = url;
+                  img.alt = npc.name || "NPC visual";
+                  loadingSpan.replaceWith(img);
+                });
+              };
+              renderThumb();
+
+              thumbBtn.addEventListener("click", function () {
+                fetchFileBlobUrl(npc.visualFileId).then(function (url) {
+                  if (url) window.open(url, "_blank", "noopener");
+                });
+              });
+
+              uploadBtn.addEventListener("click", function () { fileInput.click(); });
+
+              fileInput.addEventListener("change", function () {
+                var file = fileInput.files[0];
+                fileInput.value = "";
+                if (!file) return;
+                var npcName = (npcNameInputEl.value || "").trim();
+                if (!npcName) {
+                  error.hidden = false;
+                  error.textContent = "Enter an NPC Name before uploading a visual.";
+                  return;
+                }
+                if (file.size > MAX_FILE_BYTES_CLIENT) {
+                  error.hidden = false;
+                  error.textContent = "File is too large (max 15MB).";
+                  return;
+                }
+                error.hidden = true;
+                uploadBtn.disabled = true;
+                var originalText = uploadBtn.textContent;
+                uploadBtn.textContent = "Uploading…";
+                var id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+                fetch(flProxyUrl + "/files/" + flSlug + "/" + id, {
+                  method: "PUT",
+                  headers: {
+                    Authorization: "Bearer " + getSyncToken(),
+                    "Content-Type": file.type || "application/octet-stream",
+                    "X-File-Name": encodeURIComponent(file.name),
+                  },
+                  body: file,
+                })
+                  .then(function (res) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = originalText;
+                    if (!res.ok) {
+                      return res.text().then(function (body) {
+                        error.hidden = false;
+                        error.textContent = "Upload failed (" + res.status + "): " + (body || res.statusText);
+                      });
+                    }
+                    var files = loadFiles();
+                    files.push({
+                      id: id,
+                      type: "file",
+                      name: npcName,
+                      category: "npc-visual",
+                      uploadedAt: Date.now(),
+                      updatedAt: Date.now(),
+                      sentToPlayers: false,
+                      contentType: file.type || "application/octet-stream",
+                      size: file.size,
+                      fileName: file.name,
+                    });
+                    saveFiles(files);
+                    if (typeof renderFileList === "function") renderFileList();
+                    persistVisualFileId(id);
+                    renderThumb();
+                  })
+                  .catch(function () {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = originalText;
+                    error.hidden = false;
+                    error.textContent = "Upload failed — the request never reached the server (check for a CORS error in the browser console, or that the Worker URL is reachable).";
+                  });
+              });
+
+              removeBtn.addEventListener("click", function () {
+                persistVisualFileId("");
+                renderThumb();
+              });
+
+              return wrap;
+            };
+
             {{/* Shared 3-row, 2-column header grid (Name/Monster,
               Species/Attitude, Reference Link/Stat Block) — used for both
               Monster Manual NPCs (all six cells populated) and Custom NPCs
@@ -4431,6 +4602,7 @@
                 statBlockEdition: originalNpc.statBlockEdition,
                 statBlockOverride: originalNpc.statBlockOverride,
                 customStatBlock: originalNpc.customStatBlock,
+                visualFileId: originalNpc.visualFileId,
               };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 npc[el.dataset.field] = el.value;
@@ -4536,6 +4708,7 @@
               header.className = "npc-header-fields";
               var nameFieldWrap = markRequired(npcEditInput("NPC Name", npc.name, { field: "name" }));
               var nameInputEl = nameFieldWrap.querySelector('[data-field="name"]');
+              form.appendChild(npcVisualField(npc, isNew, nameInputEl));
               var speciesFieldWrap = npcEditInput("Species", npc.species, { field: "species" });
               var attitudeFieldWrap = npcEditInput("Attitude", npc.attitude, { field: "attitude" });
 

@@ -892,6 +892,47 @@ body.is-home {
 
 .npc-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .npc-field label { color: var(--text-dim); font-size: 0.9rem; }
+
+.npc-visual-field {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.npc-visual-thumb-btn {
+  flex: 0 0 auto;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+.npc-visual-thumb {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--bg-raised);
+}
+.npc-visual-controls { display: flex; gap: 0.5rem; }
+.npc-visual-upload-btn,
+.npc-visual-remove-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.npc-visual-upload-btn:hover,
+.npc-visual-remove-btn:hover { color: var(--accent); border-color: var(--accent); }
+.npc-visual-error {
+  width: 100%;
+  color: #d16a6a;
+  font-size: 0.9rem;
+  margin: 0;
+}
 .npc-field input[type="text"],
 .npc-field input[type="url"],
 .npc-field select,
