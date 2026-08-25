@@ -339,8 +339,8 @@
                     </select>
                     <label for="file-library-sort">Sort by</label>
                     <select id="file-library-sort">
-                      <option value="uploadedAt">Date added (newest first)</option>
                       <option value="name">Name</option>
+                      <option value="uploadedAt">Date added (newest first)</option>
                       <option value="category">Category</option>
                       <option value="sentToPlayers">Sent to players</option>
                     </select>
@@ -4444,7 +4444,7 @@
             };
 
             var renderNpcSelect = function () {
-              var npcs = loadNpcs().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var npcs = loadNpcs().slice().sort(function (a, b) { return npcLabel(a).localeCompare(npcLabel(b)); });
               var currentValue = npcSelect.value;
               npcSelect.innerHTML = "";
               var placeholder = document.createElement("option");
@@ -7738,7 +7738,7 @@
                 return b.sentToPlayers ? 1 : -1;
               },
             };
-            var flCurrentSort = "uploadedAt";
+            var flCurrentSort = "name";
 
             var buildFileRow = function (file) {
               var li = document.createElement("li");
