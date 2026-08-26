@@ -4841,9 +4841,10 @@
                 pendingNewNpc = null;
                 npcDirty = false;
                 renderNpcSelect();
-                npcSelect.value = "";
-                npcCurrentValue = "";
-                clearNpcDetail();
+                npcSelect.value = updated.id;
+                npcCurrentValue = updated.id;
+                applyPortalMode("view");
+                renderNpcForm(updated.id);
               });
 
               cancelBtn.addEventListener("click", cancelNpcForm);
