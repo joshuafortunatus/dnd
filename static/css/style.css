@@ -880,18 +880,102 @@ body.is-home {
 }
 .npc-header-fields .npc-field { flex: 1 1 14rem; }
 
-/* Monster / aidedd.org link / Name / Reference Link as four equal
-   boxes, 2 per row — a full-width row of its own within the flex-wrap
-   header, same as .npc-field-wide used to be. */
+/* Monster / aidedd.org link / Name / Reference Link / visual panel as
+   three equal stacked-column boxes — a full-width row of its own
+   within the flex-wrap header, same as .npc-field-wide used to be.
+   Column 3 is reserved for .npc-visual-panel (explicit grid-column
+   below) so the Name/Species/Reference Link and Monster/Attitude/Stat
+   Block stacks keep occupying columns 1-2 exactly as before. */
 .npc-header-fields .npc-monster-grid { flex-basis: 100%; }
 .npc-monster-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: repeat(3, auto);
   gap: 1.5rem;
 }
 
 .npc-field { display: flex; flex-direction: column; gap: 0.35rem; }
 .npc-field label { color: var(--text-dim); font-size: 0.9rem; }
+
+/* Spans all 3 rows of the grid's 3rd column. Row/column track sizes
+   are established purely by the Name/Species/Reference Link and
+   Monster/Attitude/Stat Block stacks beside it — .npc-visual-thumb is
+   position: absolute (see below) specifically so an oversized image's
+   intrinsic size can never feed back into the grid's own auto track
+   sizing and inflate it; the image just fills whatever box this panel
+   ends up stretched to.
+
+   grid-row: 1 / -1 only resolves correctly because .npc-monster-grid
+   now declares grid-template-rows explicitly — "-1" means "the last
+   line of the EXPLICIT grid," which without that declaration is just
+   line 1 (no explicit row tracks existed), collapsing this to a
+   1-row span. That silently shoved this panel into row 1 only, which
+   in turn spilled the auto-placed Reference Link field into the
+   now-vacant row-2/column-3 cell and orphaned Stat Block alone in
+   row 3 — the exact misalignment this rule now prevents. */
+.npc-visual-panel {
+  grid-column: 3;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+}
+.npc-visual-thumb-btn {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+/* Absolutely positioned within thumb-btn's already-resolved box (see
+   the panel comment above) — inset:0 + object-fit: contain keeps the
+   aspect ratio and centers it, capped to that box's width/height,
+   without the image itself ever contributing to how large that box
+   gets to be. */
+.npc-visual-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  object-fit: contain;
+  background: none;
+}
+.npc-visual-controls { display: flex; gap: 0.5rem; flex: 0 0 auto; }
+.npc-visual-upload-btn,
+.npc-visual-remove-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.npc-visual-upload-btn:hover,
+.npc-visual-remove-btn:hover { color: var(--accent); border-color: var(--accent); }
+.npc-visual-error {
+  width: 100%;
+  text-align: center;
+  color: #d16a6a;
+  font-size: 0.9rem;
+  margin: 0;
+}
+/* Add/Change Visual and Remove are both mutating controls, hidden in
+   View mode like every other section's edit-only buttons — the
+   "-remove" substring in .npc-visual-remove-btn already matches the
+   blanket [class*="-remove"] view-mode rule above, but
+   .npc-visual-upload-btn doesn't match any of that rule's other
+   class-suffix patterns, so this hides the whole controls wrap
+   (covering both buttons and the file input) in one rule instead. */
+.dm-view-scope.view-mode .npc-visual-controls { display: none !important; }
 .npc-field input[type="text"],
 .npc-field input[type="url"],
 .npc-field select,

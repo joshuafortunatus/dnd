@@ -339,8 +339,8 @@
                     </select>
                     <label for="file-library-sort">Sort by</label>
                     <select id="file-library-sort">
-                      <option value="uploadedAt">Date added (newest first)</option>
                       <option value="name">Name</option>
+                      <option value="uploadedAt">Date added (newest first)</option>
                       <option value="category">Category</option>
                       <option value="sentToPlayers">Sent to players</option>
                     </select>
@@ -2436,6 +2436,190 @@
               };
             };
 
+            {{/* Same in-memory-mutate-then-persist-if-not-new shape as
+              npcMakeStatBlockOverridePersister above — an unsaved "+
+              Add"ed NPC has nothing in storage yet to patch, so the link
+              just rides along on the in-memory npc object until the
+              outer form's own Save (collectNpcFromForm now seeds
+              visualFileId from originalNpc, same as statBlockOverride). */}}
+            var npcMakeVisualFileIdPersister = function (npc, isNewNpc) {
+              return function (fileId) {
+                if (fileId) { npc.visualFileId = fileId; } else { delete npc.visualFileId; }
+                if (isNewNpc) return;
+                var allNpcs = loadNpcs();
+                var idx = -1;
+                allNpcs.forEach(function (n, i) { if (n.id === npc.id) idx = i; });
+                if (idx === -1) return;
+                if (fileId) { allNpcs[idx].visualFileId = fileId; } else { delete allNpcs[idx].visualFileId; }
+                allNpcs[idx].updatedAt = Date.now();
+                saveNpcs(allNpcs);
+              };
+            };
+
+            {{/* NPC Visual: an ordinary File Library entry (category
+              "npc-visual", titled after the NPC) that the NPC record
+              links back to via visualFileId — nothing NPC-specific lives
+              in storage or in the Worker, just this one extra field.
+              Upload is immediate, same atomic-action reasoning as File
+              Library's own upload form (see flForm's submit handler
+              below): the bytes exist in R2 the moment the PUT succeeds,
+              so there's nothing meaningful to undo by hitting Cancel on
+              the NPC form afterward — worst case is an orphaned-but-
+              harmless File Library entry a DM can delete by hand. Only
+              rendered once File Library itself is configured (flProxyUrl
+              set by the time this runs, since that block executes
+              unconditionally earlier in this same IIFE) — there's no
+              local-only fallback, same as File Library's own proxy gate.
+
+              Returned as the 7th cell of the header's 3-row/3-column
+              .npc-monster-grid (see both call sites above) — CSS gives it
+              an explicit grid-column/grid-row spanning all 3 rows of the
+              3rd column, so it renders as one tall panel beside the
+              Name/Species/Reference Link and Monster/Attitude/Stat Block
+              stacks regardless of where in the cells array it's passed.
+              .npc-visual-controls (Add/Change/Remove) is hidden in View
+              mode by an explicit style.css rule — the "-remove" substring
+              in .npc-visual-remove-btn already matches the blanket
+              [class*="-remove"] view-mode rule, but .npc-visual-upload-btn
+              doesn't match any of the existing class-suffix conventions,
+              so hiding the whole controls wrap covers both in one rule. */}}
+            var npcVisualField = function (npc, isNewNpc, npcNameInputEl) {
+              var wrap = document.createElement("div");
+              wrap.className = "npc-visual-panel";
+              if (!flProxyUrl) return wrap;
+
+              var persistVisualFileId = npcMakeVisualFileIdPersister(npc, isNewNpc);
+
+              var thumbBtn = document.createElement("button");
+              thumbBtn.type = "button";
+              thumbBtn.className = "npc-visual-thumb-btn";
+              thumbBtn.title = "Open full-size visual";
+              wrap.appendChild(thumbBtn);
+
+              var controls = document.createElement("div");
+              controls.className = "npc-visual-controls";
+              var uploadBtn = document.createElement("button");
+              uploadBtn.type = "button";
+              uploadBtn.className = "npc-visual-upload-btn";
+              var fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = "image/*";
+              fileInput.hidden = true;
+              var removeBtn = document.createElement("button");
+              removeBtn.type = "button";
+              removeBtn.className = "npc-visual-remove-btn";
+              removeBtn.textContent = "Remove";
+              controls.appendChild(uploadBtn);
+              controls.appendChild(fileInput);
+              controls.appendChild(removeBtn);
+              wrap.appendChild(controls);
+
+              var error = document.createElement("p");
+              error.className = "npc-visual-error";
+              error.hidden = true;
+              wrap.appendChild(error);
+
+              var renderThumb = function () {
+                var hasVisual = Boolean(npc.visualFileId);
+                thumbBtn.hidden = !hasVisual;
+                removeBtn.hidden = !hasVisual;
+                uploadBtn.textContent = hasVisual ? "Change Visual" : "+ Add Visual";
+                if (!hasVisual) return;
+                thumbBtn.innerHTML = "";
+                var loadingSpan = document.createElement("span");
+                loadingSpan.className = "npc-visual-thumb file-library-thumb-loading";
+                thumbBtn.appendChild(loadingSpan);
+                fetchFileBlobUrl(npc.visualFileId).then(function (url) {
+                  if (!url || !loadingSpan.parentNode) return;
+                  var img = document.createElement("img");
+                  img.className = "npc-visual-thumb";
+                  img.src = url;
+                  img.alt = npc.name || "NPC visual";
+                  loadingSpan.replaceWith(img);
+                });
+              };
+              renderThumb();
+
+              thumbBtn.addEventListener("click", function () {
+                fetchFileBlobUrl(npc.visualFileId).then(function (url) {
+                  if (url) window.open(url, "_blank", "noopener");
+                });
+              });
+
+              uploadBtn.addEventListener("click", function () { fileInput.click(); });
+
+              fileInput.addEventListener("change", function () {
+                var file = fileInput.files[0];
+                fileInput.value = "";
+                if (!file) return;
+                var npcName = (npcNameInputEl.value || "").trim();
+                if (!npcName) {
+                  error.hidden = false;
+                  error.textContent = "Enter an NPC Name before uploading a visual.";
+                  return;
+                }
+                if (file.size > MAX_FILE_BYTES_CLIENT) {
+                  error.hidden = false;
+                  error.textContent = "File is too large (max 15MB).";
+                  return;
+                }
+                error.hidden = true;
+                uploadBtn.disabled = true;
+                var originalText = uploadBtn.textContent;
+                uploadBtn.textContent = "Uploading…";
+                var id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+                fetch(flProxyUrl + "/files/" + flSlug + "/" + id, {
+                  method: "PUT",
+                  headers: {
+                    Authorization: "Bearer " + getSyncToken(),
+                    "Content-Type": file.type || "application/octet-stream",
+                    "X-File-Name": encodeURIComponent(file.name),
+                  },
+                  body: file,
+                })
+                  .then(function (res) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = originalText;
+                    if (!res.ok) {
+                      return res.text().then(function (body) {
+                        error.hidden = false;
+                        error.textContent = "Upload failed (" + res.status + "): " + (body || res.statusText);
+                      });
+                    }
+                    var files = loadFiles();
+                    files.push({
+                      id: id,
+                      type: "file",
+                      name: npcName,
+                      category: "npc-visual",
+                      uploadedAt: Date.now(),
+                      updatedAt: Date.now(),
+                      sentToPlayers: false,
+                      contentType: file.type || "application/octet-stream",
+                      size: file.size,
+                      fileName: file.name,
+                    });
+                    saveFiles(files);
+                    if (typeof renderFileList === "function") renderFileList();
+                    persistVisualFileId(id);
+                    renderThumb();
+                  })
+                  .catch(function () {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = originalText;
+                    error.hidden = false;
+                    error.textContent = "Upload failed — the request never reached the server (check for a CORS error in the browser console, or that the Worker URL is reachable).";
+                  });
+              });
+
+              removeBtn.addEventListener("click", function () {
+                persistVisualFileId("");
+                renderThumb();
+              });
+
+              return wrap;
+            };
+
             {{/* Shared 3-row, 2-column header grid (Name/Monster,
               Species/Attitude, Reference Link/Stat Block) — used for both
               Monster Manual NPCs (all six cells populated) and Custom NPCs
@@ -2456,7 +2640,7 @@
               return grid;
             };
 
-            var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap) {
+            var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap, visualFieldWrap) {
               var monsterWrap = document.createElement("div");
               monsterWrap.className = "npc-field";
               var label = document.createElement("label");
@@ -2507,6 +2691,7 @@
                 attitudeFieldWrap,
                 npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }),
                 linkWrap,
+                visualFieldWrap,
               ]);
 
               var statblockPanel = document.createElement("div");
@@ -4431,6 +4616,7 @@
                 statBlockEdition: originalNpc.statBlockEdition,
                 statBlockOverride: originalNpc.statBlockOverride,
                 customStatBlock: originalNpc.customStatBlock,
+                visualFileId: originalNpc.visualFileId,
               };
               Array.prototype.forEach.call(form.querySelectorAll("[data-field]"), function (el) {
                 npc[el.dataset.field] = el.value;
@@ -4444,7 +4630,7 @@
             };
 
             var renderNpcSelect = function () {
-              var npcs = loadNpcs().slice().sort(function (a, b) { return a.createdAt - b.createdAt; });
+              var npcs = loadNpcs().slice().sort(function (a, b) { return npcLabel(a).localeCompare(npcLabel(b)); });
               var currentValue = npcSelect.value;
               npcSelect.innerHTML = "";
               var placeholder = document.createElement("option");
@@ -4537,23 +4723,25 @@
               var nameFieldWrap = markRequired(npcEditInput("NPC Name", npc.name, { field: "name" }));
               var nameInputEl = nameFieldWrap.querySelector('[data-field="name"]');
               var speciesFieldWrap = npcEditInput("Species", npc.species, { field: "species" });
-              var attitudeFieldWrap = npcEditInput("Attitude", npc.attitude, { field: "attitude" });
+              var attitudeFieldWrap = npcEditInput("Alignment & Attitude", npc.attitude, { field: "attitude" });
 
               {{/* Source is fixed at "+ Add NPC" time (npcAddBtn below) and
                 never shown as an editable toggle here — each NPC just gets
                 the field layout that matches how it was created. */}}
               if (npc.statBlockSource === "monster-manual") {
                 {{/* npcMonsterField inserts nameFieldWrap, speciesFieldWrap,
-                  and attitudeFieldWrap itself into its own 3-row, 2-column
-                  grid (Name/Monster, Species/Attitude, Reference Link/Stat
-                  Block) — appending them separately here would leave them
-                  outside that grid instead of arranged alongside Monster
-                  and Stat Block. Monster itself is marked required inside
-                  npcMonsterField, right on its own label, rather than here —
-                  markRequired finds the *first* label in a subtree, and
-                  Name (already required) is also inside this grid, so
-                  wrapping the whole grid here would just star Name twice. */}}
-                header.appendChild(npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap));
+                  and attitudeFieldWrap itself into its own 3-row, 3-column
+                  grid (Name/Monster/Visual, Species/Attitude/-, Reference
+                  Link/Stat Block/- — the visual panel spans all 3 rows in
+                  the 3rd column) — appending them separately here would
+                  leave them outside that grid instead of arranged alongside
+                  Monster, Stat Block, and the visual. Monster itself is
+                  marked required inside npcMonsterField, right on its own
+                  label, rather than here — markRequired finds the *first*
+                  label in a subtree, and Name (already required) is also
+                  inside this grid, so wrapping the whole grid here would
+                  just star Name twice. */}}
+                header.appendChild(npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap, npcVisualField(npc, isNew, nameInputEl)));
               } else {
                 {{/* Custom NPCs share the same Name/Monster, Species/Attitude,
                   Reference Link/Stat Block grid as Monster Manual NPCs — the
@@ -4562,7 +4750,10 @@
                   something else. The Custom Stat Block editor (Alignment,
                   Traits/Actions/etc.) is its own full-width panel below the
                   grid, same position as Monster Manual's fetched stat block
-                  panel. */}}
+                  panel. The visual panel (7th cell) spans all 3 rows in the
+                  grid's 3rd column via its own explicit grid placement (see
+                  .npc-visual-panel in style.css) — its position in this
+                  array doesn't matter. */}}
                 header.appendChild(npcHeaderGrid([
                   nameFieldWrap,
                   npcHiddenGridCell(),
@@ -4570,6 +4761,7 @@
                   attitudeFieldWrap,
                   npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }),
                   npcHiddenGridCell(),
+                  npcVisualField(npc, isNew, nameInputEl),
                 ]));
                 header.appendChild(npcCustomStatBlockField(npc, isNew, npcNormalizedEdition(npc)));
               }
@@ -7738,7 +7930,7 @@
                 return b.sentToPlayers ? 1 : -1;
               },
             };
-            var flCurrentSort = "uploadedAt";
+            var flCurrentSort = "name";
 
             var buildFileRow = function (file) {
               var li = document.createElement("li");
