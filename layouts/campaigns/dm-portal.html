@@ -2469,10 +2469,23 @@
               rendered once File Library itself is configured (flProxyUrl
               set by the time this runs, since that block executes
               unconditionally earlier in this same IIFE) — there's no
-              local-only fallback, same as File Library's own proxy gate. */}}
+              local-only fallback, same as File Library's own proxy gate.
+
+              Returned as the 7th cell of the header's 3-row/3-column
+              .npc-monster-grid (see both call sites above) — CSS gives it
+              an explicit grid-column/grid-row spanning all 3 rows of the
+              3rd column, so it renders as one tall panel beside the
+              Name/Species/Reference Link and Monster/Attitude/Stat Block
+              stacks regardless of where in the cells array it's passed.
+              .npc-visual-controls (Add/Change/Remove) is hidden in View
+              mode by an explicit style.css rule — the "-remove" substring
+              in .npc-visual-remove-btn already matches the blanket
+              [class*="-remove"] view-mode rule, but .npc-visual-upload-btn
+              doesn't match any of the existing class-suffix conventions,
+              so hiding the whole controls wrap covers both in one rule. */}}
             var npcVisualField = function (npc, isNewNpc, npcNameInputEl) {
               var wrap = document.createElement("div");
-              wrap.className = "npc-visual-field";
+              wrap.className = "npc-visual-panel";
               if (!flProxyUrl) return wrap;
 
               var persistVisualFileId = npcMakeVisualFileIdPersister(npc, isNewNpc);
@@ -2627,7 +2640,7 @@
               return grid;
             };
 
-            var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap) {
+            var npcMonsterField = function (npc, isNewNpc, edition, nameValue, nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap, visualFieldWrap) {
               var monsterWrap = document.createElement("div");
               monsterWrap.className = "npc-field";
               var label = document.createElement("label");
@@ -2678,6 +2691,7 @@
                 attitudeFieldWrap,
                 npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }),
                 linkWrap,
+                visualFieldWrap,
               ]);
 
               var statblockPanel = document.createElement("div");
@@ -4708,25 +4722,26 @@
               header.className = "npc-header-fields";
               var nameFieldWrap = markRequired(npcEditInput("NPC Name", npc.name, { field: "name" }));
               var nameInputEl = nameFieldWrap.querySelector('[data-field="name"]');
-              form.appendChild(npcVisualField(npc, isNew, nameInputEl));
               var speciesFieldWrap = npcEditInput("Species", npc.species, { field: "species" });
-              var attitudeFieldWrap = npcEditInput("Attitude", npc.attitude, { field: "attitude" });
+              var attitudeFieldWrap = npcEditInput("Alignment & Attitude", npc.attitude, { field: "attitude" });
 
               {{/* Source is fixed at "+ Add NPC" time (npcAddBtn below) and
                 never shown as an editable toggle here — each NPC just gets
                 the field layout that matches how it was created. */}}
               if (npc.statBlockSource === "monster-manual") {
                 {{/* npcMonsterField inserts nameFieldWrap, speciesFieldWrap,
-                  and attitudeFieldWrap itself into its own 3-row, 2-column
-                  grid (Name/Monster, Species/Attitude, Reference Link/Stat
-                  Block) — appending them separately here would leave them
-                  outside that grid instead of arranged alongside Monster
-                  and Stat Block. Monster itself is marked required inside
-                  npcMonsterField, right on its own label, rather than here —
-                  markRequired finds the *first* label in a subtree, and
-                  Name (already required) is also inside this grid, so
-                  wrapping the whole grid here would just star Name twice. */}}
-                header.appendChild(npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap));
+                  and attitudeFieldWrap itself into its own 3-row, 3-column
+                  grid (Name/Monster/Visual, Species/Attitude/-, Reference
+                  Link/Stat Block/- — the visual panel spans all 3 rows in
+                  the 3rd column) — appending them separately here would
+                  leave them outside that grid instead of arranged alongside
+                  Monster, Stat Block, and the visual. Monster itself is
+                  marked required inside npcMonsterField, right on its own
+                  label, rather than here — markRequired finds the *first*
+                  label in a subtree, and Name (already required) is also
+                  inside this grid, so wrapping the whole grid here would
+                  just star Name twice. */}}
+                header.appendChild(npcMonsterField(npc, isNew, npcNormalizedEdition(npc), npcNormalizedMonsterName(npc), nameInputEl, nameFieldWrap, speciesFieldWrap, attitudeFieldWrap, npcVisualField(npc, isNew, nameInputEl)));
               } else {
                 {{/* Custom NPCs share the same Name/Monster, Species/Attitude,
                   Reference Link/Stat Block grid as Monster Manual NPCs — the
@@ -4735,7 +4750,10 @@
                   something else. The Custom Stat Block editor (Alignment,
                   Traits/Actions/etc.) is its own full-width panel below the
                   grid, same position as Monster Manual's fetched stat block
-                  panel. */}}
+                  panel. The visual panel (7th cell) spans all 3 rows in the
+                  grid's 3rd column via its own explicit grid placement (see
+                  .npc-visual-panel in style.css) — its position in this
+                  array doesn't matter. */}}
                 header.appendChild(npcHeaderGrid([
                   nameFieldWrap,
                   npcHiddenGridCell(),
@@ -4743,6 +4761,7 @@
                   attitudeFieldWrap,
                   npcEditLinkInput("Reference Link", npc.mmPage, { field: "mmPage" }),
                   npcHiddenGridCell(),
+                  npcVisualField(npc, isNew, nameInputEl),
                 ]));
                 header.appendChild(npcCustomStatBlockField(npc, isNew, npcNormalizedEdition(npc)));
               }
