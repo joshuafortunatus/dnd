@@ -390,6 +390,83 @@ body.is-home {
 .hub-table { margin-top: 1rem; }
 .hub-table td input[type="checkbox"] { cursor: pointer; }
 
+{{/* A tagged NPC/Location stays inline as plain text (no layout
+  disruption inside a table cell, a session title, etc.) — the visual only
+  appears as a floating thumbnail on hover/focus (tabIndex=0 on the span
+  makes it keyboard-reachable too, for parity with mouse hover). */}}
+.hub-tag {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted var(--accent);
+  color: var(--accent);
+  cursor: default;
+}
+.hub-tag-preview {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 0.35rem;
+  z-index: 30;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.3rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.hub-tag-preview img {
+  display: block;
+  width: 160px;
+  height: auto;
+  border-radius: 3px;
+}
+.hub-tag:hover .hub-tag-preview,
+.hub-tag:focus .hub-tag-preview,
+.hub-tag:focus-within .hub-tag-preview {
+  display: block;
+}
+
+.hub-mention-dropdown {
+  position: absolute;
+  z-index: 20;
+  margin-top: 0.25rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  max-height: 14rem;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.hub-mention-empty {
+  padding: 0.6rem 0.75rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+.hub-mention-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.hub-mention-item img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.hub-mention-item.is-selected,
+.hub-mention-item:hover {
+  background: rgba(201, 162, 39, 0.15);
+}
+
 .hub-edit-gate {
   display: flex;
   flex-direction: column;
