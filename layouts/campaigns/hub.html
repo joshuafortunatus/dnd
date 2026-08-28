@@ -666,15 +666,32 @@
         var tag = document.createElement("span");
         tag.className = "hub-tag";
         tag.tabIndex = 0;
+        tag.setAttribute("role", "button");
+        tag.title = "View full image";
         tag.textContent = match[2] || "Untitled";
+        var fullImgUrl = proxyUrl + "/files/" + slug + "/" + match[1];
         var preview = document.createElement("span");
         preview.className = "hub-tag-preview";
         var img = document.createElement("img");
-        img.src = proxyUrl + "/files/" + slug + "/" + match[1];
+        img.src = fullImgUrl;
         img.alt = match[2] || "";
         img.loading = "lazy";
         preview.appendChild(img);
         tag.appendChild(preview);
+        {{/* Hover/focus already shows a small thumbnail (above); click (or
+          Enter/Space, since this is a tabIndex=0 span, not a real button)
+          opens the same file's full-size original in a new tab — same
+          "open full-size" pattern as the NPC visual and File Library
+          thumbnails in the DM portal, just without an auth'd blob fetch
+          since this URL is already the public one the preview <img> uses. */}}
+        var openFullHubTagImage = function () { window.open(fullImgUrl, "_blank", "noopener"); };
+        tag.addEventListener("click", openFullHubTagImage);
+        tag.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openFullHubTagImage();
+          }
+        });
         frag.appendChild(tag);
         lastIndex = re.lastIndex;
       }

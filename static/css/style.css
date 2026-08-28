@@ -393,13 +393,14 @@ body.is-home {
 {{/* A tagged NPC/Location stays inline as plain text (no layout
   disruption inside a table cell, a session title, etc.) — the visual only
   appears as a floating thumbnail on hover/focus (tabIndex=0 on the span
-  makes it keyboard-reachable too, for parity with mouse hover). */}}
+  makes it keyboard-reachable too, for parity with mouse hover), and
+  clicking (or Enter/Space) opens that same image full-size in a new tab. */}}
 .hub-tag {
   position: relative;
   display: inline-block;
   border-bottom: 1px dotted var(--accent);
   color: var(--accent);
-  cursor: default;
+  cursor: pointer;
 }
 .hub-tag-preview {
   display: none;
