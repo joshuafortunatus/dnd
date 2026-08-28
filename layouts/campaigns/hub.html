@@ -639,6 +639,215 @@
     };
   </script>
 
+  {{/* Lets any text field below (Session title/recap, Misc title/body,
+    and the generic table editor's text/textarea columns — Name fields
+    included) tag an NPC or Location, anywhere the author places it — not
+    just one fixed slot per entry, and not limited to the flat Files
+    gallery. Deliberately "pick existing only": it reads from the same
+    /public-files/<slug> the Files tab already uses (so it can only offer
+    images the DM uploaded via the DM Portal's File Library and marked
+    sent-to-players), no upload path added here. A token like
+    [[img:<fileId>:<name>]] is inserted into the field's raw text via the
+    "@" autocomplete below; hubRenderRichNodes is what turns that token
+    back into a hoverable tag wherever the text is displayed — the tagged
+    name stays inline as plain text, with the visual only appearing as a
+    thumbnail on hover/focus, rather than always rendering a full image
+    inline. */}}
+  <script>
+    var HUB_IMG_TOKEN_RE = /\[\[img:([^:\]]+):([^\]]*)\]\]/g;
+
+    window.hubRenderRichNodes = function (text, slug, proxyUrl) {
+      var frag = document.createDocumentFragment();
+      var re = new RegExp(HUB_IMG_TOKEN_RE.source, "g");
+      var lastIndex = 0;
+      var match;
+      while ((match = re.exec(text || ""))) {
+        if (match.index > lastIndex) frag.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+        var tag = document.createElement("span");
+        tag.className = "hub-tag";
+        tag.tabIndex = 0;
+        tag.textContent = match[2] || "Untitled";
+        var preview = document.createElement("span");
+        preview.className = "hub-tag-preview";
+        var img = document.createElement("img");
+        img.src = proxyUrl + "/files/" + slug + "/" + match[1];
+        img.alt = match[2] || "";
+        img.loading = "lazy";
+        preview.appendChild(img);
+        tag.appendChild(preview);
+        frag.appendChild(tag);
+        lastIndex = re.lastIndex;
+      }
+      if (lastIndex < (text || "").length) frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+      return frag;
+    };
+
+    {{/* Used by the "@" mention dropdown below — one fetch of
+      /public-files, filtered down to the map/npc-visual images it can
+      offer. Not cached: a stale list would hide something the DM just
+      shared mid-session, and this is a small JSON GET, not the R2 bytes
+      themselves. */}}
+    var hubFetchPickableImages = function (slug, proxyUrl) {
+      return fetch(proxyUrl + "/public-files/" + slug)
+        .then(function (res) { return res.ok ? res.json() : []; })
+        .then(function (files) {
+          return (files || []).filter(function (f) {
+            return f.type !== "link" && (f.category === "map" || f.category === "npc-visual") &&
+              (f.contentType || "").indexOf("image/") === 0;
+          });
+        })
+        .catch(function () { return []; });
+    };
+
+    var hubMakeImgToken = function (file) {
+      var name = (file.name || "").replace(/[\]\n]/g, " ");
+      return "[[img:" + file.id + ":" + name + "]]";
+    };
+
+    {{/* "@" mention autocomplete — typing "@" starts a mention (the "@"
+      must be at the start of the text or preceded by whitespace, so it
+      doesn't fire mid-word), and everything typed after it up to the next
+      whitespace is a live filter over the map/npc-visual list. One fetch
+      per mention session (keyed by the "@"'s position, not per keystroke)
+      since the list doesn't change while you're mid-mention; every
+      keystroke after that just re-filters the already-fetched array.
+      Deliberately anchored under the field itself rather than at the true
+      caret position (which would need a hidden-mirror-div measurement) —
+      simpler, and every field this attaches to (single-line inputs and
+      short textareas alike) is short enough that "below the field" reads
+      as "below the caret" in practice. Attached directly to every
+      text/textarea field below — this is the only tagging affordance;
+      there's no separate upload/insert button. */}}
+    window.hubAttachMentions = function (textarea, slug, proxyUrl) {
+      var wrap = textarea.parentNode;
+      wrap.style.position = "relative";
+
+      var dropdown = null;
+      var items = [];
+      var selectedIndex = 0;
+      var atIndex = -1;
+      var images = null;
+      var fetchToken = 0;
+
+      var closeMention = function () {
+        atIndex = -1;
+        images = null;
+        if (dropdown) { dropdown.remove(); dropdown = null; }
+      };
+      window.hubResetHooks = window.hubResetHooks || [];
+      window.hubResetHooks.push(closeMention);
+
+      var positionDropdown = function () {
+        dropdown.style.top = (textarea.offsetTop + textarea.offsetHeight) + "px";
+        dropdown.style.left = textarea.offsetLeft + "px";
+        dropdown.style.width = textarea.offsetWidth + "px";
+      };
+
+      var renderDropdown = function (query) {
+        if (!dropdown) {
+          dropdown = document.createElement("div");
+          dropdown.className = "hub-mention-dropdown";
+          wrap.appendChild(dropdown);
+        }
+        positionDropdown();
+        dropdown.innerHTML = "";
+        if (images === null) {
+          var loading = document.createElement("div");
+          loading.className = "hub-mention-empty";
+          loading.textContent = "Loading…";
+          dropdown.appendChild(loading);
+          return;
+        }
+        items = images.filter(function (f) {
+          return !query || (f.name || "").toLowerCase().indexOf(query.toLowerCase()) !== -1;
+        }).slice(0, 8);
+        selectedIndex = 0;
+        if (!items.length) {
+          var empty = document.createElement("div");
+          empty.className = "hub-mention-empty";
+          empty.textContent = "No matching maps or NPC visuals.";
+          dropdown.appendChild(empty);
+          return;
+        }
+        items.forEach(function (file, i) {
+          var item = document.createElement("button");
+          item.type = "button";
+          item.className = "hub-mention-item" + (i === selectedIndex ? " is-selected" : "");
+          var img = document.createElement("img");
+          img.src = proxyUrl + "/files/" + slug + "/" + file.id;
+          img.alt = "";
+          item.appendChild(img);
+          var span = document.createElement("span");
+          span.textContent = file.name || "Untitled";
+          item.appendChild(span);
+          {{/* mousedown + preventDefault, not click — a click fires after
+            the textarea has already blurred, by which point atIndex/the
+            selection this pick relies on may be stale. */}}
+          item.addEventListener("mousedown", function (e) {
+            e.preventDefault();
+            pick(file);
+          });
+          dropdown.appendChild(item);
+        });
+      };
+
+      var moveSelection = function (delta) {
+        if (!items.length) return;
+        selectedIndex = (selectedIndex + delta + items.length) % items.length;
+        Array.prototype.forEach.call(dropdown.children, function (el, i) {
+          el.classList.toggle("is-selected", i === selectedIndex);
+        });
+      };
+
+      var pick = function (file) {
+        var token = hubMakeImgToken(file);
+        var value = textarea.value;
+        var cursor = textarea.selectionStart != null ? textarea.selectionStart : value.length;
+        var newValue = value.slice(0, atIndex) + token + " " + value.slice(cursor);
+        textarea.value = newValue;
+        var newPos = atIndex + token.length + 1;
+        closeMention();
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = newPos;
+      };
+
+      textarea.addEventListener("input", function () {
+        var pos = textarea.selectionStart;
+        var before = textarea.value.slice(0, pos);
+        var idx = before.lastIndexOf("@");
+        if (idx === -1 || /\s/.test(before.slice(idx + 1))) { closeMention(); return; }
+        var charBeforeAt = idx > 0 ? before[idx - 1] : "";
+        if (charBeforeAt && !/\s/.test(charBeforeAt)) { closeMention(); return; }
+        var query = before.slice(idx + 1);
+        if (idx !== atIndex) {
+          atIndex = idx;
+          images = null;
+          renderDropdown(query);
+          var thisFetch = ++fetchToken;
+          hubFetchPickableImages(slug, proxyUrl).then(function (fetched) {
+            if (thisFetch !== fetchToken || idx !== atIndex) return;
+            images = fetched;
+            var current = textarea.value.slice(atIndex + 1, textarea.selectionStart);
+            renderDropdown(current);
+          });
+        } else {
+          renderDropdown(query);
+        }
+      });
+
+      textarea.addEventListener("keydown", function (e) {
+        if (!dropdown) return;
+        if (e.key === "ArrowDown") { e.preventDefault(); moveSelection(1); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); moveSelection(-1); }
+        else if (e.key === "Enter" || e.key === "Tab") {
+          if (items.length) { e.preventDefault(); pick(items[selectedIndex]); }
+        } else if (e.key === "Escape") { closeMention(); }
+      });
+
+      textarea.addEventListener("blur", closeMention);
+    };
+  </script>
+
   <script>
     (function () {
       var editor = document.getElementById("hub-session-editor");
@@ -655,6 +864,8 @@
       var cancelBtn = document.getElementById("hub-session-cancel-btn");
       var error = document.getElementById("hub-session-error");
       if (!proxyUrl) return;
+      window.hubAttachMentions(titleInput, slug, proxyUrl);
+      window.hubAttachMentions(recapInput, slug, proxyUrl);
 
       var syncUrl = proxyUrl + "/sync/" + slug + "/sessions";
       var liveSessions = [];
@@ -696,7 +907,7 @@
         article.dataset.date = entry.date || "";
 
         var h3 = document.createElement("h3");
-        h3.textContent = entry.title || "Untitled session";
+        h3.appendChild(window.hubRenderRichNodes(entry.title || "Untitled session", slug, proxyUrl));
         if (entry.date) {
           var dateSpan = document.createElement("span");
           dateSpan.className = "entry-date";
@@ -725,7 +936,7 @@
           var ul = document.createElement("ul");
           bullets.forEach(function (line) {
             var li = document.createElement("li");
-            li.textContent = line;
+            li.appendChild(window.hubRenderRichNodes(line, slug, proxyUrl));
             ul.appendChild(li);
           });
           article.appendChild(ul);
@@ -872,6 +1083,7 @@
           }
           form.appendChild(wrap);
           fieldEls[col.key] = input;
+          if (col.type === "text" || col.type === "textarea") window.hubAttachMentions(input, slug, proxyUrl);
         });
 
         var actions = document.createElement("div");
@@ -983,6 +1195,8 @@
                   }, renderAll);
                 });
                 td.appendChild(toggle);
+              } else if (col.type === "text" || col.type === "textarea") {
+                td.appendChild(window.hubRenderRichNodes(entry[col.key] || "", slug, proxyUrl));
               } else {
                 td.textContent = entry[col.key] || "";
               }
@@ -1088,6 +1302,7 @@
       titleWrap.appendChild(titleLabel);
       titleWrap.appendChild(titleInput);
       form.appendChild(titleWrap);
+      window.hubAttachMentions(titleInput, slug, proxyUrl);
 
       var bodyWrap = document.createElement("div");
       bodyWrap.className = "hub-table-field";
@@ -1100,6 +1315,7 @@
       bodyWrap.appendChild(bodyLabel);
       bodyWrap.appendChild(bodyInput);
       form.appendChild(bodyWrap);
+      window.hubAttachMentions(bodyInput, slug, proxyUrl);
 
       var actions = document.createElement("div");
       actions.className = "hub-table-form-actions";
@@ -1177,7 +1393,7 @@
           var article = document.createElement("article");
           article.className = "hub-entry";
           var h3 = document.createElement("h3");
-          h3.textContent = entry.title || "Untitled";
+          h3.appendChild(window.hubRenderRichNodes(entry.title || "Untitled", slug, proxyUrl));
           var editBtn = document.createElement("button");
           editBtn.type = "button";
           editBtn.className = "hub-table-edit-btn";
@@ -1197,7 +1413,7 @@
             var ul = document.createElement("ul");
             bullets.forEach(function (line) {
               var li = document.createElement("li");
-              li.textContent = line;
+              li.appendChild(window.hubRenderRichNodes(line, slug, proxyUrl));
               ul.appendChild(li);
             });
             article.appendChild(ul);
