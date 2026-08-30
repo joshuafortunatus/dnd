@@ -1943,23 +1943,25 @@ label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
    just works. */
 .combat-death-divider { height: 1px; background: var(--border); margin: 0.6rem 0 0; }
 
-/* NPC rows never get Death Saves (5e doesn't run those for monsters) or
-   the Slim View toggle (NPC rows always show the full block, per an
-   explicit product decision), so their Combat Block content is
-   naturally shorter than the row's actual height — a row's real height
-   is set by the Combatant column's Reaction/Conditions/Notes stack
-   (plus Show Stat Block for NPCs), not by anything in this cell. Left
-   top-aligned and left-hugging by default (.combat-block-wrap's base
-   align-items: flex-start, plus its own asymmetric left/right padding),
-   the block ends up floating in the top-left corner of a visibly taller
-   row instead of centered in it. height: 1px on the cell is the same
-   percentage-height-resolution workaround used for Death Saves in Slim
-   View above — a bare td has no height a child's 100% can resolve
-   against otherwise, even though the row itself renders taller. */
-.combat-row[data-combat-kind="npc"] .combat-block-cell {
+/* Every row's Combat Block content is typically shorter than the row's
+   actual height — a row's real height is set by the Combatant column's
+   Reaction/Conditions/Notes stack (plus Show Stat Block for NPCs), not by
+   anything in this cell. Left top-aligned and left-hugging by default
+   (.combat-block-wrap's base align-items: flex-start, plus its own
+   asymmetric left/right padding), the block would otherwise float in the
+   top-left corner of a visibly taller row instead of centered in it —
+   applies to PC rows in Full View exactly as it does NPC rows (which
+   never get a Slim View) and PC rows in Slim View (see its own duplicate
+   treatment below), per an explicit correction: all three previously
+   read inconsistently, NPC/Slim-PC centered but Full-View PC pinned to
+   the top. height: 1px on the cell is the same percentage-height-
+   resolution workaround used for Death Saves in Slim View above — a bare
+   td has no height a child's 100% can resolve against otherwise, even
+   though the row itself renders taller. */
+.combat-row .combat-block-cell {
   height: 1px;
 }
-.combat-row[data-combat-kind="npc"] .combat-block-wrap {
+.combat-row .combat-block-wrap {
   height: 100%;
   align-items: center;
   justify-content: center;
@@ -2004,18 +2006,20 @@ label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
 }
 /* vertical-align: top (the sitewide td/th default — see that rule's own
    comment), NOT middle. This cell's own content height varies row to row
-   (Tiebreaker only shows while that row is actually tied), and middle
-   would center each row's Combat Block against ITS OWN height rather
-   than a shared one — an untied row's short Initiative-only content
-   would center deep into the row while a tied row's taller
+   (Tiebreaker only shows while that row is actually tied), and a plain
+   middle would center each row's Combat Block against ITS OWN height
+   rather than a shared one — an untied row's short Initiative-only
+   content would center deep into the row while a tied row's taller
    Initiative+Tiebreaker content centers higher up, so the whole block
-   visibly bounces up and down from row to row depending on tie state.
-   Top-aligning instead anchors every row's Combat Block at the same
-   fixed offset from its own row's top regardless of Tiebreaker, which
-   is what actually keeps the column looking aligned. Scoped to Slim
-   View PC rows only, not the base .combat-block-cell rule, since Full
-   View's Combat Block content is already close enough to the Combatant
-   cell's height that this never showed up there. */
+   would visibly bounce up and down from row to row depending on tie
+   state. That's why centering here (both this rule and the base
+   .combat-block-cell/.combat-block-wrap rule above, which now covers
+   Full View PC too, per an explicit correction — it used to pin Full
+   View PC to the top, inconsistently with NPC/Slim-View-PC) centers
+   .combat-init-stack and .combat-hp-module-stack independently via their
+   own align-self below, against the row's real full height, rather than
+   grouping them — each stack's own height changing (e.g. Tiebreaker
+   toggling) never shifts the other. */
 /* Death Saves, unlike Initiative, is meant to float at the vertical
    center of the whole row in Slim View rather than pin to the top.
    height: 100% on the wrap is what lets align-self: center below
