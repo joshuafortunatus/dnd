@@ -5819,8 +5819,19 @@
                 same pattern as currentCombatViewMode — so Start Combat/
                 Next in Turn Order can mutate it in place across re-renders
                 triggered by renderRows (checkbox/quantity changes) without
-                losing track of whose turn it is. */}}
-              var combatStarted = Boolean(conflict.combatStarted);
+                losing track of whose turn it is. Gated on real initiative
+                data (not just the stored flag) because pushCombatTurnState
+                writes combatStarted straight to storage with no re-check
+                against combatStats — a stray true on a record where no one
+                ever actually had initiative entered would otherwise show
+                the turn-order widget forever. */}}
+              var hasAnyInitiativeSet = function (stats) {
+                if (!stats) return false;
+                return Object.keys(stats).some(function (key) {
+                  return stats[key] && stats[key].initiative;
+                });
+              };
+              var combatStarted = Boolean(conflict.combatStarted) && hasAnyInitiativeSet(conflict.combatStats);
               var currentTurnKey = conflict.currentTurnKey || null;
 
               {{/* Full View / Slim View toggle — Slim hides just the
