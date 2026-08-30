@@ -675,6 +675,114 @@ body.is-home {
    top offset the heading alone used to sit at, rather than the toggle
    taking its own row above and pushing everything else down. */
 .combat-tracker-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+
+/* Set-initiative prompt — plain centered text above the Combatant/Combat
+   Block table (JS: startMessageEl), not a clickable trigger; the DM sets
+   Initiative via each row's own inline dropdown. Hides entirely once
+   combat starts, since Next in Turn Order moves into .combat-turn-widget
+   below at that point. */
+.combat-start-message {
+  text-align: center;
+  margin: 0 0 1rem;
+  color: var(--accent);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+/* Panel for the Start Combat? Yes/No prompt (see openStartConfirmModal/
+   showStartCornerBox, dm-portal.html) — shared between two placements:
+   centered over .combat-modal-overlay (the first ask), or fixed to the
+   corner via .combat-start-corner-box below (every ask after the DM has
+   said No once). */
+.combat-start-confirm-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.9rem 1.4rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  color: var(--text);
+  font-weight: 600;
+}
+/* Corner placement of .combat-start-confirm-box above — same fixed
+   bottom-right slot .combat-turn-widget below uses, never shown at the
+   same time as that widget (this one's pre-combat only), so no extra
+   z-index/collision handling is needed for sharing the corner. */
+.combat-start-corner-box {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+}
+
+/* Active-turn floating widget (combat-row-active-turn's companion) —
+   fixed to the viewport, not the page, so Current/Next stay reachable no
+   matter how far the DM has scrolled down a long combatant list. Two
+   stacked full-width rows, each its own click target (Current = Previous,
+   Next = Next), deliberately styled to contrast each other — light-on-
+   dark on top, dark-on-light on bottom — so they're never confused for
+   the same action even glanced at mid-fight. overflow: hidden on the
+   container lets each row stay a plain rectangle while the container's
+   own border-radius still clips their outer corners. */
+.combat-turn-widget {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  min-width: 15rem;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+.combat-turn-widget-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  border: none;
+  font-family: inherit;
+  padding: 0.55rem 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+.combat-turn-widget-row-current {
+  background: #f4f1e8;
+  color: #1a1a1a;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+}
+.combat-turn-widget-row-current:hover { background: #e7e2d2; }
+.combat-turn-widget-row-next {
+  background: var(--bg);
+  color: var(--accent);
+}
+.combat-turn-widget-row-next:hover { background: var(--bg-raised); }
+.combat-turn-widget-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+.combat-turn-widget-name {
+  font-weight: 700;
+  font-size: 1rem;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.combat-turn-widget-hint {
+  font-size: 0.7rem;
+  opacity: 0.65;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* .combat-view-toggle-slot's width gets set in JS (renderCombatSection's
    measureNames) to exactly match the "Combat Block" column's own
    rendered width — centering the toggle inside that exact width is what
@@ -1563,6 +1671,14 @@ label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
 .combat-row-dead .combat-block-cell {
   opacity: 0.5;
 }
+/* Active-turn spotlight — set by dm-portal.html's applyActiveTurnHighlight
+   once Start Combat/Next in Turn Order picks a combatant. box-shadow on
+   the <td>s rather than the <tr> itself, since a raw box-shadow on a
+   table row renders inconsistently across browsers/table layouts; each
+   row always has exactly the two cells below. */
+.combat-row-active-turn > td {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 16px 6px rgba(255, 255, 255, 0.55);
+}
 /* High-contrast callout next to the name once a combatant is dead — an
    NPC at 0 HP, or a PC on a third failed death save (see dm-portal.html:
    deadInput/markPcDead). Unlike Revive (hover-only), this stays visible
@@ -2182,6 +2298,24 @@ label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
    the same context — without this, a later sibling row's plain (non-
    positioned) cell content can still paint over it. */
 .combat-row-dropdown-open { position: relative; z-index: 30; }
+
+/* Shared full-screen greyed-out/centered overlay (see
+   openCombatOverlayModal, dm-portal.html) — used by the Start Combat?
+   confirm modal (its centered, first-ask placement only — see
+   .combat-start-corner-box above for the corner placement, which isn't a
+   modal and has no overlay). Visual language borrows from
+   .combat-conditions-dropdown above (same bg-raised/border/radius/
+   shadow), scaled up into a full-screen centered panel instead of an
+   anchored dropdown. */
+.combat-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
 /* The Combatants table stays fully editable in View mode (see
    isCombatTableField in the script below) — these selectors match
    .dm-view-scope.view-mode's own input/textarea/select rules above at
@@ -2285,7 +2419,8 @@ label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
 .journal-save-btn, .journal-cancel-btn, .journal-delete-btn,
 .conflict-save-btn, .conflict-cancel-btn, .conflict-delete-btn,
 .bastion-save-btn, .bastion-cancel-btn, .bastion-delete-btn,
-.file-library-save-btn, .file-library-cancel-btn, .file-library-delete-btn, .file-library-add-cancel-btn {
+.file-library-save-btn, .file-library-cancel-btn, .file-library-delete-btn, .file-library-add-cancel-btn,
+.combat-start-confirm-yes-btn, .combat-start-confirm-no-btn {
   background: var(--bg-raised);
   border: 1px solid var(--accent);
   color: var(--accent);
@@ -2296,16 +2431,19 @@ label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
   cursor: pointer;
 }
 .travel-save-btn:hover, .npc-save-btn:hover, .settlement-save-btn:hover,
-.journal-save-btn:hover, .conflict-save-btn:hover, .bastion-save-btn:hover, .file-library-save-btn:hover {
+.journal-save-btn:hover, .conflict-save-btn:hover, .bastion-save-btn:hover, .file-library-save-btn:hover,
+.combat-start-confirm-yes-btn:hover {
   background: rgba(201, 162, 39, 0.15);
 }
 .travel-cancel-btn, .npc-cancel-btn, .settlement-cancel-btn,
-.journal-cancel-btn, .conflict-cancel-btn, .bastion-cancel-btn, .file-library-cancel-btn, .file-library-add-cancel-btn {
+.journal-cancel-btn, .conflict-cancel-btn, .bastion-cancel-btn, .file-library-cancel-btn, .file-library-add-cancel-btn,
+.combat-start-confirm-no-btn {
   border-color: var(--border);
   color: var(--text-dim);
 }
 .travel-cancel-btn:hover, .npc-cancel-btn:hover, .settlement-cancel-btn:hover,
-.journal-cancel-btn:hover, .conflict-cancel-btn:hover, .bastion-cancel-btn:hover, .file-library-cancel-btn:hover, .file-library-add-cancel-btn:hover {
+.journal-cancel-btn:hover, .conflict-cancel-btn:hover, .bastion-cancel-btn:hover, .file-library-cancel-btn:hover, .file-library-add-cancel-btn:hover,
+.combat-start-confirm-no-btn:hover {
   color: var(--text);
 }
 .travel-delete-btn, .npc-delete-btn, .settlement-delete-btn,
