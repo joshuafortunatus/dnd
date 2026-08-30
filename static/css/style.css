@@ -1549,13 +1549,17 @@ body.is-home {
   width: calc(12ch + 1.4rem + 2px);
 }
 
+/* Fixed 2-column grid, not flex — flex's content-based wrapping let
+   Reference Link's wider Edit-mode markup (raw input + "Open ↗") wrap to
+   its own row while View mode's shorter link text fit all 4 fields on one
+   row, so View and Edit disagreed on layout. Grid keeps Name/Combatants on
+   row 1 and Tied to Session/Reference Link on row 2 in both modes. */
 .conflict-header-fields {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
   margin-bottom: 1.25rem;
 }
-.conflict-header-fields .conflict-field { flex: 1 1 0; }
 
 .journal-field, .pc-field, .conflict-field, .bastion-field {
   display: flex;
