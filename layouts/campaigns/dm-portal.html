@@ -5344,6 +5344,25 @@
               syncPush("conflicts", conflicts);
             };
 
+            {{/* Turn-order state (combatStarted/currentTurnKey) is the one
+              part of a conflict record that pushes immediately on click,
+              bypassing the Save button every other combat field (HP,
+              conditions, initiative) still requires — so a DM's phone and
+              laptop stay in sync on whose turn it is mid-fight without
+              either device needing to hit Save. Reads the last-Saved
+              on-disk copy rather than whatever's unsaved in the live form,
+              and only ever touches these two fields plus updatedAt. */}}
+            var pushCombatTurnState = function (conflictId, turnState) {
+              var allConflicts = loadConflicts();
+              var idx = -1;
+              allConflicts.forEach(function (c, i) { if (c.id === conflictId) idx = i; });
+              if (idx === -1) return;
+              allConflicts[idx].combatStarted = turnState.combatStarted;
+              allConflicts[idx].currentTurnKey = turnState.currentTurnKey;
+              allConflicts[idx].updatedAt = Date.now();
+              saveConflicts(allConflicts);
+            };
+
             var conflictIsValid = function (conflict) { return Boolean(conflict.name && conflict.name.trim() && conflict.adversaryNpcIds && conflict.adversaryNpcIds.length); };
 
             var pullConflicts = function () {
@@ -5558,13 +5577,27 @@
               adversaryDropdown.className = "combat-conditions-dropdown conflict-adversary-dropdown";
               adversaryDropdown.hidden = true;
 
-              var refreshAdversaryToggle = function () {
-                if (!adversaryDropdown.hidden) {
-                  adversaryToggle.textContent = "Collapse";
-                  adversaryToggle.classList.add("combat-conditions-toggle-open");
-                  return;
-                }
-                adversaryToggle.classList.remove("combat-conditions-toggle-open");
+              {{/* View mode's read-only stand-in for the whole toggle+
+                dropdown widget above — same "— Not tied to a session —"
+                treatment conflictSessionSelect gets for free from being a
+                native <select>, but this field's own toggle/checklist
+                needs an explicit swap since neither piece is a form
+                control View mode already knows how to lock/hide. Kept
+                hidden in Edit mode (and vice versa) via CSS scoped to
+                .dm-view-scope.view-mode, mirroring .ref-link-view. */}}
+              var conflictAdversaryViewText = document.createElement("p");
+              conflictAdversaryViewText.className = "conflict-adversary-view-text";
+
+              {{/* View mode's own read-only line (see conflictAdversaryViewText
+                below) needs the same chosen-list computation as the toggle
+                button's label, so it's built once here and shared rather
+                than duplicated — only the empty-state fallback text differs
+                between the two ("Select adversaries" invites an Edit-mode
+                click, "Click Edit to add adversaries" doesn't since View
+                mode's dropdown is hidden entirely, per an explicit
+                correction — see the .conflict-adversary-wrap/-view-text
+                view-mode CSS). */}}
+              var computeChosenAdversaries = function () {
                 var chosen = [];
                 Array.prototype.forEach.call(adversaryDropdown.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]'), function (cb) {
                   if (!cb.checked) return;
@@ -5574,6 +5607,18 @@
                   var qty = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
                   chosen.push(conflictAdversaryDisplayLabel(npc, qty));
                 });
+                return chosen;
+              };
+
+              var refreshAdversaryToggle = function () {
+                conflictAdversaryViewText.textContent = computeChosenAdversaries().join(", ") || "Click Edit to add";
+                if (!adversaryDropdown.hidden) {
+                  adversaryToggle.textContent = "Collapse";
+                  adversaryToggle.classList.add("combat-conditions-toggle-open");
+                  return;
+                }
+                adversaryToggle.classList.remove("combat-conditions-toggle-open");
+                var chosen = computeChosenAdversaries();
                 adversaryToggle.textContent = chosen.length ? chosen.join(", ") : "Select adversaries";
               };
 
@@ -5635,6 +5680,7 @@
               adversaryWrap.appendChild(adversaryToggle);
               adversaryWrap.appendChild(adversaryDropdown);
               wrap.appendChild(adversaryWrap);
+              wrap.appendChild(conflictAdversaryViewText);
               return wrap;
             };
 
@@ -5767,6 +5813,16 @@
               var wrap = document.createElement("div");
               wrap.className = "conflict-field-wide combat-tracker-wrap";
 
+              {{/* Turn-order state lives on the conflict record itself
+                (see pushCombatTurnState above and collectConflictFromForm
+                below), but is read into closure-scoped mutable vars here —
+                same pattern as currentCombatViewMode — so Start Combat/
+                Next in Turn Order can mutate it in place across re-renders
+                triggered by renderRows (checkbox/quantity changes) without
+                losing track of whose turn it is. */}}
+              var combatStarted = Boolean(conflict.combatStarted);
+              var currentTurnKey = conflict.currentTurnKey || null;
+
               {{/* Full View / Slim View toggle — Slim hides just the
                 Heal/Damage/Current/Max/Temp HP module for each PC row
                 (Conditions and Notes stay visible, per an explicit
@@ -5829,6 +5885,21 @@
               var viewToggleSlot = document.createElement("div");
               viewToggleSlot.className = "combat-view-toggle-slot";
               viewToggleSlot.appendChild(viewToggle);
+
+              {{/* Plain centered message above everything else in this
+                section — the Full View/Slim View toggle row below it,
+                and the Combatant/Combat Block table below that — per an
+                explicit correction; replaces a clickable floating button,
+                since the DM sets Initiative directly via each row's own
+                inline dropdown (same as Tiebreaker already works), so
+                there's nothing left here to click. Toggled via
+                showStartMessage/hideStartMessage, the "nothing to confirm
+                yet" state in renderTurnPrompt's single choke point below. */}}
+              var startMessageEl = document.createElement("p");
+              startMessageEl.className = "combat-start-message";
+              startMessageEl.textContent = "Set initiative order to start combat";
+              startMessageEl.hidden = true;
+              wrap.appendChild(startMessageEl);
 
               {{/* Heading and toggle share one row — same top offset as
                 Combatants always had, rather than the toggle sitting in
@@ -6281,9 +6352,36 @@
                   initSelect.appendChild(option);
                 });
                 initSelect.value = stats.initiative || "";
+                {{/* Deliberately does NOT resortRows() here — a DM
+                  working through the roster top-to-bottom, one
+                  Initiative at a time, would otherwise have their
+                  just-edited row jump to a new position (and the page
+                  scroll to follow it) after every single entry, per an
+                  explicit correction. Row order only actually needs to
+                  be correct once combat starts, so the real sort happens
+                  there (see the Start Combat? Yes handler) instead.
+                  updateTiebreakers still runs live since it only toggles
+                  visibility/options, not row position. This re-checks
+                  whether the Start Combat? prompt should be showing on
+                  every edit — allInitiativeReconciled requires every
+                  combatant to have a real Initiative and every tied group
+                  to have its Tiebreaker resolved first, per an explicit
+                  correction; an incomplete edit here correctly retracts
+                  the prompt again if it was already showing. */}}
                 initSelect.addEventListener("change", function () {
                   updateTiebreakers();
-                  resortRows();
+                  if (!combatStarted) {
+                    awaitingStartConfirm = allInitiativeReconciled() && hasRequiredConflictBasics();
+                    renderTurnPrompt();
+                  } else {
+                    {{/* Once combat is underway there's no future "Start
+                      Combat? Yes" moment left to do the real sort (see
+                      confirmStartCombat) — a combatant added mid-fight
+                      would otherwise sit wherever its row happened to
+                      render forever, never actually taking its turn in
+                      the right place. */}}
+                    resortRows();
+                  }
                 });
                 initStack.appendChild(makeHpValueGroup("Initiative", initSelect));
 
@@ -6334,7 +6432,21 @@
                       }
                     });
                   }
-                  resortRows();
+                  {{/* No resortRows() here either, same reasoning as
+                    initSelect's change handler above — Tiebreaker only
+                    ever comes up while still setting Initiative, so it's
+                    subject to the same "don't jump the row mid-edit"
+                    correction. Resolving a Tiebreaker can be the very
+                    last thing needed for allInitiativeReconciled to pass
+                    (bumping another row's Tiebreaker back to blank above
+                    can just as easily make it fail again), so re-check
+                    here too. */}}
+                  if (!combatStarted) {
+                    awaitingStartConfirm = allInitiativeReconciled() && hasRequiredConflictBasics();
+                    renderTurnPrompt();
+                  } else {
+                    resortRows();
+                  }
                 });
                 var tiebreakerGroup = makeHpValueGroup("Tiebreaker", tiebreakerSelect);
                 tiebreakerGroup.classList.add("combat-tiebreaker-group");
@@ -6968,6 +7080,61 @@
                 });
               };
 
+              {{/* Gates the Start Combat? box — per an explicit
+                correction, it must not appear (or must retract again)
+                until every currently-listed combatant has a real
+                Initiative AND every tied group has its Tiebreaker
+                resolved. Checked live off the real rows/selects, not
+                combatStats, so it can never drift from what's actually
+                on screen (e.g. a freshly-checked adversary with a still-
+                blank row correctly blocks it). */}}
+              var allInitiativeReconciled = function () {
+                var rows = tbody.querySelectorAll("tr.combat-row");
+                if (!rows.length) return false;
+                return Array.prototype.every.call(rows, function (row) {
+                  if (!row.querySelector('[data-combat-field="initiative"]').value) return false;
+                  var tiebreakerGroup = row.querySelector(".combat-tiebreaker-group");
+                  var tiebreakerSelect = row.querySelector('[data-combat-field="tiebreaker"]');
+                  if (tiebreakerGroup && !tiebreakerGroup.hidden && !tiebreakerSelect.value) return false;
+                  return true;
+                });
+              };
+
+              {{/* Same two fields Save itself requires (see saveBtn's own
+                validation in renderConflictForm) — a DM could otherwise
+                check adversaries, roll Initiative, and confirm Start
+                Combat on a still-unnamed, never-saved conflict, since the
+                Start Combat prompt never used to check anything but
+                Initiative. Read live off the form (name input value,
+                checked adversary checkboxes), same as
+                allInitiativeReconciled reads live off the rows, so it
+                can't drift from what Save would actually accept. PCs
+                alone (no adversaries checked) still fail this even though
+                they already produce combat-row's above — an empty
+                adversary list is exactly what blocks Save too. */}}
+              var hasRequiredConflictBasics = function () {
+                var nameInput = form.querySelector('[data-field="name"]');
+                if (!nameInput || !nameInput.value.trim()) return false;
+                return form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]:checked').length > 0;
+              };
+
+              {{/* startMessageEl's text used to be a static "Set initiative
+                order to start combat" — accurate back when Initiative was
+                the only thing the prompt ever gated on, but misleading now
+                that a fully-reconciled Initiative table can still be
+                blocked by a missing name/adversary (see
+                hasRequiredConflictBasics above). Initiative takes priority
+                when it's also unresolved, same as before this existed. */}}
+              var startBlockedMessage = function () {
+                if (!allInitiativeReconciled()) return "Set initiative order to start combat";
+                var nameInput = form.querySelector('[data-field="name"]');
+                var hasName = Boolean(nameInput && nameInput.value.trim());
+                var hasAdversary = form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]:checked').length > 0;
+                if (!hasName && !hasAdversary) return "Add a conflict name and adversary to start combat";
+                if (!hasName) return "Add a conflict name to start combat";
+                return "Add an adversary to start combat";
+              };
+
               {{/* Tiebreaker (see updateTiebreakers above) only ever
                 distinguishes rows that already share the same Initiative —
                 it's a pure secondary key, never consulted when Initiatives
@@ -7002,6 +7169,352 @@
                   if (row._statBlockDetailRow) tbody.appendChild(row._statBlockDetailRow);
                 });
               };
+
+              {{/* Walks the tbody's current (already-sorted) row order to
+                find the next combatant whose turn it is, skipping anyone
+                already marked .combat-row-dead and wrapping around past
+                the last row. afterKey === null means "who goes first";
+                returns null only if there are no rows at all, or every
+                combatant is dead. If afterKey's own row no longer exists
+                (e.g. an adversary got unchecked mid-fight), walks from the
+                top rather than erroring. */}}
+              var findNextAliveKey = function (afterKey) {
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr.combat-row"));
+                if (!rows.length) return null;
+                if (!afterKey) {
+                  var firstAlive = rows.filter(function (r) { return !r.classList.contains("combat-row-dead"); })[0];
+                  return firstAlive ? firstAlive.dataset.combatantKey : null;
+                }
+                var keys = rows.map(function (r) { return r.dataset.combatantKey; });
+                var startIdx = keys.indexOf(afterKey);
+                for (var i = 1; i <= rows.length; i++) {
+                  var candidate = rows[(startIdx + i) % rows.length];
+                  if (!candidate.classList.contains("combat-row-dead")) return candidate.dataset.combatantKey;
+                }
+                return null;
+              };
+
+              {{/* Mirror of findNextAliveKey, walking backward instead —
+                backs the floating widget's "Current" row (click for
+                Previous). Same wrap-around/skip-dead/missing-key handling,
+                just stepping -i instead of +i (with + rows.length before
+                the modulo so JS's remainder operator can't hand back a
+                negative index). */}}
+              var findPrevAliveKey = function (beforeKey) {
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr.combat-row"));
+                if (!rows.length) return null;
+                var keys = rows.map(function (r) { return r.dataset.combatantKey; });
+                var startIdx = keys.indexOf(beforeKey);
+                for (var i = 1; i <= rows.length; i++) {
+                  var candidate = rows[((startIdx - i) % rows.length + rows.length) % rows.length];
+                  if (!candidate.classList.contains("combat-row-dead")) return candidate.dataset.combatantKey;
+                }
+                return null;
+              };
+
+              {{/* Pure DOM sync of currentTurnKey onto the row markup —
+                called after Start Combat/Next in Turn Order change
+                currentTurnKey, and again at the tail of renderRows since
+                that tears down and rebuilds every row from scratch on any
+                adversary checkbox/quantity change. */}}
+              var applyActiveTurnHighlight = function () {
+                Array.prototype.forEach.call(tbody.querySelectorAll("tr.combat-row"), function (row) {
+                  row.classList.toggle("combat-row-active-turn", combatStarted && row.dataset.combatantKey === currentTurnKey);
+                });
+              };
+
+              {{/* Once combat starts, Next in Turn Order lives entirely
+                in this fixed-position widget (bottom-right, high
+                contrast) rather than inline above the table — a DM
+                scrolled deep into a long combatant list otherwise loses
+                access to it and has no way to see whose turn it is
+                without scrolling back up. Lazily created once per
+                conflict-detail render and reused across clicks; removed
+                by wrap._removeFloatingTurnWidget when this conflict
+                closes (see clearConflictDetail) so it never lingers into
+                another section/record. */}}
+              var floatingTurnWidget = null;
+              var combatRowName = function (key) {
+                var row = Array.prototype.filter.call(
+                  tbody.querySelectorAll("tr.combat-row"),
+                  function (r) { return r.dataset.combatantKey === key; }
+                )[0];
+                return row ? row.querySelector(".combat-name-text").textContent : "";
+              };
+              {{/* "Next" is a preview only — findNextAliveKey(currentTurnKey)
+                is called here just to read a name, it never mutates
+                currentTurnKey itself. Only the Next row's own click
+                handler below actually advances the turn. */}}
+              var updateFloatingTurnWidgetContent = function () {
+                if (!floatingTurnWidget) return;
+                floatingTurnWidget._currentNameEl.textContent = combatRowName(currentTurnKey);
+                floatingTurnWidget._nextNameEl.textContent = combatRowName(findNextAliveKey(currentTurnKey));
+              };
+              var showFloatingTurnWidget = function () {
+                if (!floatingTurnWidget) {
+                  floatingTurnWidget = document.createElement("div");
+                  floatingTurnWidget.className = "combat-turn-widget";
+
+                  {{/* Two rows, each the full click target (not just the
+                    hint text) — Current/Click for Previous on top,
+                    Next/Click for Next on bottom, per an explicit spec.
+                    Styled to visually contrast each other (light-on-dark
+                    vs dark-on-light) so they're never confused for the
+                    same action, even glanced at mid-fight. */}}
+                  var currentBtn = document.createElement("button");
+                  currentBtn.type = "button";
+                  currentBtn.className = "combat-turn-widget-row combat-turn-widget-row-current";
+                  var currentTag = document.createElement("span");
+                  currentTag.className = "combat-turn-widget-tag";
+                  currentTag.textContent = "Current";
+                  var currentNameEl = document.createElement("span");
+                  currentNameEl.className = "combat-turn-widget-name";
+                  var currentHint = document.createElement("span");
+                  currentHint.className = "combat-turn-widget-hint";
+                  currentHint.textContent = "Click for Previous";
+                  currentBtn.appendChild(currentTag);
+                  currentBtn.appendChild(currentNameEl);
+                  currentBtn.appendChild(currentHint);
+                  currentBtn.addEventListener("click", function () {
+                    resortRows();
+                    currentTurnKey = findPrevAliveKey(currentTurnKey);
+                    applyActiveTurnHighlight();
+                    updateFloatingTurnWidgetContent();
+                    pushCombatTurnState(conflict.id, { combatStarted: combatStarted, currentTurnKey: currentTurnKey });
+                  });
+
+                  var nextBtn = document.createElement("button");
+                  nextBtn.type = "button";
+                  nextBtn.className = "combat-turn-widget-row combat-turn-widget-row-next";
+                  var nextTag = document.createElement("span");
+                  nextTag.className = "combat-turn-widget-tag";
+                  nextTag.textContent = "Next";
+                  var nextNameEl = document.createElement("span");
+                  nextNameEl.className = "combat-turn-widget-name";
+                  var nextHint = document.createElement("span");
+                  nextHint.className = "combat-turn-widget-hint";
+                  nextHint.textContent = "Click for Next";
+                  nextBtn.appendChild(nextTag);
+                  nextBtn.appendChild(nextNameEl);
+                  nextBtn.appendChild(nextHint);
+                  nextBtn.addEventListener("click", function () {
+                    {{/* Mid-fight Initiative edits (the inline select
+                      stays editable per an explicit correction) don't
+                      resortRows() live either, same reasoning as the
+                      pre-combat entry phase — so pick up any such edits
+                      here, at the next deliberate Next click, rather than
+                      leaving turn order silently stale until Start
+                      Combat's own one-time sort. */}}
+                    resortRows();
+                    currentTurnKey = findNextAliveKey(currentTurnKey);
+                    applyActiveTurnHighlight();
+                    updateFloatingTurnWidgetContent();
+                    pushCombatTurnState(conflict.id, { combatStarted: combatStarted, currentTurnKey: currentTurnKey });
+                  });
+
+                  floatingTurnWidget._currentNameEl = currentNameEl;
+                  floatingTurnWidget._nextNameEl = nextNameEl;
+                  floatingTurnWidget.appendChild(currentBtn);
+                  floatingTurnWidget.appendChild(nextBtn);
+                  document.body.appendChild(floatingTurnWidget);
+                }
+                updateFloatingTurnWidgetContent();
+              };
+              var removeFloatingTurnWidget = function () {
+                if (floatingTurnWidget) { floatingTurnWidget.remove(); floatingTurnWidget = null; }
+              };
+              wrap._removeFloatingTurnWidget = removeFloatingTurnWidget;
+
+              var showStartMessage = function () { startMessageEl.hidden = false; };
+              var hideStartMessage = function () { startMessageEl.hidden = true; };
+
+              {{/* Corner Start Combat? Yes/No box — shown once the DM has
+                already dismissed the centered prompt once this session
+                (see startPromptDeclinedOnce below), so declining doesn't
+                mean re-editing Initiative just to be asked again. Same
+                fixed bottom-right slot the turn widget above uses, never
+                both at once. Lazily created like the turn widget, and
+                torn down the same way (wrap._removeStartCornerBox) so it
+                can't linger into another conflict/section after this one
+                closes. */}}
+              var startCornerBox = null;
+              var showStartCornerBox = function () {
+                if (startCornerBox) return;
+                startCornerBox = document.createElement("div");
+                startCornerBox.className = "combat-start-confirm-box combat-start-corner-box";
+                var label = document.createElement("span");
+                label.textContent = "Start Combat?";
+                startCornerBox.appendChild(label);
+                var yesBtn = document.createElement("button");
+                yesBtn.type = "button";
+                yesBtn.className = "combat-start-confirm-yes-btn";
+                yesBtn.textContent = "Yes";
+                yesBtn.addEventListener("click", function () { confirmStartCombat(); });
+                var noBtn = document.createElement("button");
+                noBtn.type = "button";
+                noBtn.className = "combat-start-confirm-no-btn";
+                {{/* Just dismisses — no renderTurnPrompt() call here, per
+                  an explicit correction, so this doesn't immediately pop
+                  itself back up. It reappears on its own next time
+                  something re-triggers renderTurnPrompt (an Initiative/
+                  Tiebreaker edit, a roster change) while still reconciled,
+                  same as the message/corner box always have. */}}
+                noBtn.textContent = "No";
+                noBtn.addEventListener("click", function () { removeStartCornerBox(); });
+                startCornerBox.appendChild(yesBtn);
+                startCornerBox.appendChild(noBtn);
+                document.body.appendChild(startCornerBox);
+              };
+              var removeStartCornerBox = function () {
+                if (startCornerBox) { startCornerBox.remove(); startCornerBox = null; }
+              };
+              wrap._removeStartCornerBox = removeStartCornerBox;
+
+              {{/* Shared by openStartConfirmModal below — a full-screen
+                greyed-out/centered overlay that should lock page scroll
+                while open and never leave more than one stacked
+                (renderTurnPrompt always closes whatever's active before
+                deciding whether to reopen one). activeModalCloser is
+                exposed via wrap._closeActiveCombatModal so leaving this
+                conflict/section (clearConflictDetail) can force one
+                closed rather than leaving it stuck open over whatever's
+                rendered next. */}}
+              var activeModalCloser = null;
+              var openCombatOverlayModal = function (overlayClassName, panel) {
+                var overlay = document.createElement("div");
+                overlay.className = overlayClassName;
+                overlay.appendChild(panel);
+                var previousBodyOverflow = document.body.style.overflow;
+                var onKeydown = function (e) { if (e.key === "Escape") close(); };
+                var close = function () {
+                  overlay.remove();
+                  document.removeEventListener("keydown", onKeydown);
+                  document.body.style.overflow = previousBodyOverflow;
+                  activeModalCloser = null;
+                };
+                overlay.addEventListener("click", function (e) { if (e.target === overlay) close(); });
+                document.addEventListener("keydown", onKeydown);
+                document.body.style.overflow = "hidden";
+                activeModalCloser = close;
+                document.body.appendChild(overlay);
+                return close;
+              };
+              wrap._closeActiveCombatModal = function () { if (activeModalCloser) activeModalCloser(); };
+
+              var refreshTurnControlsVisibility = function () {
+                if (combatStarted) {
+                  showFloatingTurnWidget();
+                  removeStartCornerBox();
+                  hideStartMessage();
+                  if (activeModalCloser) activeModalCloser();
+                } else {
+                  removeFloatingTurnWidget();
+                }
+              };
+
+              {{/* Transient — never persisted to the conflict record,
+                since it's just "is the Start Combat? prompt currently
+                due," not meaningful state to survive a reload. Defaults
+                false so a reopened conflict lands on the plain message
+                (or, if combatStarted is already true, on nothing at all —
+                see refreshTurnControlsVisibility). */}}
+              var awaitingStartConfirm = false;
+
+              {{/* Sticks for the life of this conflict-detail render once
+                the DM has said No to the centered prompt even once, per
+                an explicit correction — from then on, renderTurnPrompt
+                asks again via the unobtrusive corner box instead of the
+                intrusive centered modal. Never resets back to false; the
+                only way out is actually starting combat. */}}
+              var startPromptDeclinedOnce = false;
+
+              {{/* Shared by both the centered modal's Yes and the corner
+                box's Yes — same one-way action either way. Locks in turn
+                order AND immediately highlights whoever goes first, per
+                an explicit correction — not a separate first "Next"
+                click. One-way: once confirmed, the message/corner box
+                never come back for the life of this record (see
+                refreshTurnControlsVisibility) — no "un-start," since a
+                fresh encounter is just a new Conflict record with
+                combatStarted defaulting false. */}}
+              var confirmStartCombat = function () {
+                awaitingStartConfirm = false;
+                combatStarted = true;
+                {{/* The one point row order actually needs to be correct
+                  — everything typed while setting Initiative deliberately
+                  skipped resortRows() (see initSelect's change handler)
+                  to avoid jumping the DM around the page mid-entry. */}}
+                resortRows();
+                currentTurnKey = findNextAliveKey(null);
+                applyActiveTurnHighlight();
+                refreshTurnControlsVisibility();
+                pushCombatTurnState(conflict.id, { combatStarted: combatStarted, currentTurnKey: currentTurnKey });
+              };
+
+              {{/* Start Combat? Yes/No, as a greyed-out/centered modal
+                (via openCombatOverlayModal) rather than inline — a DM
+                confirming mid-fight setup shouldn't be able to fat-finger
+                a click on the table underneath while it's up, and page
+                scroll is locked for the same reason. Only ever shown once
+                per conflict (see startPromptDeclinedOnce) — a DM who
+                already said No once clearly doesn't want the intrusive
+                version again. */}}
+              var openStartConfirmModal = function () {
+                var box = document.createElement("div");
+                box.className = "combat-start-confirm-box";
+                var label = document.createElement("span");
+                label.textContent = "Start Combat?";
+                box.appendChild(label);
+                var yesBtn = document.createElement("button");
+                yesBtn.type = "button";
+                yesBtn.className = "combat-start-confirm-yes-btn";
+                yesBtn.textContent = "Yes";
+                yesBtn.addEventListener("click", confirmStartCombat);
+                var noBtn = document.createElement("button");
+                noBtn.type = "button";
+                noBtn.className = "combat-start-confirm-no-btn";
+                noBtn.textContent = "No";
+                {{/* Doesn't reset awaitingStartConfirm — Initiative is
+                  still fully reconciled, so the very next renderTurnPrompt
+                  (right here) should still treat this as "ready to ask,"
+                  just via the corner box instead of this centered one. */}}
+                noBtn.addEventListener("click", function () {
+                  startPromptDeclinedOnce = true;
+                  renderTurnPrompt();
+                });
+                box.appendChild(yesBtn);
+                box.appendChild(noBtn);
+                openCombatOverlayModal("combat-modal-overlay", box);
+              };
+
+              {{/* Single choke point deciding what (if anything) shows for
+                starting combat — the plain message, the centered Start
+                Combat? modal, the corner Start Combat? box, or neither.
+                Always closes whatever combat modal is open and clears any
+                existing corner box first (idempotent even if called
+                repeatedly while awaitingStartConfirm stays true, e.g.
+                from every Initiative/Tiebreaker edit — see those change
+                handlers below), so it never ends up with two of either
+                stacked. */}}
+              var renderTurnPrompt = function () {
+                if (activeModalCloser) activeModalCloser();
+                removeStartCornerBox();
+                if (combatStarted) { hideStartMessage(); return; }
+                var hasCombatants = tbody.querySelectorAll("tr.combat-row").length > 0;
+                if (!hasCombatants) { hideStartMessage(); return; }
+                if (awaitingStartConfirm) {
+                  hideStartMessage();
+                  if (startPromptDeclinedOnce) {
+                    showStartCornerBox();
+                  } else {
+                    openStartConfirmModal();
+                  }
+                } else {
+                  startMessageEl.textContent = startBlockedMessage();
+                  showStartMessage();
+                }
+              };
+              renderTurnPrompt();
 
               {{/* Fills in a freshly-added NPC row's Initiative/HP/AC once
                 real data becomes available, in three tiers: (1) sync —
@@ -7183,6 +7696,27 @@
                 updateTiebreakers();
                 resortRows();
                 measureNames();
+                {{/* renderRows tears down and rebuilds every row from
+                  scratch (tbody.innerHTML = "" above) on any adversary
+                  checkbox/quantity change, so neither the active-turn
+                  glow nor the Start/Next button visibility survives that
+                  rebuild on its own — both need re-applying here every
+                  time, which also correctly restores them on the very
+                  first render of a conflict reopened with combatStarted/
+                  currentTurnKey already set from a prior session. */}}
+                applyActiveTurnHighlight();
+                refreshTurnControlsVisibility();
+                {{/* Checking/unchecking an adversary (or bumping its
+                  quantity) rebuilds every row from scratch above, which
+                  can just as easily introduce a fresh blank-Initiative
+                  row as resolve one — re-run the same reconciliation
+                  check the Initiative/Tiebreaker change handlers use, so
+                  a Start Combat? box that was showing correctly retracts
+                  if the roster just changed out from under it. */}}
+                if (!combatStarted) {
+                  awaitingStartConfirm = allInitiativeReconciled() && hasRequiredConflictBasics();
+                  renderTurnPrompt();
+                }
               };
 
               {{/* Only the name itself shrinks, and only when it's actually
@@ -7219,8 +7753,25 @@
                 form.querySelectorAll('[data-quantity-for-npc]'),
                 function (qtyInput) { qtyInput.addEventListener("input", renderRows); }
               );
+              {{/* hasRequiredConflictBasics reads the Conflict Name input
+                live, but nothing else here re-renders the Start Combat
+                prompt on a plain text edit — the adversary checkboxes
+                already do via renderRows above, Initiative/Tiebreaker via
+                their own change handlers, but typing a name is otherwise
+                invisible to this gate until some unrelated event happened
+                to fire renderTurnPrompt afterward. */}}
+              var nameInputEl = form.querySelector('[data-field="name"]');
+              if (nameInputEl) {
+                nameInputEl.addEventListener("input", function () {
+                  if (!combatStarted) {
+                    awaitingStartConfirm = allInitiativeReconciled() && hasRequiredConflictBasics();
+                    renderTurnPrompt();
+                  }
+                });
+              }
 
               wrap._collectCombatStats = collectCombatStatsFromRows;
+              wrap._collectCombatTurnState = function () { return { combatStarted: combatStarted, currentTurnKey: currentTurnKey }; };
               return wrap;
             };
 
@@ -7237,10 +7788,33 @@
                 conflict.adversaryNpcQuantities[npcId] = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
               });
               conflict.combatStats = currentCombatSection ? currentCombatSection._collectCombatStats() : (originalConflict.combatStats || {});
+              {{/* Round-trips combatStarted/currentTurnKey back through
+                the closure state Start Combat/Next in Turn Order mutate
+                in place, so clicking the main Save button re-affirms the
+                current turn state (with a fresh updatedAt) instead of
+                reverting it to whatever was last loaded from storage. */}}
+              var turnState = currentCombatSection ? currentCombatSection._collectCombatTurnState() : { combatStarted: Boolean(originalConflict.combatStarted), currentTurnKey: originalConflict.currentTurnKey || null };
+              conflict.combatStarted = turnState.combatStarted;
+              conflict.currentTurnKey = turnState.currentTurnKey;
               return conflict;
             };
 
             var clearConflictDetail = function () {
+              {{/* The active-turn widget, the start-combat corner box,
+                and any open combat modal all live on document.body, not
+                inside conflictDetail — wiping conflictDetail's own
+                innerHTML below wouldn't touch any of them, so each has to
+                be torn down explicitly here or it'd linger after the DM
+                leaves this conflict/section. */}}
+              if (currentCombatSection && currentCombatSection._removeFloatingTurnWidget) {
+                currentCombatSection._removeFloatingTurnWidget();
+              }
+              if (currentCombatSection && currentCombatSection._removeStartCornerBox) {
+                currentCombatSection._removeStartCornerBox();
+              }
+              if (currentCombatSection && currentCombatSection._closeActiveCombatModal) {
+                currentCombatSection._closeActiveCombatModal();
+              }
               currentCombatSection = null;
               conflictDetail.innerHTML = "";
             };
@@ -7299,7 +7873,8 @@
 
               var actions = document.createElement("div");
               actions.className = "conflict-form-actions";
-              actions.appendChild(createModeToggleEl());
+              var modeToggleEl = createModeToggleEl();
+              actions.appendChild(modeToggleEl);
               var saveBtn = document.createElement("button");
               saveBtn.type = "button";
               saveBtn.className = "conflict-save-btn";
@@ -7328,7 +7903,24 @@
 
               var conflictHeaderFields = document.createElement("div");
               conflictHeaderFields.className = "conflict-header-fields";
-              conflictHeaderFields.appendChild(markRequired(conflictEditInput("Conflict Name", conflict.name, { field: "name" })));
+              var nameField = markRequired(conflictEditInput("Conflict Name", conflict.name, { field: "name" }));
+              var nameInput = nameField.querySelector("input");
+              {{/* Same "Click Edit to..." idea as Combatants' own
+                conflict-adversary-view-text — a required field left blank
+                on a fresh "+ Add Conflict" (which always opens in View,
+                see applyPortalMode("view") above) otherwise just looks
+                like empty dead space instead of prompting the DM to
+                switch to Edit. Native placeholder, not a mirrored <p> like
+                Combatants needed — a plain <input> already hides its own
+                placeholder the instant real text is typed, no extra
+                element required. Cleared in Edit mode since "Click Edit"
+                doesn't make sense once already there. */}}
+              var updateNamePlaceholder = function () {
+                nameInput.placeholder = currentPortalMode === "view" ? "Click Edit to add" : "";
+              };
+              updateNamePlaceholder();
+              modeToggleEl.addEventListener("click", updateNamePlaceholder);
+              conflictHeaderFields.appendChild(nameField);
               conflictHeaderFields.appendChild(markRequired(conflictAdversarySelect("Combatants", conflict.adversaryNpcIds, conflict.adversaryNpcQuantities)));
               conflictHeaderFields.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
               conflictHeaderFields.appendChild(conflictEditLinkInput("Reference Link", conflict.referenceLink, { field: "referenceLink" }));
@@ -7364,9 +7956,10 @@
                 pendingNewConflict = null;
                 conflictDirty = false;
                 renderConflictSelect();
-                conflictSelect.value = "";
-                conflictCurrentValue = "";
+                conflictSelect.value = updated.id;
+                conflictCurrentValue = updated.id;
                 clearConflictDetail();
+                renderConflictForm(updated.id);
               });
 
               cancelBtn.addEventListener("click", cancelConflictForm);
@@ -7400,16 +7993,26 @@
               }
               conflictCurrentValue = nextValue;
               discardUnsavedNewConflict();
+              {{/* clearConflictDetail before either branch, not just the
+                clearConflictDetail() branch below — renderConflictForm
+                itself only wipes conflictDetail's own innerHTML, which
+                never reaches the active-turn widget sitting on
+                document.body, so switching straight to another conflict
+                would otherwise leave the previous one's widget stuck on
+                screen. */}}
+              clearConflictDetail();
               if (nextValue) {
                 renderConflictForm(nextValue);
-              } else {
-                clearConflictDetail();
               }
             });
 
             conflictAddBtn.addEventListener("click", function () {
               if (!confirmLeaveIfDirty(conflictIsDirty)) return;
               discardUnsavedNewConflict();
+              {{/* Same reason as the conflictSelect change handler above
+                — renderConflictForm alone wouldn't tear down a still-open
+                previous conflict's floating turn widget. */}}
+              clearConflictDetail();
               pendingNewConflict = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 createdAt: Date.now(),
