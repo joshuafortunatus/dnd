@@ -5577,13 +5577,27 @@
               adversaryDropdown.className = "combat-conditions-dropdown conflict-adversary-dropdown";
               adversaryDropdown.hidden = true;
 
-              var refreshAdversaryToggle = function () {
-                if (!adversaryDropdown.hidden) {
-                  adversaryToggle.textContent = "Collapse";
-                  adversaryToggle.classList.add("combat-conditions-toggle-open");
-                  return;
-                }
-                adversaryToggle.classList.remove("combat-conditions-toggle-open");
+              {{/* View mode's read-only stand-in for the whole toggle+
+                dropdown widget above — same "— Not tied to a session —"
+                treatment conflictSessionSelect gets for free from being a
+                native <select>, but this field's own toggle/checklist
+                needs an explicit swap since neither piece is a form
+                control View mode already knows how to lock/hide. Kept
+                hidden in Edit mode (and vice versa) via CSS scoped to
+                .dm-view-scope.view-mode, mirroring .ref-link-view. */}}
+              var conflictAdversaryViewText = document.createElement("p");
+              conflictAdversaryViewText.className = "conflict-adversary-view-text";
+
+              {{/* View mode's own read-only line (see conflictAdversaryViewText
+                below) needs the same chosen-list computation as the toggle
+                button's label, so it's built once here and shared rather
+                than duplicated — only the empty-state fallback text differs
+                between the two ("Select adversaries" invites an Edit-mode
+                click, "Click Edit to add adversaries" doesn't since View
+                mode's dropdown is hidden entirely, per an explicit
+                correction — see the .conflict-adversary-wrap/-view-text
+                view-mode CSS). */}}
+              var computeChosenAdversaries = function () {
                 var chosen = [];
                 Array.prototype.forEach.call(adversaryDropdown.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]'), function (cb) {
                   if (!cb.checked) return;
@@ -5593,6 +5607,18 @@
                   var qty = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
                   chosen.push(conflictAdversaryDisplayLabel(npc, qty));
                 });
+                return chosen;
+              };
+
+              var refreshAdversaryToggle = function () {
+                conflictAdversaryViewText.textContent = computeChosenAdversaries().join(", ") || "Click Edit to add";
+                if (!adversaryDropdown.hidden) {
+                  adversaryToggle.textContent = "Collapse";
+                  adversaryToggle.classList.add("combat-conditions-toggle-open");
+                  return;
+                }
+                adversaryToggle.classList.remove("combat-conditions-toggle-open");
+                var chosen = computeChosenAdversaries();
                 adversaryToggle.textContent = chosen.length ? chosen.join(", ") : "Select adversaries";
               };
 
@@ -5654,6 +5680,7 @@
               adversaryWrap.appendChild(adversaryToggle);
               adversaryWrap.appendChild(adversaryDropdown);
               wrap.appendChild(adversaryWrap);
+              wrap.appendChild(conflictAdversaryViewText);
               return wrap;
             };
 
@@ -6344,8 +6371,16 @@
                 initSelect.addEventListener("change", function () {
                   updateTiebreakers();
                   if (!combatStarted) {
-                    awaitingStartConfirm = allInitiativeReconciled();
+                    awaitingStartConfirm = allInitiativeReconciled() && hasRequiredConflictBasics();
                     renderTurnPrompt();
+                  } else {
+                    {{/* Once combat is underway there's no future "Start
+                      Combat? Yes" moment left to do the real sort (see
+                      confirmStartCombat) — a combatant added mid-fight
+                      would otherwise sit wherever its row happened to
+                      render forever, never actually taking its turn in
+                      the right place. */}}
+                    resortRows();
                   }
                 });
                 initStack.appendChild(makeHpValueGroup("Initiative", initSelect));
@@ -6407,8 +6442,10 @@
                     can just as easily make it fail again), so re-check
                     here too. */}}
                   if (!combatStarted) {
-                    awaitingStartConfirm = allInitiativeReconciled();
+                    awaitingStartConfirm = allInitiativeReconciled() && hasRequiredConflictBasics();
                     renderTurnPrompt();
+                  } else {
+                    resortRows();
                   }
                 });
                 var tiebreakerGroup = makeHpValueGroup("Tiebreaker", tiebreakerSelect);
@@ -7063,6 +7100,41 @@
                 });
               };
 
+              {{/* Same two fields Save itself requires (see saveBtn's own
+                validation in renderConflictForm) — a DM could otherwise
+                check adversaries, roll Initiative, and confirm Start
+                Combat on a still-unnamed, never-saved conflict, since the
+                Start Combat prompt never used to check anything but
+                Initiative. Read live off the form (name input value,
+                checked adversary checkboxes), same as
+                allInitiativeReconciled reads live off the rows, so it
+                can't drift from what Save would actually accept. PCs
+                alone (no adversaries checked) still fail this even though
+                they already produce combat-row's above — an empty
+                adversary list is exactly what blocks Save too. */}}
+              var hasRequiredConflictBasics = function () {
+                var nameInput = form.querySelector('[data-field="name"]');
+                if (!nameInput || !nameInput.value.trim()) return false;
+                return form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]:checked').length > 0;
+              };
+
+              {{/* startMessageEl's text used to be a static "Set initiative
+                order to start combat" — accurate back when Initiative was
+                the only thing the prompt ever gated on, but misleading now
+                that a fully-reconciled Initiative table can still be
+                blocked by a missing name/adversary (see
+                hasRequiredConflictBasics above). Initiative takes priority
+                when it's also unresolved, same as before this existed. */}}
+              var startBlockedMessage = function () {
+                if (!allInitiativeReconciled()) return "Set initiative order to start combat";
+                var nameInput = form.querySelector('[data-field="name"]');
+                var hasName = Boolean(nameInput && nameInput.value.trim());
+                var hasAdversary = form.querySelectorAll('[data-checkbox-group="adversaryNpcIds"]:checked').length > 0;
+                if (!hasName && !hasAdversary) return "Add a conflict name and adversary to start combat";
+                if (!hasName) return "Add a conflict name to start combat";
+                return "Add an adversary to start combat";
+              };
+
               {{/* Tiebreaker (see updateTiebreakers above) only ever
                 distinguishes rows that already share the same Initiative —
                 it's a pure secondary key, never consulted when Initiatives
@@ -7438,6 +7510,7 @@
                     openStartConfirmModal();
                   }
                 } else {
+                  startMessageEl.textContent = startBlockedMessage();
                   showStartMessage();
                 }
               };
@@ -7641,7 +7714,7 @@
                   a Start Combat? box that was showing correctly retracts
                   if the roster just changed out from under it. */}}
                 if (!combatStarted) {
-                  awaitingStartConfirm = allInitiativeReconciled();
+                  awaitingStartConfirm = allInitiativeReconciled() && hasRequiredConflictBasics();
                   renderTurnPrompt();
                 }
               };
@@ -7680,6 +7753,22 @@
                 form.querySelectorAll('[data-quantity-for-npc]'),
                 function (qtyInput) { qtyInput.addEventListener("input", renderRows); }
               );
+              {{/* hasRequiredConflictBasics reads the Conflict Name input
+                live, but nothing else here re-renders the Start Combat
+                prompt on a plain text edit — the adversary checkboxes
+                already do via renderRows above, Initiative/Tiebreaker via
+                their own change handlers, but typing a name is otherwise
+                invisible to this gate until some unrelated event happened
+                to fire renderTurnPrompt afterward. */}}
+              var nameInputEl = form.querySelector('[data-field="name"]');
+              if (nameInputEl) {
+                nameInputEl.addEventListener("input", function () {
+                  if (!combatStarted) {
+                    awaitingStartConfirm = allInitiativeReconciled() && hasRequiredConflictBasics();
+                    renderTurnPrompt();
+                  }
+                });
+              }
 
               wrap._collectCombatStats = collectCombatStatsFromRows;
               wrap._collectCombatTurnState = function () { return { combatStarted: combatStarted, currentTurnKey: currentTurnKey }; };
@@ -7784,7 +7873,8 @@
 
               var actions = document.createElement("div");
               actions.className = "conflict-form-actions";
-              actions.appendChild(createModeToggleEl());
+              var modeToggleEl = createModeToggleEl();
+              actions.appendChild(modeToggleEl);
               var saveBtn = document.createElement("button");
               saveBtn.type = "button";
               saveBtn.className = "conflict-save-btn";
@@ -7813,7 +7903,24 @@
 
               var conflictHeaderFields = document.createElement("div");
               conflictHeaderFields.className = "conflict-header-fields";
-              conflictHeaderFields.appendChild(markRequired(conflictEditInput("Conflict Name", conflict.name, { field: "name" })));
+              var nameField = markRequired(conflictEditInput("Conflict Name", conflict.name, { field: "name" }));
+              var nameInput = nameField.querySelector("input");
+              {{/* Same "Click Edit to..." idea as Combatants' own
+                conflict-adversary-view-text — a required field left blank
+                on a fresh "+ Add Conflict" (which always opens in View,
+                see applyPortalMode("view") above) otherwise just looks
+                like empty dead space instead of prompting the DM to
+                switch to Edit. Native placeholder, not a mirrored <p> like
+                Combatants needed — a plain <input> already hides its own
+                placeholder the instant real text is typed, no extra
+                element required. Cleared in Edit mode since "Click Edit"
+                doesn't make sense once already there. */}}
+              var updateNamePlaceholder = function () {
+                nameInput.placeholder = currentPortalMode === "view" ? "Click Edit to add" : "";
+              };
+              updateNamePlaceholder();
+              modeToggleEl.addEventListener("click", updateNamePlaceholder);
+              conflictHeaderFields.appendChild(nameField);
               conflictHeaderFields.appendChild(markRequired(conflictAdversarySelect("Combatants", conflict.adversaryNpcIds, conflict.adversaryNpcQuantities)));
               conflictHeaderFields.appendChild(conflictSessionSelect("Tied to Session", conflict.sessionId, { field: "sessionId" }));
               conflictHeaderFields.appendChild(conflictEditLinkInput("Reference Link", conflict.referenceLink, { field: "referenceLink" }));
@@ -7849,9 +7956,10 @@
                 pendingNewConflict = null;
                 conflictDirty = false;
                 renderConflictSelect();
-                conflictSelect.value = "";
-                conflictCurrentValue = "";
+                conflictSelect.value = updated.id;
+                conflictCurrentValue = updated.id;
                 clearConflictDetail();
+                renderConflictForm(updated.id);
               });
 
               cancelBtn.addEventListener("click", cancelConflictForm);

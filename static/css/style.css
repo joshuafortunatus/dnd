@@ -854,6 +854,29 @@ body.is-home {
   padding-right: 0;
   cursor: default;
 }
+{{/* Ellipsis, not the browser's silent clip — a blank required field's
+  "Click Edit to add …" placeholder (see Conflict Name) is long enough to
+  overflow its column at this font-size, and an abrupt clip cut it off
+  mid-word with no visual cue there was more text. textarea is
+  deliberately excluded above/here — Notes is meant to show its full
+  multi-line content in View mode, not truncate it. */}}
+.dm-view-scope.view-mode input:not([id$="-select"]) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+{{/* Browsers apply their own dim, semi-transparent ::placeholder color
+  by default (Firefox even forces opacity down further via its UA
+  stylesheet) regardless of the input's own `color` — left alone, an
+  empty required field's "Click Edit to add …" placeholder (see Conflict
+  Name) renders noticeably greyer/fainter than Combatants' own "Click
+  Edit to add adversaries" (a real color: var(--text) <p>, not a native
+  placeholder), even though both are meant to read as the exact same
+  empty-state affordance. Forcing color+opacity here is what actually
+  makes them match. */}}
+.dm-view-scope.view-mode input:not([id$="-select"])::placeholder {
+  color: var(--text);
+  opacity: 1;
+}
 .dm-view-scope.view-mode textarea.autosize-textarea { overflow: hidden; }
 .dm-view-scope.view-mode select:not([id$="-select"]) {
   -webkit-appearance: none;
@@ -879,6 +902,19 @@ body.is-home {
   display: none !important;
 }
 .dm-view-scope.view-mode .ref-link-view {
+  display: block;
+}
+
+/* Conflict "Combatants" adversary picker: Edit mode's toggle+checklist
+   widget gives way to a single plain read-only line — the toggle button
+   isn't a form control View mode's own input/select lock already knows
+   to disable, and even if it were, a disabled toggle could still expand
+   its checklist below it. Same "— Not tied to a session —" idea
+   conflictSessionSelect gets for free from being a native <select>. */
+.dm-view-scope.view-mode .conflict-adversary-wrap {
+  display: none !important;
+}
+.dm-view-scope.view-mode .conflict-adversary-view-text {
   display: block;
 }
 
@@ -1184,6 +1220,49 @@ body.is-home {
    same specificity as .npc-monster-link above, so source order is what
    makes this win over its `display: block`. */
 .ref-link-view { display: none; }
+
+/* .conflict-adversary-view-text: same reasoning as .ref-link-view above —
+   hidden by default (Edit mode), switched on by the
+   .dm-view-scope.view-mode override. Every value here (background, border,
+   radius, color, padding, font-size) is copied straight from
+   ".conflict-field select" (Tied to Session's own box), not just
+   font-size/padding — a bare <p> otherwise has no box at all, reading as
+   plain inline text next to Tied to Session's actual bordered field
+   rather than the matching one. */
+.conflict-adversary-view-text {
+  display: none;
+  box-sizing: border-box;
+  margin: 0;
+  {{/* Not a bordered/filled box — "Tied to Session" isn't one either.
+    Its <select> looks boxed in Edit mode, but
+    ".dm-view-scope.view-mode select:not([id$='-select'])" above strips
+    it back to transparent background/border the instant View mode turns
+    on, same flattening every other View-mode field gets. Copying THAT
+    flattened result (not the Edit-mode box) is what actually matches —
+    a solid dark box here just reads as a different kind of field again,
+    the opposite of matching. border stays 1px solid (transparent, not
+    removed) purely to keep this box exactly as tall as the select's own
+    (still-present, just invisible) border occupies. */}}
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem 0.5rem 0;
+  color: var(--text);
+  font-size: 1rem;
+  {{/* A <select>'s line-height is the UA's "normal" form-control metric,
+    noticeably tighter than the page's own 1.6 body line-height a bare
+    <p> would otherwise inherit — without this, the two boxes matched on
+    every other axis but this one still left the <p> a few px taller. */}}
+  line-height: normal;
+  {{/* A <select> never wraps its selected option onto a second line
+    regardless of width — a plain <p> does by default, which is what let
+    this box grow taller than Tied to Session's own single-line select
+    once a real (longer) adversary list pushed it past one line. Matching
+    that native truncate-not-wrap behavior, not just the box's resting
+    size, is what actually keeps the two the same height. */}}
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .npc-statblock {
   flex-basis: 100%;
@@ -1675,9 +1754,21 @@ label.combat-next-roll-toggle { display: flex; margin-top: 0.35rem; }
    once Start Combat/Next in Turn Order picks a combatant. box-shadow on
    the <td>s rather than the <tr> itself, since a raw box-shadow on a
    table row renders inconsistently across browsers/table layouts; each
-   row always has exactly the two cells below. */
-.combat-row-active-turn > td {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 16px 6px rgba(255, 255, 255, 0.55);
+   row always has exactly the two cells below. Left/right edges only, per
+   an explicit correction — a full ring around both cells (including a
+   redundant seam down the middle divider) read as a boxed-in rectangle
+   rather than a spotlight either side of the row. Only the outer edge of
+   the first/last cell gets a shadow (:first-child/:last-child), so
+   there's no double line where the two cells meet in the middle.
+   Table layout, not this rule, is what keeps the bars exactly as tall as
+   the row's content — a <tr>'s cells always share one height (the
+   tallest cell's), so a Full View row's taller Combat Block stretches
+   the Combatant cell (and this shadow with it) to match automatically. */
+.combat-row-active-turn > td:first-child {
+  box-shadow: inset 3px 0 0 0 rgba(255, 255, 255, 0.9), -10px 0 14px -4px rgba(255, 255, 255, 0.55);
+}
+.combat-row-active-turn > td:last-child {
+  box-shadow: inset -3px 0 0 0 rgba(255, 255, 255, 0.9), 10px 0 14px -4px rgba(255, 255, 255, 0.55);
 }
 /* High-contrast callout next to the name once a combatant is dead — an
    NPC at 0 HP, or a PC on a third failed death save (see dm-portal.html:
