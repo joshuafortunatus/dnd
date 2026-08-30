@@ -148,8 +148,15 @@
  * included so this Worker is testable locally, not just against the
  * deployed GitHub Pages origin. The first entry is the fallback used when
  * the request's Origin doesn't match either (e.g. no Origin header at
- * all, as with a direct curl). */
+ * all, as with a direct curl).
+ *
+ * Requests from this origin are also routed to a "dev:"-prefixed storage
+ * key (see keyPrefix below) so data entered against a local `hugo server`
+ * never lands in the same KV/R2 key a production read pulls from. Before
+ * this existed, a "test" Conflicts entry added locally reached the live
+ * site because dev and prod shared the exact same slug-keyed storage. */
 const ALLOWED_ORIGINS = ["https://joshuafortunatus.github.io", "http://localhost:1313"];
+const DEV_ORIGIN = "http://localhost:1313";
 const ALLOWED_SYNC_KEYS = [
   "characters", "pc-manager", "travel-plans", "npcs", "settlements",
   "journal", "conflicts", "magic-items", "bastions", "files", "sessions",
@@ -191,6 +198,10 @@ function corsHeaders(request, extra) {
     },
     extra || {}
   );
+}
+
+function keyPrefix(request) {
+  return (request.headers.get("Origin") || "") === DEV_ORIGIN ? "dev:" : "";
 }
 
 function authorized(request, env) {
@@ -276,7 +287,7 @@ export default {
         });
       }
 
-      const storageKey = slug + ":" + key;
+      const storageKey = keyPrefix(request) + slug + ":" + key;
 
       if (request.method === "GET") {
         const stored = await env.PORTAL_DATA.get(storageKey);
@@ -312,7 +323,7 @@ export default {
         });
       }
 
-      const objectKey = slug + "/" + fileId;
+      const objectKey = keyPrefix(request) + slug + "/" + fileId;
 
       if (request.method === "PUT") {
         if (!authorized(request, env)) {
@@ -350,7 +361,7 @@ export default {
               headers: corsHeaders(request),
             });
           }
-          const stored = await env.PORTAL_DATA.get(slug + ":files");
+          const stored = await env.PORTAL_DATA.get(keyPrefix(request) + slug + ":files");
           let records = [];
           try {
             records = JSON.parse(stored || "[]") || [];
@@ -388,7 +399,7 @@ export default {
           headers: corsHeaders(request),
         });
       }
-      const stored = await env.PORTAL_DATA.get(slug + ":files");
+      const stored = await env.PORTAL_DATA.get(keyPrefix(request) + slug + ":files");
       let records = [];
       try {
         records = JSON.parse(stored || "[]") || [];
