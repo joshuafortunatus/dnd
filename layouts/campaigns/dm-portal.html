@@ -2157,6 +2157,7 @@
                 grid.appendChild(makeFieldInput("travel", "Distance", stage.distance, { field: "distance", stageIndex: i }));
                 grid.appendChild(makeFieldInput("travel", "Terrain", stage.terrain, { field: "terrain", stageIndex: i }));
                 grid.appendChild(makeFieldInput("travel", "Weather", stage.weather, { field: "weather", stageIndex: i }));
+                grid.appendChild(makeFieldInput("travel", "Elapsed Time (Days/Hrs)", stage.elapsedTime, { field: "elapsedTime", stageIndex: i }));
                 section.appendChild(grid);
 
                 var paceWrap = document.createElement("div");
@@ -2188,9 +2189,11 @@
                 });
                 section.appendChild(paceWrap);
 
-                section.appendChild(makeFieldTextarea("travel", "Narrative Notes", stage.notes, { field: "notes", stageIndex: i }));
-                section.appendChild(makeFieldTextarea("travel", "Challenges", stage.challenges, { field: "challenges", stageIndex: i }));
-                section.appendChild(makeFieldInput("travel", "Elapsed Time (Days/Hrs)", stage.elapsedTime, { field: "elapsedTime", stageIndex: i }));
+                var notesRow = document.createElement("div");
+                notesRow.className = "travel-notes-grid";
+                notesRow.appendChild(makeFieldTextarea("travel", "Narrative Notes", stage.notes, { field: "notes", stageIndex: i }));
+                notesRow.appendChild(makeFieldTextarea("travel", "Challenges", stage.challenges, { field: "challenges", stageIndex: i }));
+                section.appendChild(notesRow);
 
                 form.appendChild(section);
               });
