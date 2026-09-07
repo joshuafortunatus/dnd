@@ -232,3 +232,7 @@ hugo_stats.json
 
 # wrangler CLI local cache/auth, not shared config
 .wrangler/
+
+# Local R2 dev-persistence blobs from testing File Library uploads with
+# `wrangler dev`, not source
+worker/blobs/
